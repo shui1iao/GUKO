@@ -63,6 +63,12 @@ if bot.exists():
     text = re.sub(r"GUKO_VERSION = os\.environ\.get\('GUKO_VERSION', '[^']+'\)\.strip\(\) or '[^']+'", f"GUKO_VERSION = os.environ.get('GUKO_VERSION', '{version}').strip() or '{version}'", text)
     bot.write_text(text)
 
+dockerfile = root / 'telegram-bot' / 'Dockerfile'
+if dockerfile.exists():
+    text = dockerfile.read_text()
+    text = re.sub(r'^ARG GUKO_VERSION=.*$', f'ARG GUKO_VERSION={version}', text, flags=re.M)
+    dockerfile.write_text(text)
+
 env = root / '.env.example'
 if env.exists():
     text = env.read_text()

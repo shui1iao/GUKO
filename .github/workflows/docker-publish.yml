@@ -29,7 +29,7 @@ jobs:
             TAGS="$TAGS -t $IMAGE:latest"
           fi
           if [ "${{ github.ref_type }}" = "tag" ]; then
-            TAGS="$TAGS -t $IMAGE:${{ github.ref_name }}"
+            TAGS="$TAGS -t $IMAGE:${{ github.ref_name }} -t $IMAGE:latest"
           fi
           docker build -f telegram-bot/Dockerfile $TAGS .
       - name: Push image
@@ -41,4 +41,5 @@ jobs:
           fi
           if [ "${{ github.ref_type }}" = "tag" ]; then
             docker push "$IMAGE:${{ github.ref_name }}"
+            docker push "$IMAGE:latest"
           fi

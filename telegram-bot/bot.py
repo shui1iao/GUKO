@@ -28,7 +28,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.20').strip() or '0.1.20'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.21').strip() or '0.1.21'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 MEDIA_DIR = Path(os.environ.get('MEDIA_DIR', DATA_DIR / 'media'))
@@ -450,9 +450,10 @@ def geolocate_host(host, timeout=4):
     ip = extract_ipv4(host or '')
     if not ip:
         return None
-    # Match Kulin/Nezha GeoIP behavior: prefer ipapi country_code.
-    # ip-api may classify some broadcast/geo-routed VPS IPs differently.
+    # Prefer fresher IP geolocation databases. ipapi.co is kept as a fallback
+    # because it is rate-limited easily and may lag behind current VPS routing.
     providers = [
+        (f'https://api.ipapi.is/?q={ip}', lambda d: (d.get('location') or {}).get('country_code')),
         (f'https://ipapi.co/{ip}/json/', lambda d: d.get('country_code') or d.get('country')),
         (f'http://ip-api.com/json/{ip}?fields=status,countryCode,query,message', lambda d: d.get('countryCode') if d.get('status') == 'success' else None),
     ]

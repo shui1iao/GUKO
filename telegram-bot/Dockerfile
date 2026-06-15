@@ -1,5 +1,8 @@
 FROM python:3.13-slim
 WORKDIR /app
+ARG GUKO_VERSION=0.1.21
+ENV GUKO_VERSION=${GUKO_VERSION}
+LABEL org.opencontainers.image.version=${GUKO_VERSION}
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openssh-client sshpass ca-certificates fonts-dejavu-core fonts-noto-cjk curl gnupg librsvg2-bin \
@@ -8,8 +11,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 COPY telegram-bot/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
-RUN npm install -g playwright@1.59.1 \
- && PLAYWRIGHT_BROWSERS_PATH=/ms-playwright npx playwright install --with-deps chromium
+RUN npm install -g playwright@1.59.1
 ENV NODE_PATH=/usr/lib/node_modules PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 COPY auth.py guko.py jiaoops.py /app/
 RUN mkdir -p /data/keys /data/media /data/tmp
