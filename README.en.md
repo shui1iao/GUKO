@@ -53,6 +53,11 @@ KEYS_DIR=/data/keys
 GUKO_DEFAULT_USER=root
 GUKO_DEFAULT_PORT=22
 GUKO_DEFAULT_KEY=/data/keys/id_ed25519
+# Optional: prefer Kulin/Komari panel GeoIP results for region detection
+KULIN_BASE_URL=
+KULIN_USERNAME=
+KULIN_PASSWORD=
+KULIN_API_CACHE_TTL=300
 ENABLE_BGP=true
 ENABLE_IPPURE=true
 ENABLE_IPQ=true

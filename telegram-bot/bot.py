@@ -28,9 +28,14 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.21').strip() or '0.1.21'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.22').strip() or '0.1.22'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
+KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
+KULIN_USERNAME = os.environ.get('KULIN_USERNAME') or os.environ.get('KOMARI_USERNAME') or ''
+KULIN_PASSWORD = os.environ.get('KULIN_PASSWORD') or os.environ.get('KOMARI_PASSWORD') or ''
+KULIN_API_CACHE_TTL = int(os.environ.get('KULIN_API_CACHE_TTL', '300'))
+KULIN_GEO_CACHE = {'ts': 0.0, 'by_ip': {}}
 MEDIA_DIR = Path(os.environ.get('MEDIA_DIR', DATA_DIR / 'media'))
 TMP_DIR = Path(os.environ.get('TMP_DIR', DATA_DIR / 'tmp'))
 KEYS_DIR = Path(os.environ.get('KEYS_DIR', DATA_DIR / 'keys'))
@@ -446,16 +451,108 @@ def country_flag(code):
     return chr(0x1F1E6 + ord(code[0]) - ord('A')) + chr(0x1F1E6 + ord(code[1]) - ord('A'))
 
 
+def kulin_api_request(path, *, timeout=4):
+    if not (KULIN_USERNAME and KULIN_PASSWORD):
+        return None
+    if not KULIN_BASE_URL:
+        return None
+    base = KULIN_BASE_URL.rstrip('/')
+    cookie = urllib.request.HTTPCookieProcessor()
+    opener = urllib.request.build_opener(cookie)
+    try:
+        login_body = json.dumps({'username': KULIN_USERNAME, 'password': KULIN_PASSWORD}).encode()
+        login_req = urllib.request.Request(
+            base + '/api/v1/login',
+            data=login_body,
+            headers={'Content-Type': 'application/json', 'User-Agent': 'GUKO/1.0'},
+        )
+        with opener.open(login_req, timeout=timeout) as resp:
+            json.loads(resp.read().decode(errors='replace') or '{}')
+        req = urllib.request.Request(base + path, headers={'User-Agent': 'GUKO/1.0'})
+        with opener.open(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode(errors='replace') or '{}')
+    except Exception:
+        return None
+
+
+def flatten_kulin_servers(payload):
+    data = (payload or {}).get('data')
+    if isinstance(data, dict):
+        for key in ('servers', 'list', 'items', 'records'):
+            if isinstance(data.get(key), list):
+                return data.get(key)
+    if isinstance(data, list):
+        return data
+    return []
+
+
+def ip_from_kulin_host(item):
+    if not isinstance(item, dict):
+        return ''
+    geoip = item.get('geoip')
+    if isinstance(geoip, dict):
+        geo_ip = geoip.get('ip')
+        if isinstance(geo_ip, dict):
+            found = extract_ipv4(geo_ip.get('ipv4_addr') or geo_ip.get('IP') or geo_ip.get('ip') or '')
+            if found:
+                return found
+        found = extract_ipv4(geoip.get('ip') or geoip.get('ipv4') or '')
+        if found:
+            return found
+    host = item.get('host')
+    if isinstance(host, dict):
+        return extract_ipv4(host.get('IP') or host.get('ip') or host.get('ipv4') or '')
+    return extract_ipv4(item.get('ip') or item.get('ipv4') or item.get('host') or '')
+
+
+def country_from_kulin_item(item):
+    if not isinstance(item, dict):
+        return ''
+    geoip = item.get('geoip')
+    candidates = []
+    if isinstance(geoip, dict):
+        candidates.extend([geoip.get('country_code'), geoip.get('country'), geoip.get('region')])
+    candidates.extend([item.get('region'), item.get('country'), item.get('country_code')])
+    host = item.get('host')
+    if isinstance(host, dict):
+        candidates.extend([host.get('CountryCode'), host.get('country_code'), host.get('country')])
+    for val in candidates:
+        text = str(val or '').strip().lower()
+        if len(text) == 2 and text.isalpha():
+            return text
+    return ''
+
+
+def kulin_geo_map():
+    now = time.time()
+    if now - float(KULIN_GEO_CACHE.get('ts') or 0) < KULIN_API_CACHE_TTL:
+        return KULIN_GEO_CACHE.get('by_ip') or {}
+    by_ip = {}
+    payload = kulin_api_request('/api/v1/server')
+    for item in flatten_kulin_servers(payload):
+        ip = ip_from_kulin_host(item)
+        code = country_from_kulin_item(item)
+        if ip and code:
+            by_ip[ip] = code
+    KULIN_GEO_CACHE['ts'] = now
+    KULIN_GEO_CACHE['by_ip'] = by_ip
+    return by_ip
+
+
 def geolocate_host(host, timeout=4):
     ip = extract_ipv4(host or '')
     if not ip:
         return None
-    # Prefer fresher IP geolocation databases. ipapi.co is kept as a fallback
-    # because it is rate-limited easily and may lag behind current VPS routing.
+    # Keep GUKO's country flags aligned with Kulin/Komari. Its panel writes
+    # server.region from the currently configured GeoIP provider, so prefer
+    # that over ad-hoc public web APIs.
+    code = kulin_geo_map().get(ip)
+    if code:
+        return code
     providers = [
-        (f'https://api.ipapi.is/?q={ip}', lambda d: (d.get('location') or {}).get('country_code')),
-        (f'https://ipapi.co/{ip}/json/', lambda d: d.get('country_code') or d.get('country')),
         (f'http://ip-api.com/json/{ip}?fields=status,countryCode,query,message', lambda d: d.get('countryCode') if d.get('status') == 'success' else None),
+        (f'https://ipinfo.io/{ip}/json', lambda d: d.get('country')),
+        (f'https://get.geojs.io/v1/ip/country/{ip}.json', lambda d: d.get('country')),
     ]
     for url, pick in providers:
         try:
@@ -2000,7 +2097,8 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
                 if dynamic_vless_port:
                     install_cmd = f"{safe_sed}guko_port=8443; if ss -lnt | awk 'NR>1 {{print $4}}' | grep -Eq '(^|:)8443$'; then while :; do guko_port=$(shuf -i 20000-65000 -n 1); ss -lnt | awk 'NR>1 {{print $4}}' | grep -Eq \"(^|:)${{guko_port}}$\" || break; done; echo \"GUKO_STATUS:默认端口 8443 已占用，改用 $guko_port\"; fi; printf \"%b\" \"{menu_choice}\\n${{guko_port}}\\n\\n0\\n\" | bash \"$tmp\""
                 else:
-                    install_cmd = f'{safe_sed}printf %b {shlex.quote(menu_choice + "\n" + answers + "\n0\n")} | bash "$tmp"'
+                    vless_answers = menu_choice + '\n' + answers + '\n0\n'
+                    install_cmd = f'{safe_sed}printf %b {shlex.quote(vless_answers)} | bash "$tmp"'
             remote = (
                 'export TERM=xterm-256color; cd /root; '
                 f'BIN={shlex.quote(bin_path)}; SERVICE={shlex.quote(service)}; REPO={shlex.quote(repo)}; '
