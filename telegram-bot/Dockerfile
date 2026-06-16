@@ -1,11 +1,11 @@
 FROM python:3.13-slim
 WORKDIR /app
-ARG GUKO_VERSION=0.1.22
+ARG GUKO_VERSION=0.1.23
 ENV GUKO_VERSION=${GUKO_VERSION}
 LABEL org.opencontainers.image.version=${GUKO_VERSION}
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssh-client sshpass ca-certificates fonts-dejavu-core fonts-noto-cjk curl gnupg librsvg2-bin \
+ && apt-get install -y --no-install-recommends openssh-client sshpass ca-certificates fonts-dejavu-core fonts-noto-cjk curl gnupg librsvg2-bin chromium \
  && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
  && apt-get install -y --no-install-recommends nodejs \
  && rm -rf /var/lib/apt/lists/*

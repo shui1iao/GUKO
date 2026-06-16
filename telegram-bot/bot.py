@@ -28,7 +28,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.22').strip() or '0.1.22'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.23').strip() or '0.1.23'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -1805,11 +1805,16 @@ async def ensure_ippure_tool():
         else:
             raise RuntimeError('IPPure 工具不存在。请使用项目 Dockerfile 构建镜像，或设置 IPPURE_DOWNLOAD 指向 download_ippure.js。')
     try:
-        code, _ = await run_subprocess(['node', '-e', 'require("playwright"); console.log("ok")'], timeout=20)
+        code, _ = await run_subprocess([
+            'node', '-e',
+            'const fs=require("fs"); const paths=[process.env.CHROMIUM_PATH,"/usr/bin/chromium","/usr/bin/chromium-browser","/usr/bin/google-chrome","/usr/bin/google-chrome-stable"].filter(Boolean); '
+            'if(paths.some(p=>fs.existsSync(p))){process.exit(0)}; '
+            'const {chromium}=require("playwright"); const p=chromium.executablePath(); console.log(p); process.exit(fs.existsSync(p)?0:2)'
+        ], timeout=20)
         if code != 0:
-            raise RuntimeError('missing playwright')
+            raise RuntimeError('missing playwright browser')
     except Exception:
-        code, out = await run_subprocess(['bash', '-lc', 'npm install -g playwright@1.59.1 && PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH:-/ms-playwright} npx playwright install chromium'], timeout=600)
+        code, out = await run_subprocess(['bash', '-lc', 'npm install -g playwright@1.59.1 && PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH:-/ms-playwright} npx playwright install chromium chromium-headless-shell'], timeout=600)
         if code != 0:
             raise RuntimeError('Playwright 自动安装失败：\n' + trim_log(out, 1000))
 

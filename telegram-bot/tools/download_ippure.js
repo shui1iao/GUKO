@@ -15,7 +15,21 @@ function arg(name, fallback = '') {
   const outdir = arg('outdir', '/data/tmp/ippure-downloads');
   fs.mkdirSync(outdir, { recursive: true });
 
-  const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+  const candidates = [
+    process.env.CHROMIUM_PATH,
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+  ].filter(Boolean);
+  const launchOptions = { headless: true, args: ['--no-sandbox'] };
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      launchOptions.executablePath = candidate;
+      break;
+    }
+  }
+  const browser = await chromium.launch(launchOptions);
   const context = await browser.newContext({
     acceptDownloads: true,
     viewport: { width: 1440, height: 1200 },
