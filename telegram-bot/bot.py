@@ -28,7 +28,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.23').strip() or '0.1.23'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.24').strip() or '0.1.24'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -262,7 +262,7 @@ def update_server_by_id(sid: str, patch: dict):
         if str(server_id(s)) == str(sid):
             merged = dict(s)
             ssh = dict(merged.get('ssh') or {})
-            for k in ('name', 'host', 'aliases', 'role'):
+            for k in ('name', 'host', 'aliases', 'role', 'specs'):
                 if k in patch:
                     merged[k] = patch[k]
             if 'ssh' in patch:
@@ -1003,6 +1003,95 @@ async def test_server_login(s, timeout=15):
         return False, f'缺少依赖：{e}'
     except Exception as e:
         return False, str(e)
+
+
+def server_specs_remote_script():
+    return r'''
+set -eu
+cores=$(nproc 2>/dev/null || true)
+mem_bytes=$(awk '/MemTotal:/ {print $2 * 1024; exit}' /proc/meminfo 2>/dev/null || true)
+disk_bytes=''
+if command -v lsblk >/dev/null 2>&1; then
+  disk_bytes=$(lsblk -bdn -o SIZE,TYPE 2>/dev/null | awk '$2 == "disk" {sum += $1} END {if (sum > 0) printf "%.0f", sum}')
+fi
+[ -n "$disk_bytes" ] || disk_bytes=$(df -B1 / 2>/dev/null | awk 'NR==2 {printf "%.0f", $2}')
+printf 'CPU=%s\nMEM_BYTES=%s\nDISK_BYTES=%s\n' "$cores" "$mem_bytes" "$disk_bytes"
+'''
+
+
+def fmt_capacity_2(value):
+    try:
+        n = float(value)
+    except Exception:
+        return ''
+    if n <= 0:
+        return ''
+    gb = n / 1000 / 1000 / 1000
+    if gb < 1:
+        return f'{n / 1000 / 1000:.2f}MB'
+    return f'{gb:.2f}GB'
+
+
+def format_server_specs(specs):
+    if not isinstance(specs, dict):
+        return ''
+    parts = []
+    cores = specs.get('cpu_cores')
+    if cores not in (None, ''):
+        try:
+            cores_text = str(int(float(cores)))
+        except Exception:
+            cores_text = str(cores)
+        parts.append(f'🧠 {safe(cores_text)} Cores')
+    mem = fmt_capacity_2(specs.get('mem_bytes'))
+    if mem:
+        parts.append(f'💾 {safe(mem)} 内存')
+    disk = fmt_capacity_2(specs.get('disk_bytes'))
+    if disk:
+        parts.append(f'🗄️ {safe(disk)} 硬盘')
+    return ' · '.join(parts)
+
+
+def cache_server_specs(s, specs):
+    if not isinstance(specs, dict) or not specs:
+        return None
+    payload = dict(specs)
+    payload['cached_at'] = iso_now()
+    return update_server_by_id(str(server_id(s)), {'specs': payload})
+
+
+async def read_server_specs(s, timeout=8):
+    try:
+        code, out = await run_cmd(ssh_args(s, server_specs_remote_script(), tty=False), timeout=timeout, env=ssh_env_for(s))
+        if code != 0:
+            return None
+        vals = {}
+        for raw in strip_ansi(out).splitlines():
+            if '=' in raw:
+                k, v = raw.split('=', 1)
+                vals[k.strip()] = v.strip()
+        specs = {
+            'cpu_cores': vals.get('CPU') or '',
+            'mem_bytes': vals.get('MEM_BYTES') or '',
+            'disk_bytes': vals.get('DISK_BYTES') or '',
+        }
+        if not any(specs.values()):
+            return None
+        cache_server_specs(s, specs)
+        return specs
+    except Exception:
+        return None
+
+
+async def server_detail_text_with_specs(s):
+    text = server_detail_text(s)
+    specs_text = format_server_specs(s.get('specs'))
+    if not specs_text:
+        specs = await read_server_specs(s)
+        specs_text = format_server_specs(specs)
+    if specs_text:
+        text += '\n' + specs_text
+    return text
 
 
 def build_server_item(name, host, user, port, auth_kind=None, password=None, key=None):
@@ -3150,7 +3239,7 @@ async def info_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not s:
         await update.message.reply_text('没找到这台。')
         return
-    await update.message.reply_text(server_detail_text(s), parse_mode=ParseMode.HTML, reply_markup=server_markup(s))
+    await update.message.reply_text(await server_detail_text_with_specs(s), parse_mode=ParseMode.HTML, reply_markup=server_markup(s))
 
 
 async def export_config_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3816,7 +3905,9 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not s:
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
-        await q.edit_message_text(server_detail_text(s), parse_mode=ParseMode.HTML, reply_markup=server_markup(s))
+        if not format_server_specs(s.get('specs')):
+            await q.edit_message_text(server_detail_text(s) + '\n正在读取配置…', parse_mode=ParseMode.HTML)
+        await q.edit_message_text(await server_detail_text_with_specs(s), parse_mode=ParseMode.HTML, reply_markup=server_markup(s))
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
