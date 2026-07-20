@@ -7,7 +7,7 @@
 
 **轻量 VPS / 服务器管理 Telegram Bot：服务器状态面板、SSH 登录管理、常用测试脚本入口**
 
-> 私聊打开 Bot 就能查看服务器列表、状态详情、流量与资源占用；支持在 Telegram 内添加服务器、测试 SSH、运行 IP 质量 / NodeQuality / 流媒体 / NextTrace / GB5 等常用检测。
+> 私聊打开 Bot 就能查看服务器列表、状态详情、流量与资源占用；支持在 Telegram 内添加服务器、测试 SSH、运行 IP 质量 / NodeQuality / TCPQuality / 流媒体 / NextTrace / GB5 等常用检测。
 > 默认白名单模式，适合自托管。
 
 ---
@@ -17,7 +17,7 @@
 - **服务器状态面板**：展示在线数量、CPU / 内存 / 硬盘、流量、实时网速、系统信息等。
 - **Telegram 内添加服务器**：支持单台添加、批量导入、编辑、删除和 SSH 连通性测试。
 - **灵活 SSH 鉴权**：支持默认密钥继承、每台独立密钥、已有密钥路径、上传 / 粘贴私钥、密码登录。
-- **常用测试与协议入口**：支持 IP 质量、NodeQuality、流媒体解锁、NextTrace、GB5、SS-Rust、AnyTLS、VLESS、Snell 等任务。
+- **常用测试与协议入口**：支持 IP 质量、NodeQuality、TCPQuality、流媒体解锁、NextTrace、GB5、SS-Rust、AnyTLS、VLESS、Snell 等任务。
 - **IP / 域名工具**：支持 IPPure 官方图片与 bgp.tools BGP 路由图。
 - **适合 Docker 部署**：提供 Docker Compose、Makefile 和初始化脚本。
 
@@ -61,6 +61,7 @@ ENABLE_BGP=true
 ENABLE_IPPURE=true
 ENABLE_IPQ=true
 ENABLE_NQ=true
+ENABLE_TCPQ=true
 ENABLE_GB5=true
 ENABLE_STREAM=true
 ENABLE_NEXTTRACE=true
@@ -236,6 +237,7 @@ ENABLE_BGP=true
 ENABLE_IPPURE=true
 ENABLE_IPQ=true
 ENABLE_NQ=true
+ENABLE_TCPQ=true
 ENABLE_GB5=true
 ENABLE_STREAM=true
 ENABLE_NEXTTRACE=true
@@ -259,6 +261,7 @@ ALLOW_INSECURE_STARTUP=false
 | `ENABLE_IPPURE` | 否 | `true` | 是否启用 IPPure 图功能 |
 | `ENABLE_IPQ` | 否 | `true` | 是否启用 IP 质量功能 |
 | `ENABLE_NQ` | 否 | `true` | 是否启用 NodeQuality 功能 |
+| `ENABLE_TCPQ` | 否 | `true` | 是否启用 TCPQuality 全国三网 TCP 质量检测 |
 | `ENABLE_GB5` | 否 | `true` | 是否启用 GB5 功能 |
 | `ENABLE_SS` | 否 | `true` | 是否启用 SS-Rust 管理入口 |
 | `ENABLE_ANYTLS` | 否 | `true` | 是否启用 AnyTLS 管理入口 |
@@ -386,7 +389,7 @@ Bot 内还可以导出脱敏配置：
 
 ## 🧩 可选工具
 
-GUKO 支持按需启用 IP 质量、NodeQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。相关按钮可以通过环境变量关闭。
+GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。TCPQuality 可选择 IPv4、IPv6 或包含教育网、国际互联和 Speedtest 的完整检测；报告会上传至 `tcpquality.ibsgss.uk`。相关按钮可以通过环境变量关闭。
 
 ---
 
@@ -419,7 +422,7 @@ make check
 - 仓库不包含任何 Bot Token、真实用户 ID、服务器密码或私钥。
 - `.env`、`servers.json`、`keys/`、`media/`、`tmp/` 已加入 `.gitignore`，不要提交真实配置。
 - 默认白名单模式，未配置允许用户时会拒绝启动。
-- 使用 IPPure、bgp.tools、NodeQuality、流媒体检测等功能时，会访问对应第三方服务。
+- 使用 IPPure、bgp.tools、NodeQuality、TCPQuality、流媒体检测等功能时，会访问对应第三方服务；TCPQuality 会把检测结果上传至 `tcpquality.ibsgss.uk` 生成公开报告。
 - 删除服务器只会删除 Bot 本地配置，不会删除或重装远端机器。
 
 ## License

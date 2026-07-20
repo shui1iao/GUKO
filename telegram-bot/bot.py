@@ -28,7 +28,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.1.24').strip() or '0.1.24'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.2.0').strip() or '0.2.0'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -53,11 +53,16 @@ SCRIPT_SOURCES = {
     'stream': ('RegionRestrictionCheck', 'https://github.com/lmc999/RegionRestrictionCheck'),
     'ipq': ('Check.Place', 'https://github.com/xykt/NetQuality'),
     'nq': ('NodeQuality / Check.Place', 'https://github.com/xykt/NodeQuality'),
+    'tcpq': ('TcpQuality', 'https://github.com/ibsgss/TcpQuality'),
     'ss': ('SS-Rust-Manager', 'https://github.com/shuijiao1/SS-Rust-Manager'),
     'anytls': ('AnyTLS-Manager', 'https://github.com/shuijiao1/AnyTLS-Manager'),
     'vless': ('Xray-VLESS-Manager', 'https://github.com/shuijiao1/Xray-VLESS-Manager'),
     'snell': ('Snell-Manager', 'https://github.com/shuijiao1/Snell-Manager'),
 }
+TCPQUALITY_COMMIT = '939674a8309fb9ee26958ad1ddf9fe08665630b9'
+TCPQUALITY_SHA256 = '59041032e173e97d30055461e375605fef8638b2c9b4db8479f3a62625d950e8'
+TCPQUALITY_RAW_URL = f'https://raw.githubusercontent.com/ibsgss/TcpQuality/{TCPQUALITY_COMMIT}/runTcpQuality.sh'
+TCPQUALITY_MIRROR_URL = f'https://cdn.jsdelivr.net/gh/ibsgss/TcpQuality@{TCPQUALITY_COMMIT}/runTcpQuality.sh'
 PROXY_TOOLS = {
     'ss': {
         'name': 'SS-Rust',
@@ -660,6 +665,10 @@ def script_command_text(kind, **kwargs):
         if selected or ip_mode:
             extra = f'\n选择：{selected or "-"}；{ip_mode or "-"}'
         return '脚本命令：\nbash <(curl -sL https://run.NodeQuality.com)' + extra
+    if kind == 'tcpq':
+        mode = tcpquality_mode(kwargs.get('mode') or 'v4')
+        args = ' '.join(mode['args'])
+        return f'脚本命令：\nbash <(curl -fsSL {TCPQUALITY_RAW_URL}) {args}'
     return ''
 
 
@@ -790,6 +799,8 @@ def server_markup(s):
         test_buttons.append(InlineKeyboardButton('🧪 IP质量', callback_data=f'ipq:{sid}'))
     if tool_enabled('nq'):
         test_buttons.append(InlineKeyboardButton('📊 NodeQuality', callback_data=f'nqask:{sid}'))
+    if tool_enabled('tcpq'):
+        test_buttons.append(InlineKeyboardButton('📡 TCPQuality', callback_data=f'tqask:{sid}'))
     if tool_enabled('gb5'):
         test_buttons.append(InlineKeyboardButton('🏁 GB5', callback_data=f'gb5:{sid}'))
     if tool_enabled('stream'):
@@ -832,6 +843,71 @@ NQ_ITEMS = [
 NQ_ALL_MASK = sum(x[3] for x in NQ_ITEMS)
 NQ_DEFAULT_MASK = 0
 NQ_IP_MODES = {'4': '仅 IPv4', '46': 'IPv4 + IPv6'}
+
+TCPQUALITY_MODES = {
+    'v4': {
+        'label': 'IPv4 全国三网',
+        'args': ('-v4',),
+        'sections': ('ipv4',),
+    },
+    'v6': {
+        'label': 'IPv6 全国三网',
+        'args': ('-v6',),
+        'sections': ('ipv6',),
+    },
+    'all': {
+        'label': '完整检测（含测速）',
+        'args': ('--all',),
+        'sections': ('ipv4', 'ipv6', 'cernet', 'speedtest'),
+    },
+}
+
+
+def tcpquality_mode(mode):
+    key = str(mode or '').strip().lower()
+    if key not in TCPQUALITY_MODES:
+        raise ValueError(f'未知 TCPQuality 模式：{mode}')
+    return TCPQUALITY_MODES[key]
+
+
+def tcpquality_markup(s):
+    sid = server_id(s)
+    rows = [
+        [InlineKeyboardButton('IPv4 全国三网', callback_data=f'tqrun:{sid}:v4')],
+    ]
+    if server_has_ipv6(s):
+        rows.append([InlineKeyboardButton('IPv6 全国三网', callback_data=f'tqrun:{sid}:v6')])
+    rows.extend([
+        [InlineKeyboardButton('完整检测（含测速）', callback_data=f'tqrun:{sid}:all')],
+        [InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')],
+    ])
+    return InlineKeyboardMarkup(rows)
+
+
+def tcpquality_menu_text(s):
+    ipv6_note = '检测到 IPv6，可单独运行 IPv6。' if server_has_ipv6(s) else '未配置 IPv6，只显示 IPv4 和完整检测。'
+    return (
+        f'📡 选择要在 <b>{safe(s.get("name"))}</b> 运行的 TCPQuality：\n\n'
+        'IPv4/IPv6 模式检测全国三网 TCP 延迟与丢包；完整检测还会包含教育网、国际互联和 Speedtest，耗时与流量更高。\n'
+        f'{safe(ipv6_note)}\n\n'
+        '结果会上传至 tcpquality.ibsgss.uk 并生成公开报告链接。'
+    )
+
+
+def tcpquality_remote_command(mode):
+    config = tcpquality_mode(mode)
+    args = ' '.join(shlex.quote(arg) for arg in config['args'])
+    return (
+        "set -eu; export TERM=xterm-256color; cd /tmp; "
+        "script=$(mktemp /tmp/tcpquality.XXXXXX.sh); "
+        "cleanup() { rm -f \"$script\"; }; "
+        "trap cleanup EXIT; trap 'exit 130' HUP INT TERM; "
+        f"curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 15 --max-time 120 {shlex.quote(TCPQUALITY_RAW_URL)} -o \"$script\" || "
+        f"curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 15 --max-time 120 {shlex.quote(TCPQUALITY_MIRROR_URL)} -o \"$script\"; "
+        f"printf '%s  %s\\n' {shlex.quote(TCPQUALITY_SHA256)} \"$script\" | sha256sum -c -; "
+        "chmod 700 \"$script\"; "
+        f'bash "$script" {args}'
+    )
 
 
 def confirm_nq_markup(s, mask=NQ_DEFAULT_MASK, ip_mode='4'):
@@ -1251,7 +1327,7 @@ def job_id(kind, s):
     return f"{kind}-{server_id(s)}-{int(time.time() * 1000)}"
 
 KIND_NAME = {
-    'ipq': 'IP质量', 'nq': 'NodeQuality', 'gb5': 'GB5', 'stream': '流媒体检测',
+    'ipq': 'IP质量', 'nq': 'NodeQuality', 'tcpq': 'TCPQuality', 'gb5': 'GB5', 'stream': '流媒体检测',
     'nexttrace': 'NextTrace', 'bgp': 'BGP图', 'ippure': 'IPPure图',
     'ss': 'SS', 'anytls': 'AnyTLS',
 }
@@ -1342,6 +1418,10 @@ def save_history(items):
 
 
 def history_append(jid, job):
+    urls = history_urls(job.get('log') or '')
+    if job.get('kind') == 'tcpq':
+        report = validated_tcpquality_url(job.get('report_url'))
+        urls = [report] if report else []
     item = {
         'job_id': jid,
         'server': job.get('server'),
@@ -1352,10 +1432,12 @@ def history_append(jid, job):
         'selected': job.get('selected'),
         'ip_mode': job.get('ip_mode'),
         'region': job.get('region'),
+        'report_url': job.get('report_url'),
+        'delivery_error': job.get('delivery_error'),
         'started_at': job.get('started_at'),
         'completed_at': job.get('completed_at'),
         'duration_sec': job.get('duration_sec'),
-        'urls': history_urls(job.get('log') or ''),
+        'urls': urls,
         'media_paths': job.get('media_paths') or ([] if not job.get('media_path') else [job.get('media_path')]),
         'log_tail': trim_log(strip_ansi(job.get('log') or ''), 3500),
     }
@@ -1595,6 +1677,10 @@ def extract_urls(text):
 def history_urls(text, limit=24):
     urls = []
     seen = set()
+    tq = tcpquality_url(text)
+    if tq:
+        urls.append(tq)
+        seen.add(tq)
     nq = nodequality_url(text)
     if nq:
         urls.append(nq)
@@ -1645,6 +1731,22 @@ def geekbench_urls(text):
             urls.append(clean)
             seen.add(clean)
     return urls
+
+def validated_tcpquality_url(value):
+    clean = strip_ansi(str(value or '')).strip()
+    match = re.fullmatch(r'https://tcpquality\.ibsgss\.uk/r/([A-Za-z0-9_-]{10})', clean, re.I)
+    if not match:
+        return None
+    return f'https://tcpquality.ibsgss.uk/r/{match.group(1)}'
+
+
+def tcpquality_url(text):
+    clean = strip_ansi(text or '')
+    match = re.search(r'https?://tcpquality\.ibsgss\.uk/r/([A-Za-z0-9_-]{10})', clean, re.I)
+    if not match:
+        return None
+    return f'https://tcpquality.ibsgss.uk/r/{match.group(1)}'
+
 
 def nodequality_url(text):
     clean = strip_ansi(text or '')
@@ -2016,6 +2118,41 @@ async def render_checkplace_png(svg_url, out_png):
             raise RuntimeError(out[-1000:])
 
 
+async def render_tcpquality_png(svg_url, out_png):
+    out_png = Path(out_png)
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as td:
+        svg_path = Path(td) / 'tcpquality.svg'
+
+        def download():
+            req = urllib.request.Request(
+                svg_url,
+                headers={
+                    'User-Agent': 'GUKO/0.2 (+https://github.com/shuijiao1/GUKO)',
+                    'Accept': 'image/svg+xml,*/*;q=0.8',
+                    'Referer': 'https://tcpquality.ibsgss.uk/',
+                },
+            )
+            with urllib.request.urlopen(req, timeout=60) as response:
+                payload = response.read(10 * 1024 * 1024 + 1)
+            if len(payload) > 10 * 1024 * 1024:
+                raise RuntimeError('TCPQuality SVG 超过 10MB 限制')
+            prefix = payload.lstrip()[:512].lower()
+            if b'<svg' not in prefix:
+                raise RuntimeError('TCPQuality 图片接口没有返回 SVG')
+            svg_path.write_bytes(payload)
+
+        await asyncio.to_thread(download)
+        code, out = await run_subprocess(
+            ['rsvg-convert', str(svg_path), '--output', str(out_png)],
+            timeout=90,
+        )
+        if code != 0:
+            raise RuntimeError(trim_log(out, 1000) or f'TCPQuality SVG 转 PNG 失败：{code}')
+        if not out_png.exists() or out_png.stat().st_size <= 8:
+            raise RuntimeError('TCPQuality PNG 生成后为空')
+
+
 async def send_report_images(bot, chat_id, report_links, prefix):
     if not report_links:
         return []
@@ -2274,6 +2411,95 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
     except Exception as e:
         JOBS[jid].update({'status': 'failed', 'log': repr(e), 'target': action})
         await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} {safe(tool['name'])} 任务失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
+    finally:
+        finish_job(jid, key)
+
+
+async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
+    key = (server_id(s), 'tcpq')
+
+    async def deliver_message(text, **kwargs):
+        try:
+            await bot.send_message(chat_id, text, **kwargs)
+            return True
+        except Exception as delivery_error:
+            JOBS[jid]['delivery_error'] = repr(delivery_error)
+            return False
+
+    try:
+        config = tcpquality_mode(mode)
+        if mode == 'v6' and not server_has_ipv6(s):
+            raise RuntimeError('这台服务器没有配置 IPv6')
+        label = config['label']
+        remote = tcpquality_remote_command(mode)
+        timeout = 7200 if mode == 'all' else 3600
+        code, out = await run_subprocess(
+            ssh_args(s, remote, tty=False),
+            timeout=timeout,
+            env=ssh_env_for(s),
+        )
+        report = tcpquality_url(out)
+        JOBS[jid].update({
+            'log': out,
+            'selected': label,
+            'target': mode,
+            'report_url': report,
+        })
+        if not report:
+            JOBS[jid]['status'] = 'failed'
+            await deliver_message(
+                f"❌ {safe(s.get('name'))} TCPQuality 没拿到报告链接。\n"
+                f"<pre>{safe(trim_log(out))}</pre>",
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        clear_result_files(s, 'tcpq')
+        media_paths = []
+        image_errors = []
+        safe_sid = re.sub(r'[^A-Za-z0-9_.-]+', '_', str(server_id(s)))
+        with tempfile.TemporaryDirectory(prefix='guko-tcpq-') as td:
+            out_dir = Path(td)
+            for section in config['sections']:
+                image_url = f'{report}.png?section={section}'
+                png = out_dir / f'tcpq-{safe_sid}-{section}.png'
+                try:
+                    await render_tcpquality_png(image_url, png)
+                    saved = persist_result_file(s, 'tcpq', png, f'-{section}.png', clear=False)
+                    if saved:
+                        media_paths.append(saved)
+                    with png.open('rb') as photo:
+                        await bot.send_photo(chat_id, photo=photo)
+                except Exception as image_error:
+                    image_errors.append(f'{section}: {trim_log(str(image_error), 300)}')
+
+        JOBS[jid].update({
+            'status': 'done',
+            'media_paths': media_paths,
+        })
+        msg = (
+            f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(label)}\n\n"
+            f"{safe(report)}\n\n"
+            f"{script_command_html('tcpq', mode=mode)}"
+        )
+        if code != 0:
+            msg += f"\n\n⚠️ 脚本退出码为 <code>{safe(code)}</code>，但报告已经生成。"
+        if image_errors:
+            msg += f"\n\n部分报告图未生成：<code>{safe('；'.join(image_errors))}</code>"
+        await deliver_message(
+            msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
+    except Exception as e:
+        job = JOBS[jid]
+        if job.get('status') != 'done':
+            job.update({'status': 'failed', 'target': mode})
+        job.setdefault('log', repr(e))
+        await deliver_message(
+            f"❌ {safe(s.get('name'))} TCPQuality 任务失败：<code>{safe(e)}</code>",
+            parse_mode=ParseMode.HTML,
+        )
     finally:
         finish_job(jid, key)
 
@@ -3166,6 +3392,44 @@ async def send_history_result(bot, chat_id, s, kind):
         p = Path(x)
         if p.exists() and p.is_file() and p.stat().st_size > 0:
             media_paths.append(p)
+    if kind == 'tcpq':
+        if item.get('status') != 'done':
+            await bot.send_message(
+                chat_id,
+                f"❌ {safe(s.get('name'))} 最近一次 TCPQuality 状态为 "
+                f"<code>{safe(item.get('status') or '-')}</code>，暂无可重发的完整报告。",
+                parse_mode=ParseMode.HTML,
+            )
+            return False
+        report = validated_tcpquality_url(item.get('report_url'))
+        if not report:
+            report = next(
+                (validated for url in (item.get('urls') or []) if (validated := validated_tcpquality_url(url))),
+                None,
+            )
+        if not report:
+            await bot.send_message(
+                chat_id,
+                f"⚠️ {safe(s.get('name'))} 最近一次 TCPQuality 没有有效的官方报告链接。",
+                parse_mode=ParseMode.HTML,
+            )
+            return False
+        photo_errors = []
+        for media in media_paths:
+            try:
+                with media.open('rb') as photo:
+                    await bot.send_photo(chat_id, photo=photo)
+            except Exception as photo_error:
+                photo_errors.append(trim_log(str(photo_error), 200))
+        mode = item.get('target') or 'v4'
+        selected = item.get('selected') or TCPQUALITY_MODES.get(mode, {}).get('label') or '-'
+        msg = f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(selected)}\n\n{safe(report)}"
+        safe_mode = mode if mode in TCPQUALITY_MODES else 'v4'
+        msg += f"\n\n{script_command_html('tcpq', mode=safe_mode)}"
+        if photo_errors:
+            msg += f"\n\n报告图重发失败：<code>{safe('；'.join(photo_errors))}</code>"
+        await bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        return True
     if kind == 'nq':
         urls = item.get('urls') or []
         nq = next((u for u in urls if 'nodequality.com/r/' in u), None)
@@ -3661,10 +3925,20 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
         item = history_item_for(s, kind)
-        if item and (latest_media_path(item) or kind == 'nq'):
-            await send_history_result(context.bot, q.message.chat_id, s, kind)
+        can_resend = bool(
+            item
+            and item.get('status') == 'done'
+            and (latest_media_path(item) or kind in ('nq', 'tcpq'))
+        )
+        if can_resend:
+            sent = await send_history_result(context.bot, q.message.chat_id, s, kind)
+            summary = (
+                f'已重新发送 <b>{safe(KIND_NAME.get(kind, kind))}</b> 最近一次完整结果。'
+                if sent
+                else f'最近一次 <b>{safe(KIND_NAME.get(kind, kind))}</b> 没有可重发的完整结果。'
+            )
             await q.edit_message_text(
-                f'已重新发送 <b>{safe(KIND_NAME.get(kind, kind))}</b> 最近一次完整结果。',
+                summary,
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton('↩️ 返回历史记录', callback_data=f'hist:{sid}')],
@@ -3672,8 +3946,16 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]),
             )
         else:
+            if item and kind == 'tcpq':
+                detail = (
+                    f"📜 <b>{safe(s.get('name'))} · TCPQuality</b>\n"
+                    f"状态：<b>{safe(item.get('status') or '-')}</b>\n\n"
+                    '最近一次没有可重发的完整官方报告。'
+                )
+            else:
+                detail = history_detail_text(s, kind)
             await q.edit_message_text(
-                history_detail_text(s, kind),
+                detail,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup([
@@ -3758,6 +4040,51 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         task = f"{safe(tool['name'])} {label} 安装/更新"
         jid = launch_job(s, f'vless-{mode}', run_proxy_tool_task, context.bot, q.message.chat_id, s, 'vless', 'ensure', mode, target=mode)
         await bot_task_started_notice(context.bot, q.message.chat_id, s, task, jid is not None)
+    elif data.startswith('tqask:'):
+        sid = data.split(':', 1)[1]
+        s = find_server_by_id(sid)
+        if not s:
+            await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
+            return
+        await q.edit_message_text(
+            tcpquality_menu_text(s),
+            parse_mode=ParseMode.HTML,
+            reply_markup=tcpquality_markup(s),
+        )
+    elif data.startswith('tqrun:'):
+        parts = data.split(':', 2)
+        sid = parts[1] if len(parts) > 1 else ''
+        mode = parts[2] if len(parts) > 2 else 'v4'
+        s = find_server_by_id(sid)
+        if not s:
+            await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
+            return
+        try:
+            config = tcpquality_mode(mode)
+        except ValueError:
+            await q.answer('未知 TCPQuality 模式', show_alert=True)
+            return
+        if mode == 'v6' and not server_has_ipv6(s):
+            await q.answer('这台服务器没有配置 IPv6', show_alert=True)
+            return
+        jid = launch_job(
+            s,
+            'tcpq',
+            run_tcpquality_task,
+            context.bot,
+            q.message.chat_id,
+            s,
+            mode,
+            selected=config['label'],
+            target=mode,
+        )
+        await bot_task_started_notice(
+            context.bot,
+            q.message.chat_id,
+            s,
+            f"TCPQuality（{safe(config['label'])}）",
+            jid is not None,
+        )
     elif data.startswith('ipq:'):
         sid = data.split(':', 1)[1]
         s = find_server_by_id(sid)

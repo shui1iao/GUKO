@@ -7,7 +7,7 @@
 
 **A lightweight VPS / server management Telegram Bot: server status dashboard, SSH login management, common diagnostics, and protocol management entries.**
 
-> Open a private chat with the Bot to view server lists, status details, traffic, and resource usage. Add servers, test SSH, and run IP quality, NodeQuality, streaming unlock, NextTrace, GB5, SS-Rust, AnyTLS, VLESS, Snell, and other common checks from Telegram.
+> Open a private chat with the Bot to view server lists, status details, traffic, and resource usage. Add servers, test SSH, and run IP quality, NodeQuality, TCPQuality, streaming unlock, NextTrace, GB5, SS-Rust, AnyTLS, VLESS, Snell, and other common checks from Telegram.
 > Whitelist mode is enabled by default, making it suitable for self-hosting.
 
 ---
@@ -17,7 +17,7 @@
 - **Server dashboard**: View online count, CPU / memory / disk usage, traffic, realtime network speed, and system information.
 - **Add servers from Telegram**: Supports single-server add, batch import, edit, delete, and SSH connectivity tests.
 - **Flexible SSH authentication**: Supports inherited default keys, per-server keys, existing key paths, uploaded / pasted private keys, and password login.
-- **Common test shortcuts**: Supports IP quality, NodeQuality, streaming unlock checks, NextTrace, GB5, and more.
+- **Common test shortcuts**: Supports IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, and more.
 - **IP / domain tools**: Supports IPPure official images and bgp.tools BGP route images.
 - **Safe defaults**: Whitelist mode is required; GUKO focuses on common tests and does not provide a general remote command execution feature.
 - **Docker-friendly deployment**: Includes Docker Compose, Makefile, and initialization script.
@@ -62,6 +62,7 @@ ENABLE_BGP=true
 ENABLE_IPPURE=true
 ENABLE_IPQ=true
 ENABLE_NQ=true
+ENABLE_TCPQ=true
 ENABLE_GB5=true
 ENABLE_STREAM=true
 ENABLE_NEXTTRACE=true
@@ -243,6 +244,7 @@ ENABLE_BGP=true
 ENABLE_IPPURE=true
 ENABLE_IPQ=true
 ENABLE_NQ=true
+ENABLE_TCPQ=true
 ENABLE_GB5=true
 ENABLE_STREAM=true
 ENABLE_NEXTTRACE=true
@@ -266,6 +268,7 @@ ALLOW_INSECURE_STARTUP=false
 | `ENABLE_IPPURE` | No | `true` | Enable IPPure image feature |
 | `ENABLE_IPQ` | No | `true` | Enable IP quality feature |
 | `ENABLE_NQ` | No | `true` | Enable NodeQuality feature |
+| `ENABLE_TCPQ` | No | `true` | Enable TCPQuality nationwide carrier TCP checks |
 | `ENABLE_GB5` | No | `true` | Enable GB5 feature |
 | `ENABLE_STREAM` | No | `true` | Enable streaming unlock checks |
 | `ENABLE_NEXTTRACE` | No | `true` | Enable NextTrace |
@@ -389,7 +392,7 @@ You can also export sanitized config from the Bot:
 
 ## 🧩 Optional tools
 
-GUKO can enable IP quality, NodeQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. Related buttons can be disabled with environment variables.
+GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. TCPQuality offers IPv4, IPv6, and a full mode that also includes CERNET, international connectivity, and Speedtest; reports are uploaded to `tcpquality.ibsgss.uk`. Related buttons can be disabled with environment variables.
 
 ---
 
@@ -420,7 +423,7 @@ make check
 - The repository does not contain any Bot Token, real user ID, server password, or private key.
 - `.env`, `servers.json`, `keys/`, `media/`, and `tmp/` are ignored by Git. Do not commit real configuration.
 - Whitelist mode is enabled by default. The Bot refuses to start when allowed users are not configured.
-- IPPure, bgp.tools, NodeQuality, streaming checks, and similar features will access corresponding third-party services.
+- IPPure, bgp.tools, NodeQuality, TCPQuality, streaming checks, and similar features will access corresponding third-party services. TCPQuality uploads test results to `tcpquality.ibsgss.uk` to generate a public report.
 - Deleting a server only removes local Bot configuration. It does not delete or reinstall the remote machine.
 
 ## License

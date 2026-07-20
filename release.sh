@@ -22,10 +22,11 @@ if [[ -z "$version" || -z "$notes" || "$version" == "-h" || "$version" == "--hel
   usage
   exit 1
 fi
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "version must be semantic version like 0.1.2" >&2
-  exit 1
+normalized_version="$(python3 scripts/versioning.py "$version")" || exit 1
+if [[ "$normalized_version" != "$version" ]]; then
+  echo "version carried: $version -> $normalized_version"
 fi
+version="$normalized_version"
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "working tree is not clean" >&2
   git status --short

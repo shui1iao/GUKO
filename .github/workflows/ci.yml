@@ -24,4 +24,6 @@ jobs:
       - name: Python compile
         run: python -m py_compile auth.py guko.py jiaoops.py telegram-bot/bot.py optional/update_from_nezha.py
       - name: Docker build
-        run: docker build -f telegram-bot/Dockerfile .
+        run: docker build -t guko-ci -f telegram-bot/Dockerfile .
+      - name: Unit tests
+        run: docker run --rm --network none -v "$PWD:/src:ro" -w /src guko-ci python -m unittest discover -s tests -v
