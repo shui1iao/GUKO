@@ -25,9 +25,6 @@ jobs:
         run: |
           IMAGE=ghcr.io/${{ github.repository_owner }}/guko
           TAGS="-t $IMAGE:${{ github.sha }}"
-          if [ "${{ github.ref_type }}" = "branch" ] && [ "${{ github.ref_name }}" = "main" ]; then
-            TAGS="$TAGS -t $IMAGE:latest"
-          fi
           if [ "${{ github.ref_type }}" = "tag" ]; then
             TAGS="$TAGS -t $IMAGE:${{ github.ref_name }} -t $IMAGE:latest"
           fi
@@ -36,9 +33,6 @@ jobs:
         run: |
           IMAGE=ghcr.io/${{ github.repository_owner }}/guko
           docker push "$IMAGE:${{ github.sha }}"
-          if [ "${{ github.ref_type }}" = "branch" ] && [ "${{ github.ref_name }}" = "main" ]; then
-            docker push "$IMAGE:latest"
-          fi
           if [ "${{ github.ref_type }}" = "tag" ]; then
             docker push "$IMAGE:${{ github.ref_name }}"
             docker push "$IMAGE:latest"
