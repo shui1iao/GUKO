@@ -268,7 +268,7 @@ ALLOW_INSECURE_STARTUP=false
 | `ENABLE_IPPURE` | No | `true` | Enable IPPure image feature |
 | `ENABLE_IPQ` | No | `true` | Enable IP quality feature |
 | `ENABLE_NQ` | No | `true` | Enable NodeQuality feature |
-| `ENABLE_TCPQ` | No | `true` | Enable TCPQuality nationwide carrier TCP checks |
+| `ENABLE_TCPQ` | No | `true` | Enable TCPQuality nationwide carrier, international connectivity, and route-identification entries |
 | `ENABLE_GB5` | No | `true` | Enable GB5 feature |
 | `ENABLE_STREAM` | No | `true` | Enable streaming unlock checks |
 | `ENABLE_NEXTTRACE` | No | `true` | Enable NextTrace |
@@ -392,7 +392,7 @@ You can also export sanitized config from the Bot:
 
 ## 🧩 Optional tools
 
-GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. TCPQuality offers IPv4, IPv6, and a full mode that also includes CERNET, international connectivity, and Speedtest; reports are uploaded to `tcpquality.ibsgss.uk`. Related buttons can be disabled with environment variables.
+GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. TCPQuality provides four entries: nationwide carrier tests, international connectivity only, route identification only, and a complete test with Speedtest. Nationwide carrier tests and route identification support IPv4 or IPv6 when configured; upstream international connectivity currently supports IPv4 only; the complete test runs carrier IPv4/IPv6, CERNET/CERNET2, international connectivity, and Speedtest in one task. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while route-only mode returns text directly. Related buttons can be disabled with environment variables.
 
 ---
 
@@ -423,7 +423,7 @@ make check
 - The repository does not contain any Bot Token, real user ID, server password, or private key.
 - `.env`, `servers.json`, `keys/`, `media/`, and `tmp/` are ignored by Git. Do not commit real configuration.
 - Whitelist mode is enabled by default. The Bot refuses to start when allowed users are not configured.
-- IPPure, bgp.tools, NodeQuality, TCPQuality, streaming checks, and similar features will access corresponding third-party services. TCPQuality uploads test results to `tcpquality.ibsgss.uk` to generate a public report.
+- IPPure, bgp.tools, NodeQuality, TCPQuality, streaming checks, and similar features will access corresponding third-party services. TCPQuality report-producing modes upload results to `tcpquality.ibsgss.uk` to generate a public report; route-only mode does not upload a report.
 - Deleting a server only removes local Bot configuration. It does not delete or reinstall the remote machine.
 
 ## License

@@ -19,6 +19,7 @@ from typing import Iterable
 from collections import OrderedDict
 from urllib.parse import urlparse
 import urllib.error
+import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw, ImageFont
 
 from auth import inventory_defaults, resolve_ssh, scp_from_args, ssh_args as build_ssh_args
@@ -28,7 +29,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.2.0').strip() or '0.2.0'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.2.1').strip() or '0.2.1'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -583,10 +584,51 @@ def enrich_server_geo(item):
 
 
 ANSI_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+C0_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
 
 def strip_ansi(text):
     return ANSI_RE.sub('', text or '')
+
+
+def strip_osc(text):
+    text = text or ''
+    parts = []
+    start = 0
+    i = 0
+    while i < len(text):
+        if text[i] != '\x1b' or i + 1 >= len(text) or text[i + 1] != ']':
+            i += 1
+            continue
+        parts.append(text[start:i])
+        i += 2
+        while i < len(text):
+            if text[i] == '\x07':
+                i += 1
+                break
+            if text[i] == '\x1b' and i + 1 < len(text) and text[i + 1] == '\\':
+                i += 2
+                break
+            i += 1
+        start = i
+    parts.append(text[start:])
+    return ''.join(parts)
+
+
+def tcpquality_text_output(text):
+    clean = strip_osc(strip_ansi(text)).replace('\r', '\n')
+    lines = []
+    previous_blank = False
+    for raw_line in clean.splitlines():
+        line = C0_RE.sub('', raw_line).rstrip()
+        if '探测进度' in line:
+            continue
+        is_blank = not line.strip()
+        if is_blank and previous_blank:
+            continue
+        lines.append(line)
+        previous_blank = is_blank
+    return '\n'.join(lines).strip()
 
 
 def safe(s):
@@ -846,19 +888,64 @@ NQ_IP_MODES = {'4': '仅 IPv4', '46': 'IPv4 + IPv6'}
 
 TCPQUALITY_MODES = {
     'v4': {
-        'label': 'IPv4 全国三网',
+        'label': '全国三网全测 · IPv4',
         'args': ('-v4',),
         'sections': ('ipv4',),
+        'family': 'v4',
+        'report_required': True,
     },
     'v6': {
-        'label': 'IPv6 全国三网',
+        'label': '全国三网全测 · IPv6',
         'args': ('-v6',),
         'sections': ('ipv6',),
+        'family': 'v6',
+        'report_required': True,
+    },
+    'intl-v4': {
+        'label': '仅国际互联 · IPv4',
+        'args': ('--intl',),
+        'sections': ('intl',),
+        'family': 'v4',
+        'report_required': True,
+    },
+    'route-v4': {
+        'label': '仅识别三网回程 · IPv4',
+        'args': ('--route', '-v4'),
+        'sections': (),
+        'family': 'v4',
+        'report_required': False,
+    },
+    'route-v6': {
+        'label': '仅识别三网回程 · IPv6',
+        'args': ('--route', '-v6'),
+        'sections': (),
+        'family': 'v6',
+        'report_required': False,
     },
     'all': {
         'label': '完整检测（含测速）',
         'args': ('--all',),
-        'sections': ('ipv4', 'ipv6', 'cernet', 'speedtest'),
+        'sections': ('ipv4', 'ipv6', 'cernet', 'intl', 'speedtest'),
+        'family': 'both',
+        'report_required': True,
+    },
+}
+
+TCPQUALITY_CATEGORIES = {
+    'full': {
+        'label': '全国三网全测',
+        'description': '检测全国三网 TCP 延迟、丢包和回程线路。',
+        'modes': ('v4', 'v6'),
+    },
+    'intl': {
+        'label': '仅国际互联',
+        'description': '检测常用网站和 CDN 的国际互联；上游当前仅支持 IPv4。',
+        'modes': ('intl-v4',),
+    },
+    'route': {
+        'label': '仅识别三网回程',
+        'description': '只识别三网回程，不做 nping 丢包探测，也不会生成公开报告链接。',
+        'modes': ('route-v4', 'route-v6'),
     },
 }
 
@@ -870,27 +957,61 @@ def tcpquality_mode(mode):
     return TCPQUALITY_MODES[key]
 
 
+def tcpquality_category(category):
+    key = str(category or '').strip().lower()
+    if key not in TCPQUALITY_CATEGORIES:
+        raise ValueError(f'未知 TCPQuality 检测项目：{category}')
+    return TCPQUALITY_CATEGORIES[key]
+
+
 def tcpquality_markup(s):
     sid = server_id(s)
-    rows = [
-        [InlineKeyboardButton('IPv4 全国三网', callback_data=f'tqrun:{sid}:v4')],
-    ]
-    if server_has_ipv6(s):
-        rows.append([InlineKeyboardButton('IPv6 全国三网', callback_data=f'tqrun:{sid}:v6')])
-    rows.extend([
-        [InlineKeyboardButton('完整检测（含测速）', callback_data=f'tqrun:{sid}:all')],
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton('📡 全国三网全测', callback_data=f'tqmode:{sid}:full')],
+        [InlineKeyboardButton('🌍 仅国际互联', callback_data=f'tqmode:{sid}:intl')],
+        [InlineKeyboardButton('🧭 仅识别三网回程', callback_data=f'tqmode:{sid}:route')],
+        [InlineKeyboardButton('🚀 完整检测（含测速）', callback_data=f'tqrun:{sid}:all')],
         [InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')],
     ])
+
+
+def tcpquality_family_markup(s, category):
+    sid = server_id(s)
+    config = tcpquality_category(category)
+    rows = []
+    for mode in config['modes']:
+        mode_config = tcpquality_mode(mode)
+        if mode_config['family'] == 'v6' and not server_has_ipv6(s):
+            continue
+        family_label = 'IPv6' if mode_config['family'] == 'v6' else 'IPv4'
+        rows.append([InlineKeyboardButton(family_label, callback_data=f'tqrun:{sid}:{mode}')])
+    rows.append([InlineKeyboardButton('↩️ 返回 TCPQuality', callback_data=f'tqask:{sid}')])
     return InlineKeyboardMarkup(rows)
 
 
 def tcpquality_menu_text(s):
-    ipv6_note = '检测到 IPv6，可单独运行 IPv6。' if server_has_ipv6(s) else '未配置 IPv6，只显示 IPv4 和完整检测。'
+    ipv6_note = '已配置 IPv6，可在支持的项目中选择 IPv6。' if server_has_ipv6(s) else '未配置 IPv6，相关项目只显示 IPv4。'
     return (
-        f'📡 选择要在 <b>{safe(s.get("name"))}</b> 运行的 TCPQuality：\n\n'
-        'IPv4/IPv6 模式检测全国三网 TCP 延迟与丢包；完整检测还会包含教育网、国际互联和 Speedtest，耗时与流量更高。\n'
+        f'📡 选择要在 <b>{safe(s.get("name"))}</b> 运行的 TCPQuality 项目：\n\n'
+        '• 全国三网全测：TCP 延迟、丢包和回程线路\n'
+        '• 仅国际互联：上游当前仅支持 IPv4\n'
+        '• 仅识别三网回程：不做丢包探测，不生成公开报告\n'
+        '• 完整检测：三网、IPv4/IPv6、教育网、国际互联和 Speedtest\n\n'
         f'{safe(ipv6_note)}\n\n'
-        '结果会上传至 tcpquality.ibsgss.uk 并生成公开报告链接。'
+        '带报告的结果会上传至 tcpquality.ibsgss.uk 并生成公开链接。'
+    )
+
+
+def tcpquality_family_menu_text(s, category):
+    config = tcpquality_category(category)
+    family_note = '请选择 IPv4 或 IPv6。'
+    if category == 'intl':
+        family_note = '上游国际互联当前仅支持 IPv4。'
+    elif not server_has_ipv6(s):
+        family_note = '这台服务器未配置 IPv6，只能选择 IPv4。'
+    return (
+        f'📡 <b>{safe(s.get("name"))} · {safe(config["label"])}</b>\n\n'
+        f'{safe(config["description"])}\n{safe(family_note)}'
     )
 
 
@@ -2118,6 +2239,122 @@ async def render_checkplace_png(svg_url, out_png):
             raise RuntimeError(out[-1000:])
 
 
+TCPQUALITY_LIGHT_COLORS = {
+    '#1f1e2a': '#ffffff',
+    '#75b8a6': '#0f766e',
+    '#87d88d': '#15803d',
+    '#8d887b': '#6b7280',
+    '#d8b96f': '#a16207',
+    '#d8d2b8': '#1f2937',
+    '#dc646d': '#dc2626',
+}
+TCPQUALITY_HEADER_HEIGHT = 72.0
+TCPQUALITY_RENDER_SCALE = 2
+TCPQUALITY_LETTER_SPACING = '0.6px'
+
+
+def _svg_local_name(element):
+    return element.tag.rsplit('}', 1)[-1] if isinstance(element.tag, str) else ''
+
+
+def _svg_number(value):
+    try:
+        return float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _shrink_svg_length(value, amount):
+    match = re.fullmatch(r'\s*([0-9]+(?:\.[0-9]+)?)([A-Za-z%]*)\s*', value or '')
+    if not match:
+        return value
+    number = max(1.0, float(match.group(1)) - amount)
+    rendered = f'{number:.2f}'.rstrip('0').rstrip('.')
+    return rendered + match.group(2)
+
+
+def prepare_tcpquality_svg(payload):
+    """Convert the official dark report to a compact, readable light report."""
+    if not isinstance(payload, bytes):
+        raise RuntimeError('TCPQuality SVG 内容格式无效')
+    lowered = payload[:4096].lower()
+    if b'<!doctype' in lowered or b'<!entity' in lowered:
+        raise RuntimeError('TCPQuality SVG 包含不支持的文档声明')
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError as error:
+        raise RuntimeError(f'TCPQuality SVG 解析失败：{error}') from error
+    if _svg_local_name(root) != 'svg':
+        raise RuntimeError('TCPQuality 图片接口没有返回 SVG')
+
+    background = None
+    for child in root:
+        if (
+            _svg_local_name(child) == 'rect'
+            and child.get('width') in ('100%', root.get('width'))
+            and child.get('height') in ('100%', root.get('height'))
+        ):
+            background = child
+            break
+
+    report_text = ''.join(root.itertext()).lower()
+    is_official_report = 'tcpquality' in report_text and background is not None
+    if not is_official_report:
+        return payload
+
+    for element in root.iter():
+        for attribute in ('fill', 'stroke'):
+            color = element.get(attribute, '').lower()
+            if color in TCPQUALITY_LIGHT_COLORS:
+                element.set(attribute, TCPQUALITY_LIGHT_COLORS[color])
+        if _svg_local_name(element) == 'style':
+            css = element.text or ''
+            if re.search(r'letter-spacing\s*:', css):
+                css = re.sub(
+                    r'letter-spacing\s*:\s*[^;}]+',
+                    f'letter-spacing:{TCPQUALITY_LETTER_SPACING}',
+                    css,
+                )
+            else:
+                css += f'\ntext{{letter-spacing:{TCPQUALITY_LETTER_SPACING}}}'
+            element.text = css
+    background.set('fill', '#ffffff')
+
+    # The official SVG starts with a product slogan and a promotional line.
+    # Remove both plus their now-orphaned divider, then reclaim the empty space.
+    for child in list(root):
+        tag = _svg_local_name(child)
+        y = _svg_number(child.get('y'))
+        y1 = _svg_number(child.get('y1'))
+        y2 = _svg_number(child.get('y2'))
+        if tag == 'text' and y is not None and y < 75:
+            root.remove(child)
+        elif tag == 'line' and y1 is not None and y2 is not None and max(y1, y2) < 90:
+            root.remove(child)
+
+    svg_namespace = root.tag[1:].split('}', 1)[0] if root.tag.startswith('{') else None
+    group_tag = f'{{{svg_namespace}}}g' if svg_namespace else 'g'
+    content_group = ET.Element(group_tag, {'transform': f'translate(0,-{TCPQUALITY_HEADER_HEIGHT:g})'})
+    for child in list(root):
+        if child is background or _svg_local_name(child) in ('style', 'defs', 'metadata'):
+            continue
+        root.remove(child)
+        content_group.append(child)
+    root.append(content_group)
+
+    root.set('height', _shrink_svg_length(root.get('height'), TCPQUALITY_HEADER_HEIGHT))
+    view_box = (root.get('viewBox') or '').replace(',', ' ').split()
+    if len(view_box) == 4:
+        height = _svg_number(view_box[3])
+        if height is not None:
+            view_box[3] = f'{max(1.0, height - TCPQUALITY_HEADER_HEIGHT):.2f}'.rstrip('0').rstrip('.')
+            root.set('viewBox', ' '.join(view_box))
+
+    if svg_namespace:
+        ET.register_namespace('', svg_namespace)
+    return ET.tostring(root, encoding='utf-8', xml_declaration=True)
+
+
 async def render_tcpquality_png(svg_url, out_png):
     out_png = Path(out_png)
     out_png.parent.mkdir(parents=True, exist_ok=True)
@@ -2140,11 +2377,18 @@ async def render_tcpquality_png(svg_url, out_png):
             prefix = payload.lstrip()[:512].lower()
             if b'<svg' not in prefix:
                 raise RuntimeError('TCPQuality 图片接口没有返回 SVG')
-            svg_path.write_bytes(payload)
+            svg_path.write_bytes(prepare_tcpquality_svg(payload))
 
         await asyncio.to_thread(download)
         code, out = await run_subprocess(
-            ['rsvg-convert', str(svg_path), '--output', str(out_png)],
+            [
+                'rsvg-convert',
+                str(svg_path),
+                '--zoom',
+                str(TCPQUALITY_RENDER_SCALE),
+                '--output',
+                str(out_png),
+            ],
             timeout=90,
         )
         if code != 0:
@@ -2426,9 +2670,17 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
             JOBS[jid]['delivery_error'] = repr(delivery_error)
             return False
 
+    async def deliver_long_plain(text):
+        try:
+            await send_long_text(bot, chat_id, text)
+            return True
+        except Exception as delivery_error:
+            JOBS[jid]['delivery_error'] = repr(delivery_error)
+            return False
+
     try:
         config = tcpquality_mode(mode)
-        if mode == 'v6' and not server_has_ipv6(s):
+        if config['family'] == 'v6' and not server_has_ipv6(s):
             raise RuntimeError('这台服务器没有配置 IPv6')
         label = config['label']
         remote = tcpquality_remote_command(mode)
@@ -2445,6 +2697,27 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
             'target': mode,
             'report_url': report,
         })
+
+        if not config['report_required']:
+            clean_output = tcpquality_text_output(out)
+            if code != 0:
+                JOBS[jid]['status'] = 'failed'
+                await deliver_message(
+                    f"❌ {safe(s.get('name'))} TCPQuality {safe(label)}失败，"
+                    f"退出码 <code>{safe(code)}</code>。\n"
+                    f"<pre>{safe(trim_log(clean_output))}</pre>",
+                    parse_mode=ParseMode.HTML,
+                )
+                return
+            JOBS[jid].update({'status': 'done', 'media_paths': []})
+            await deliver_message(
+                f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(label)}\n\n"
+                f"{script_command_html('tcpq', mode=mode)}",
+                parse_mode=ParseMode.HTML,
+            )
+            await deliver_long_plain(trim_log(clean_output, 11700) or '脚本执行成功，但没有文本输出。')
+            return
+
         if not report:
             JOBS[jid]['status'] = 'failed'
             await deliver_message(
@@ -3401,6 +3674,26 @@ async def send_history_result(bot, chat_id, s, kind):
                 parse_mode=ParseMode.HTML,
             )
             return False
+        mode = item.get('target') or 'v4'
+        mode_config = TCPQUALITY_MODES.get(mode)
+        selected = item.get('selected') or (mode_config or {}).get('label') or '-'
+        if mode_config and not mode_config['report_required']:
+            log_tail = tcpquality_text_output(item.get('log_tail') or '')
+            if not log_tail:
+                await bot.send_message(
+                    chat_id,
+                    f"⚠️ {safe(s.get('name'))} 最近一次回程识别没有可重发的文本结果。",
+                    parse_mode=ParseMode.HTML,
+                )
+                return False
+            await bot.send_message(
+                chat_id,
+                f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(selected)}\n\n"
+                f"{script_command_html('tcpq', mode=mode)}",
+                parse_mode=ParseMode.HTML,
+            )
+            await send_long_text(bot, chat_id, log_tail)
+            return True
         report = validated_tcpquality_url(item.get('report_url'))
         if not report:
             report = next(
@@ -3421,8 +3714,6 @@ async def send_history_result(bot, chat_id, s, kind):
                     await bot.send_photo(chat_id, photo=photo)
             except Exception as photo_error:
                 photo_errors.append(trim_log(str(photo_error), 200))
-        mode = item.get('target') or 'v4'
-        selected = item.get('selected') or TCPQUALITY_MODES.get(mode, {}).get('label') or '-'
         msg = f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(selected)}\n\n{safe(report)}"
         safe_mode = mode if mode in TCPQUALITY_MODES else 'v4'
         msg += f"\n\n{script_command_html('tcpq', mode=safe_mode)}"
@@ -4051,6 +4342,25 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML,
             reply_markup=tcpquality_markup(s),
         )
+    elif data.startswith('tqmode:'):
+        parts = data.split(':', 2)
+        sid = parts[1] if len(parts) > 1 else ''
+        category = parts[2] if len(parts) > 2 else ''
+        s = find_server_by_id(sid)
+        if not s:
+            await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
+            return
+        try:
+            markup = tcpquality_family_markup(s, category)
+            text = tcpquality_family_menu_text(s, category)
+        except ValueError:
+            await q.answer('未知 TCPQuality 检测项目', show_alert=True)
+            return
+        await q.edit_message_text(
+            text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=markup,
+        )
     elif data.startswith('tqrun:'):
         parts = data.split(':', 2)
         sid = parts[1] if len(parts) > 1 else ''
@@ -4064,7 +4374,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except ValueError:
             await q.answer('未知 TCPQuality 模式', show_alert=True)
             return
-        if mode == 'v6' and not server_has_ipv6(s):
+        if config['family'] == 'v6' and not server_has_ipv6(s):
             await q.answer('这台服务器没有配置 IPv6', show_alert=True)
             return
         jid = launch_job(

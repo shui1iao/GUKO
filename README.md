@@ -261,7 +261,7 @@ ALLOW_INSECURE_STARTUP=false
 | `ENABLE_IPPURE` | 否 | `true` | 是否启用 IPPure 图功能 |
 | `ENABLE_IPQ` | 否 | `true` | 是否启用 IP 质量功能 |
 | `ENABLE_NQ` | 否 | `true` | 是否启用 NodeQuality 功能 |
-| `ENABLE_TCPQ` | 否 | `true` | 是否启用 TCPQuality 全国三网 TCP 质量检测 |
+| `ENABLE_TCPQ` | 否 | `true` | 是否启用 TCPQuality 全国三网、国际互联和回程识别入口 |
 | `ENABLE_GB5` | 否 | `true` | 是否启用 GB5 功能 |
 | `ENABLE_SS` | 否 | `true` | 是否启用 SS-Rust 管理入口 |
 | `ENABLE_ANYTLS` | 否 | `true` | 是否启用 AnyTLS 管理入口 |
@@ -389,7 +389,7 @@ Bot 内还可以导出脱敏配置：
 
 ## 🧩 可选工具
 
-GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。TCPQuality 可选择 IPv4、IPv6 或包含教育网、国际互联和 Speedtest 的完整检测；报告会上传至 `tcpquality.ibsgss.uk`。相关按钮可以通过环境变量关闭。
+GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。TCPQuality 提供“全国三网全测”“仅国际互联”“仅识别三网回程”“完整检测（含测速）”四个入口：全国三网和回程识别可按服务器配置选择 IPv4 或 IPv6；国际互联受上游能力限制，仅提供 IPv4；完整检测一次运行三网、IPv4/IPv6、教育网、国际互联和 Speedtest。带报告的结果会上传至 `tcpquality.ibsgss.uk`，回程识别则直接返回文本结果。相关按钮可以通过环境变量关闭。
 
 ---
 
@@ -422,7 +422,7 @@ make check
 - 仓库不包含任何 Bot Token、真实用户 ID、服务器密码或私钥。
 - `.env`、`servers.json`、`keys/`、`media/`、`tmp/` 已加入 `.gitignore`，不要提交真实配置。
 - 默认白名单模式，未配置允许用户时会拒绝启动。
-- 使用 IPPure、bgp.tools、NodeQuality、TCPQuality、流媒体检测等功能时，会访问对应第三方服务；TCPQuality 会把检测结果上传至 `tcpquality.ibsgss.uk` 生成公开报告。
+- 使用 IPPure、bgp.tools、NodeQuality、TCPQuality、流媒体检测等功能时，会访问对应第三方服务；TCPQuality 的报告模式会把检测结果上传至 `tcpquality.ibsgss.uk` 生成公开报告，纯回程识别不上传报告。
 - 删除服务器只会删除 Bot 本地配置，不会删除或重装远端机器。
 
 ## License
