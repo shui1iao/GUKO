@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
+import csv
+import hashlib
 import html
 import json
 import os
@@ -29,7 +31,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.3.0').strip() or '0.3.0'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.4.0').strip() or '0.4.0'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -105,6 +107,7 @@ PROXY_TOOLS = {
 
 GB5_VERSION = '5.5.1'
 GB5_URL = f'https://cdn.geekbench.com/Geekbench-{GB5_VERSION}-Linux.tar.gz'
+GB5_OOM_MARKER = '__GUKO_GB5_OOM__'
 JOBS = {}
 RUNNING = set()
 PENDING_NEXTTRACE = {}
@@ -150,6 +153,9 @@ def startup_check():
         raise SystemExit('安全启动检查失败：\n- ' + '\n- '.join(problems) + '\n\n请配置 .env；如确实要临时跳过，设置 ALLOW_INSECURE_STARTUP=true')
     if problems:
         print('WARNING: insecure startup allowed:\n- ' + '\n- '.join(problems), flush=True)
+    interrupted = reconcile_interrupted_history()
+    if interrupted:
+        print(f'reconciled {interrupted} interrupted task record(s)', flush=True)
 
 
 def allowed(update: Update) -> bool:
@@ -243,27 +249,41 @@ def redact_inventory(inv: dict):
         return out
     data = {k: v for k, v in inv.items() if k != 'servers'}
     defaults = json.loads(json.dumps(data.get('defaults') or {}, ensure_ascii=False))
+    if 'password' in defaults:
+        defaults['password'] = '***'
+    if defaults.get('key'):
+        defaults['key'] = str(defaults['key']).replace(str(DATA_DIR), '/data')
     dssh = defaults.get('ssh') or {}
     if 'password' in dssh:
         dssh['password'] = '***'
+    if dssh.get('key'):
+        dssh['key'] = str(dssh['key']).replace(str(DATA_DIR), '/data')
     defaults['ssh'] = dssh
     data['defaults'] = defaults
     data['servers'] = [clean_server(s) for s in inv.get('servers', [])]
     return data
 
 
+def compact_server_identifier(value, max_bytes=36):
+    text = str(value or '').strip()
+    if len(text.encode()) <= max_bytes:
+        return text
+    safe_prefix = re.sub(r'[^A-Za-z0-9_.-]+', '_', text).strip('_.-')[:20] or 'server'
+    digest = hashlib.sha256(text.encode()).hexdigest()[:12]
+    return f'{safe_prefix}-{digest}'
+
+
 def server_id(s):
     for key in ('id', 'legacy_id', 'nezha_id'):
         if s.get(key) is not None:
-            return s.get(key)
+            return compact_server_identifier(s.get(key))
     host = str(s.get('host') or '').strip()
     if host:
         port = (s.get('ssh') or {}).get('port') or s.get('port')
-        if port:
-            safe_host = re.sub(r'[^A-Za-z0-9_.-]+', '_', host).strip('_')
-            return f'{safe_host}-{port}'
-        return host
-    return s.get('name')
+        safe_host = re.sub(r'[^A-Za-z0-9_.-]+', '_', host).strip('_')
+        value = f'{safe_host}-{port}' if port else safe_host
+        return compact_server_identifier(value)
+    return compact_server_identifier(s.get('name'))
 
 def update_server_by_id(sid: str, patch: dict):
     inv = load_inventory()
@@ -1496,9 +1516,10 @@ def job_id(kind, s):
 KIND_NAME = {
     'ipq': 'IP质量', 'nq': 'NodeQuality', 'tcpq': 'TCPQuality', 'gb5': 'GB5', 'stream': '流媒体检测',
     'nexttrace': 'NextTrace', 'bgp': 'BGP图', 'ippure': 'IPPure图',
-    'ss': 'SS', 'anytls': 'AnyTLS',
+    'ss': 'SS', 'anytls': 'AnyTLS', 'vless': 'VLESS', 'snell': 'Snell',
 }
 STATUS_ICON = {'running': '🟢', 'done': '✅', 'failed': '🔴'}
+INTERRUPTED_MESSAGE = '任务因 GUKO 重启或进程中断，未完成'
 
 
 def iso_now():
@@ -1584,6 +1605,32 @@ def save_history(items):
     HISTORY_JSON.write_text(json.dumps(items[-HISTORY_LIMIT:], ensure_ascii=False, indent=2) + '\n')
 
 
+def reconcile_interrupted_history():
+    """Turn persisted running records into explicit failures after a restart."""
+    items = load_history()
+    changed = 0
+    now = iso_now()
+    for item in items:
+        if item.get('status') != 'running':
+            continue
+        item['status'] = 'failed'
+        item.setdefault('completed_at', now)
+        item.setdefault('delivery_error', INTERRUPTED_MESSAGE)
+        if not (item.get('log_tail') or '').strip():
+            item['log_tail'] = INTERRUPTED_MESSAGE
+        if item.get('duration_sec') is None:
+            try:
+                st = datetime.fromisoformat(str(item.get('started_at')))
+                en = datetime.fromisoformat(str(item.get('completed_at')))
+                item['duration_sec'] = max(0, int((en - st).total_seconds()))
+            except Exception:
+                pass
+        changed += 1
+    if changed:
+        save_history(items)
+    return changed
+
+
 def history_append(jid, job):
     urls = history_urls(job.get('log') or '')
     if job.get('kind') == 'tcpq':
@@ -1647,7 +1694,13 @@ def start_job(s, kind, **extra):
 def finish_job(jid, key=None):
     job = JOBS.get(jid) or {}
     now = iso_now()
-    job.setdefault('status', 'done')
+    if not job.get('status'):
+        job['status'] = 'done'
+    elif job.get('status') == 'running':
+        job['status'] = 'failed'
+        job.setdefault('delivery_error', INTERRUPTED_MESSAGE)
+        if not (job.get('log') or '').strip():
+            job['log'] = INTERRUPTED_MESSAGE
     job['completed_at'] = now
     try:
         st = datetime.fromisoformat(str(job.get('started_at') or job.get('created_at')))
@@ -2207,11 +2260,12 @@ async def generate_ippure_png(ip):
 
 
 async def send_png_and_cleanup(bot, chat_id, png, cleanup_dir=None):
-    with Path(png).open('rb') as f:
-        await bot.send_photo(chat_id, photo=f)
-    if cleanup_dir:
-        await asyncio.to_thread(shutil.rmtree, str(cleanup_dir), True)
-
+    try:
+        with Path(png).open('rb') as f:
+            await bot.send_photo(chat_id, photo=f)
+    finally:
+        if cleanup_dir:
+            await asyncio.to_thread(shutil.rmtree, str(cleanup_dir), True)
 
 async def run_bgp_task(bot, chat_id, s, jid):
     key = (server_id(s), 'bgp')
@@ -2220,7 +2274,7 @@ async def run_bgp_task(bot, chat_id, s, jid):
         png = await generate_bgp_png(ip)
         saved = persist_result_file(s, 'bgp', png, '.png')
         JOBS[jid].update({'status': 'done', 'log': str(png), 'media_path': saved})
-        await send_png_and_cleanup(bot, chat_id, png)
+        await send_png_and_cleanup(bot, chat_id, png, Path(png).parent)
     except Exception as e:
         JOBS[jid].update({'status': 'failed', 'log': repr(e)})
         await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} BGP 图失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
@@ -2624,6 +2678,7 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
                 'export TERM=xterm-256color; cd /root; '
                 f'BIN={shlex.quote(bin_path)}; SERVICE={shlex.quote(service)}; REPO={shlex.quote(repo)}; '
                 f'tmp=$(mktemp /root/guko-{kind}.XXXXXX.sh); '
+                "trap 'rm -f \"$tmp\"' EXIT; "
                 f'curl -LfsS {shlex.quote(script)} -o "$tmp"; chmod +x "$tmp"; '
                 f'{latest_probe}'
                 f'current=""; [[ -x "$BIN" ]] && current=$({version_cmd}); '
@@ -2667,6 +2722,7 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
                 remote = (
                     'export TERM=xterm-256color; cd /root; '
                     f'tmp=$(mktemp /root/guko-{kind}.XXXXXX.sh); '
+                    "trap 'rm -f \"$tmp\"' EXIT; "
                     f'curl -LfsS {shlex.quote(script)} -o "$tmp"; chmod +x "$tmp"; '
                     'bash "$tmp" view 2>&1'
                 )
@@ -2947,133 +3003,190 @@ done || true"""
     return recovered
 
 
+def canonical_geekbench5_url(text):
+    match = re.search(r'https://browser\.geekbench\.com/v5/cpu/(\d+)', str(text or ''), re.I)
+    return f'https://browser.geekbench.com/v5/cpu/{match.group(1)}' if match else None
+
+
+def sanitize_geekbench5_output(text):
+    return re.sub(
+        r'(https://browser\.geekbench\.com/v5/cpu/\d+)/claim\?key=[^\s<>"\']+',
+        r'\1',
+        str(text or ''),
+        flags=re.I,
+    )
+
+
 def parse_geekbench5_scores(text):
-    clean = strip_ansi(text or '')
+    clean = strip_ansi(sanitize_geekbench5_output(text))
     scores = {}
     patterns = {
         'single': r'Single-Core Score\s+(\d+)',
         'multi': r'Multi-Core Score\s+(\d+)',
-        'url': r'https://browser\.geekbench\.com/v5/cpu/\d+',
     }
     for key, pat in patterns.items():
         m = re.search(pat, clean, re.I)
         if m:
-            scores[key] = m.group(1) if key != 'url' else m.group(0)
+            scores[key] = m.group(1)
+    url = canonical_geekbench5_url(clean)
+    if url:
+        scores['url'] = url
     return scores
 
+
+def fetch_geekbench5_csv_scores(result_url):
+    url = canonical_geekbench5_url(result_url)
+    if not url:
+        raise ValueError('invalid Geekbench 5 result URL')
+    request = urllib.request.Request(
+        url + '.csv',
+        headers={'User-Agent': 'GUKO/Geekbench5'},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        raw = response.read(65536).decode('utf-8', errors='replace')
+    rows = {}
+    for row in csv.reader(raw.splitlines()):
+        if len(row) >= 2 and row[0] not in rows:
+            rows[row[0]] = row[1]
+    single = str(rows.get('Single-Core') or '').strip()
+    multi = str(rows.get('Multi-Core') or '').strip()
+    if not single.isdigit() or not multi.isdigit():
+        raise ValueError('Geekbench 5 CSV does not contain valid scores')
+    return {
+        'url': url,
+        'single': single,
+        'multi': multi,
+        'model': str(rows.get('Model') or '').strip(),
+        'processor': str(rows.get('Processor') or '').strip(),
+        'platform': str(rows.get('Platform') or '').strip(),
+    }
 
 def gb5_result_image(s, scores, out_png):
     out_png = Path(out_png)
     out_png.parent.mkdir(parents=True, exist_ok=True)
-    W, H = 1080, 1350
-    bg = (245, 247, 250)
-    blue = (47, 111, 191)
+    width, height = 940, 520
+    background = (245, 247, 250)
+    white = (255, 255, 255)
     dark = (30, 41, 59)
-    text = (31, 41, 55)
     muted = (100, 116, 139)
     line = (226, 232, 240)
+    blue = (47, 111, 191)
+    blue_track = (219, 234, 254)
     green = (22, 163, 74)
+    green_track = (220, 252, 231)
     try:
-        font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 52)
-        font_h1 = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 42)
-        font_h2 = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 32)
-        font_score = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 86)
-        font_txt = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
-        font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
+        font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
+        font_summary = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 28)
+        font_score = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 82)
+        font_label = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 24)
     except Exception:
-        font_title = font_h1 = font_h2 = font_score = font_txt = font_small = ImageFont.load_default()
+        font_title = font_summary = font_score = font_label = ImageFont.load_default()
 
-    def fit(draw, value, font, width):
-        value = str(value or '-')
-        if draw.textlength(value, font=font) <= width:
-            return value
-        ell = '…'
-        while value and draw.textlength(value + ell, font=font) > width:
-            value = value[:-1]
-        return value + ell
-
-    im = Image.new('RGB', (W, H), bg)
-    d = ImageDraw.Draw(im)
-    d.rectangle([0, 0, W, 110], fill=(255, 255, 255))
-    d.text((70, 32), 'Geekbench Browser', fill=blue, font=font_title)
-    d.rounded_rectangle([70, 150, W-70, 425], radius=18, fill=(255, 255, 255), outline=line, width=2)
-    d.text((110, 190), 'Geekbench 5 Score', fill=muted, font=font_txt)
     single = str(scores.get('single') or '-')
     multi = str(scores.get('multi') or '-')
-    d.text((145, 255), single, fill=dark, font=font_score)
-    d.text((145, 350), 'Single-Core Score', fill=muted, font=font_txt)
-    d.line([W//2, 220, W//2, 390], fill=line, width=2)
-    d.text((620, 255), multi, fill=dark, font=font_score)
-    d.text((620, 350), 'Multi-Core Score', fill=muted, font=font_txt)
+    image = Image.new('RGB', (width, height), background)
+    draw = ImageDraw.Draw(image)
 
-    d.rounded_rectangle([70, 465, W-70, 820], radius=18, fill=(255, 255, 255), outline=line, width=2)
-    d.text((110, 505), str(s.get('name') or s.get('host') or 'Server'), fill=text, font=font_h1)
-    rows = [
-        ('Operating System', f"{s.get('platform') or '-'} {s.get('platform_version') or ''}".strip()),
-        ('Model', str(s.get('name') or '-')),
-        ('Processor', str(s.get('cpu') or '-')),
-        ('Memory', fmt_bytes(s.get('mem_total'))),
-        ('IPv4', str(s.get('host') or '-')),
-    ]
-    y = 585
-    for k, v in rows:
-        d.text((110, y), k, fill=muted, font=font_small)
-        d.text((390, y), fit(d, v, font_small, 560), fill=text, font=font_small)
-        y += 42
+    draw.rounded_rectangle([24, 20, width - 24, 275], radius=18, fill=white, outline=line, width=2)
+    draw.text((55, 42), 'Geekbench 5 Score', fill=muted, font=font_title)
+    draw.line([width // 2, 82, width // 2, 245], fill=line, width=2)
+    draw.text((235, 115), single, fill=dark, font=font_score, anchor="ma")
+    draw.text((705, 115), multi, fill=dark, font=font_score, anchor="ma")
+    draw.text((235, 238), 'Single-Core Score', fill=muted, font=font_label, anchor="ma")
+    draw.text((705, 238), 'Multi-Core Score', fill=muted, font=font_label, anchor="ma")
 
-    d.rounded_rectangle([70, 860, W-70, 1180], radius=18, fill=(255, 255, 255), outline=line, width=2)
-    d.text((110, 900), 'Benchmark Summary', fill=text, font=font_h2)
-    d.text((110, 965), 'Single-Core', fill=muted, font=font_txt)
-    d.rounded_rectangle([330, 970, 900, 1000], radius=15, fill=(219, 234, 254))
     try:
-        sw = max(8, min(570, int(single) / max(int(multi or 1), int(single), 1) * 570))
-    except Exception:
-        sw = 20
-    d.rounded_rectangle([330, 970, 330 + sw, 1000], radius=15, fill=blue)
-    d.text((920, 960), single, fill=text, font=font_txt, anchor='ra')
-    d.text((110, 1045), 'Multi-Core', fill=muted, font=font_txt)
-    d.rounded_rectangle([330, 1050, 900, 1080], radius=15, fill=(220, 252, 231))
-    d.rounded_rectangle([330, 1050, 900, 1080], radius=15, fill=green)
-    d.text((920, 1040), multi, fill=text, font=font_txt, anchor='ra')
-    if scores.get('url'):
-        d.text((110, 1125), fit(d, scores['url'], font_small, 850), fill=blue, font=font_small)
+        single_value = max(0, int(single))
+        multi_value = max(0, int(multi))
+    except ValueError:
+        single_value = multi_value = 0
+    score_max = max(single_value, multi_value, 1)
+    bar_left = 245
+    bar_width = 520
+    bar_height = 18
+    single_fill = max(bar_height, round(bar_width * single_value / score_max))
+    multi_fill = max(bar_height, round(bar_width * multi_value / score_max))
 
-    d.text((70, 1255), 'Generated by GUKO · Geekbench 5', fill=muted, font=font_small)
-    im.save(out_png, quality=95)
+    draw.rounded_rectangle([24, 300, width - 24, 495], radius=18, fill=white, outline=line, width=2)
+    draw.text((55, 322), 'Benchmark Summary', fill=dark, font=font_summary)
+    for label, value, top, fill_width, track, fill in (
+        ('Single-Core', single, 390, single_fill, blue_track, blue),
+        ('Multi-Core', multi, 455, multi_fill, green_track, green),
+    ):
+        draw.text((55, top - 9), label, fill=muted, font=font_label)
+        draw.rounded_rectangle(
+            [bar_left, top, bar_left + bar_width, top + bar_height],
+            radius=bar_height // 2,
+            fill=track,
+        )
+        draw.rounded_rectangle(
+            [bar_left, top, bar_left + min(bar_width, fill_width), top + bar_height],
+            radius=bar_height // 2,
+            fill=fill,
+        )
+        draw.text((875, top - 10), value, fill=dark, font=font_label, anchor='ra')
+
+    image.save(out_png, quality=95)
     return out_png
+
+def gb5_remote_command():
+    # Geekbench 5 can briefly use about 500 MiB by itself. Total RAM is a poor
+    # guard because background services may already consume half of a 1 GiB
+    # VPS. Use currently available RAM plus free swap and add temporary swap
+    # when the combined headroom is below 1.5 GiB.
+    return (
+        "set -e; export TERM=xterm-256color; cd /root; "
+        "swapfile=; cleanup(){ if [ -n \"$swapfile\" ]; then swapoff $swapfile 2>/dev/null || true; rm -f $swapfile; fi; }; trap cleanup EXIT; "
+        "mem_available_kb=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo); "
+        "swap_free_kb=$(awk '/SwapFree:/ {print $2}' /proc/meminfo); "
+        "memory_headroom_kb=$((${mem_available_kb:-0} + ${swap_free_kb:-0})); "
+        "if [ $memory_headroom_kb -lt 1500000 ]; then "
+        "swapfile=/root/geekbench5.swap; rm -f $swapfile; "
+        "(fallocate -l 2G $swapfile 2>/dev/null || dd if=/dev/zero of=$swapfile bs=1M count=2048 status=none); "
+        "chmod 600 $swapfile; mkswap $swapfile >/dev/null; swapon $swapfile; "
+        "fi; "
+        "d=/root/Geekbench-" + GB5_VERSION + "-Linux; "
+        "if [ ! -x $d/geekbench5 ]; then "
+        "curl -fsSL " + shlex.quote(GB5_URL) + " -o /tmp/geekbench5.tar.gz; "
+        "tar -xzf /tmp/geekbench5.tar.gz -C /root; "
+        "fi; "
+        "oom_before=$(awk '$1 == \"oom_kill\" {print $2}' /proc/vmstat); "
+        "set +e; $d/geekbench5 --upload 2>&1; rc=$?; set -e; "
+        "oom_after=$(awk '$1 == \"oom_kill\" {print $2}' /proc/vmstat); "
+        "if [ ${oom_after:-0} -gt ${oom_before:-0} ]; then echo " + shlex.quote(GB5_OOM_MARKER) + "; fi; "
+        "exit $rc"
+    )
+
 
 async def run_gb5_task(bot, chat_id, s, jid):
     key = (server_id(s), 'gb5')
     try:
-        remote = (
-            "set -e; export TERM=xterm-256color; cd /root; "
-            "swapfile=; cleanup(){ if [ -n \"$swapfile\" ]; then swapoff $swapfile 2>/dev/null || true; rm -f $swapfile; fi; }; trap cleanup EXIT; "
-            "mem_kb=$(awk '/MemTotal:/ {print $2}' /proc/meminfo); "
-            "if [ ${mem_kb:-0} -lt 900000 ]; then "
-            "swapfile=/root/geekbench5.swap; rm -f $swapfile; "
-            "(fallocate -l 2G $swapfile 2>/dev/null || dd if=/dev/zero of=$swapfile bs=1M count=2048 status=none); "
-            "chmod 600 $swapfile; mkswap $swapfile >/dev/null; swapon $swapfile; "
-            "fi; "
-            "d=/root/Geekbench-" + GB5_VERSION + "-Linux; "
-            "if [ ! -x $d/geekbench5 ]; then "
-            "curl -fsSL " + shlex.quote(GB5_URL) + " -o /tmp/geekbench5.tar.gz; "
-            "tar -xzf /tmp/geekbench5.tar.gz -C /root; "
-            "fi; "
-            "$d/geekbench5 --upload 2>&1"
-        )
+        remote = gb5_remote_command()
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=3600, env=ssh_env_for(s))
+        oom_killed = GB5_OOM_MARKER in out
+        out = sanitize_geekbench5_output(
+            out.replace(GB5_OOM_MARKER, 'GUKO：系统内存不足，Geekbench 被 OOM Killer 终止。')
+        )
         scores = parse_geekbench5_scores(out)
-        gb_urls = [u for u in extract_urls(out) if 'browser.geekbench.com/v5/cpu/' in u]
+        gb_urls = [canonical_geekbench5_url(u) for u in extract_urls(out)]
+        gb_urls = [u for u in gb_urls if u]
         if gb_urls:
             scores['url'] = gb_urls[-1]
+        if scores.get('url') and not (scores.get('single') and scores.get('multi')):
+            try:
+                scores.update(await asyncio.to_thread(fetch_geekbench5_csv_scores, scores['url']))
+            except Exception:
+                pass
         JOBS[jid].update({'status': 'done' if code == 0 and scores.get('url') else 'failed', 'log': out})
         if code != 0 or not scores.get('url'):
-            await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} GB5 没拿到结果链接。\n<pre>{safe(trim_log(out))}</pre>", parse_mode=ParseMode.HTML)
+            reason = '内存不足，Geekbench 被系统 OOM Killer 终止。' if oom_killed else '没拿到结果链接。'
+            await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} GB5 {reason}\n<pre>{safe(trim_log(out))}</pre>", parse_mode=ParseMode.HTML)
             return
-        img = gb5_result_image(s, scores, RESULTS_DIR / str(server_id(s)) / 'gb5' / 'latest.jpg')
-        JOBS[jid].update({'media_path': str(img)})
-        with img.open('rb') as f:
-            await bot.send_photo(chat_id, photo=f)
+        if scores.get('single') and scores.get('multi'):
+            img = gb5_result_image(s, scores, RESULTS_DIR / str(server_id(s)) / 'gb5' / 'latest.jpg')
+            JOBS[jid].update({'media_path': str(img)})
+            with img.open('rb') as f:
+                await bot.send_photo(chat_id, photo=f)
         await bot.send_message(chat_id, f"✅ {safe(s.get('name'))} GB5 完成\n{safe(scores['url'])}", parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as e:
         JOBS[jid].update({'status': 'failed', 'log': repr(e)})
@@ -4457,13 +4570,24 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         jid = launch_job(s, 'gb5', run_gb5_task, context.bot, q.message.chat_id, s)
         await bot_task_started_notice(context.bot, q.message.chat_id, s, 'GB5', jid is not None)
-    elif data.startswith('stream:') or data.startswith('streamrun:'):
+    elif data.startswith('stream:'):
         sid = data.split(':', 1)[1]
         s = find_server_by_id(sid)
         if not s:
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
-        region_id, region_label = stream_region_for_server(s)
+        await q.edit_message_text(
+            stream_menu_text(s),
+            parse_mode=ParseMode.HTML,
+            reply_markup=stream_markup(s),
+        )
+    elif data.startswith('streamrun:'):
+        sid = data.split(':', 1)[1]
+        s = find_server_by_id(sid)
+        if not s:
+            await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
+            return
+        _region_id, region_label = stream_region_for_server(s)
         jid = launch_job(s, 'stream', run_stream_task, context.bot, q.message.chat_id, s, region=region_label)
         await bot_task_started_notice(context.bot, q.message.chat_id, s, f'流媒体检测（{safe(region_label)}）', jid is not None)
     elif data.startswith('ntask:'):
