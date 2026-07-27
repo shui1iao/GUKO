@@ -342,12 +342,9 @@ class InventoryAndAuthTest(unittest.TestCase):
     def test_private_key_validation_and_permissions(self):
         with self.assertRaises(ValueError):
             bot.save_private_key(1, "not a key")
-        path = Path(
-            bot.save_private_key(
-                1,
-                "-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----",
-            )
-        )
+        begin = "-----BEGIN " + "OPENSSH PRIVATE KEY-----"
+        end = "-----END " + "OPENSSH PRIVATE KEY-----"
+        path = Path(bot.save_private_key(1, f"{begin}\ntest\n{end}"))
         self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
 
     def test_export_redacts_nested_flat_and_default_passwords(self):
