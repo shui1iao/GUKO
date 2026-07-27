@@ -268,7 +268,7 @@ ALLOW_INSECURE_STARTUP=false
 | `ENABLE_IPPURE` | No | `true` | Enable IPPure image feature |
 | `ENABLE_IPQ` | No | `true` | Enable IP quality feature |
 | `ENABLE_NQ` | No | `true` | Enable NodeQuality feature |
-| `ENABLE_TCPQ` | No | `true` | Enable TCPQuality nationwide carrier, international connectivity, and route-identification entries |
+| `ENABLE_TCPQ` | No | `true` | Enable TCPQuality carrier quality, return-path, international, and speed-test entries |
 | `ENABLE_GB5` | No | `true` | Enable GB5 feature |
 | `ENABLE_STREAM` | No | `true` | Enable streaming unlock checks |
 | `ENABLE_NEXTTRACE` | No | `true` | Enable NextTrace |
@@ -392,7 +392,7 @@ You can also export sanitized config from the Bot:
 
 ## 🧩 Optional tools
 
-GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. TCPQuality provides four entries: nationwide carrier tests, international connectivity only, route identification only, and a complete test with Speedtest. Nationwide carrier tests and route identification support IPv4 or IPv6 when configured; upstream international connectivity currently supports IPv4 only; the complete test runs carrier IPv4/IPv6, CERNET/CERNET2, international connectivity, and Speedtest in one task. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while route-only mode returns text directly. Related buttons can be disabled with environment variables.
+GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. TCPQuality is organized into five task-focused entries: carrier quality, return path, international connectivity, carrier speed test, and complete test. Carrier quality and return-path checks support IPv4 or IPv6 when configured; international connectivity uses IPv4 as supported upstream. Speed-test and complete-test entries show a traffic warning and require confirmation to prevent accidental runs. The complete test runs carrier IPv4/IPv6, international connectivity, and carrier speed tests; CERNET checks are excluded. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while return-path mode sends text directly. Related buttons can be disabled with environment variables.
 
 ---
 

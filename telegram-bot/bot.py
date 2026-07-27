@@ -29,7 +29,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.2.1').strip() or '0.2.1'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.3.0').strip() or '0.3.0'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -60,10 +60,14 @@ SCRIPT_SOURCES = {
     'vless': ('Xray-VLESS-Manager', 'https://github.com/shuijiao1/Xray-VLESS-Manager'),
     'snell': ('Snell-Manager', 'https://github.com/shuijiao1/Snell-Manager'),
 }
-TCPQUALITY_COMMIT = '939674a8309fb9ee26958ad1ddf9fe08665630b9'
-TCPQUALITY_SHA256 = '59041032e173e97d30055461e375605fef8638b2c9b4db8479f3a62625d950e8'
+TCPQUALITY_COMMIT = '676789de0df20cc6ade95680c79969b637e3f8fa'
+TCPQUALITY_SHA256 = {
+    'runTcpQuality.sh': 'acb8b306725ed496549a01b878a9d1313482dd38c98f294d0492055b202e12d3',
+    'runTcpQuality-core.sh': '6b9800a822c06bfbcc091730522506baf5b1557fb2718e77f4a578d9c4d9247f',
+}
+TCPQUALITY_RAW_BASE = f'https://raw.githubusercontent.com/ibsgss/TcpQuality/{TCPQUALITY_COMMIT}'
+TCPQUALITY_MIRROR_BASE = f'https://cdn.jsdelivr.net/gh/ibsgss/TcpQuality@{TCPQUALITY_COMMIT}'
 TCPQUALITY_RAW_URL = f'https://raw.githubusercontent.com/ibsgss/TcpQuality/{TCPQUALITY_COMMIT}/runTcpQuality.sh'
-TCPQUALITY_MIRROR_URL = f'https://cdn.jsdelivr.net/gh/ibsgss/TcpQuality@{TCPQUALITY_COMMIT}/runTcpQuality.sh'
 PROXY_TOOLS = {
     'ss': {
         'name': 'SS-Rust',
@@ -710,7 +714,11 @@ def script_command_text(kind, **kwargs):
     if kind == 'tcpq':
         mode = tcpquality_mode(kwargs.get('mode') or 'v4')
         args = ' '.join(mode['args'])
-        return f'脚本命令：\nbash <(curl -fsSL {TCPQUALITY_RAW_URL}) {args}'
+        return (
+            '脚本命令：\n'
+            f'TCPQUALITY_RAW_BASE={TCPQUALITY_RAW_BASE} '
+            f'bash <(curl -fsSL {TCPQUALITY_RAW_URL}) --no-rootfs {args}'
+        )
     return ''
 
 
@@ -888,44 +896,51 @@ NQ_IP_MODES = {'4': '仅 IPv4', '46': 'IPv4 + IPv6'}
 
 TCPQUALITY_MODES = {
     'v4': {
-        'label': '全国三网全测 · IPv4',
+        'label': '三网质量 · IPv4',
         'args': ('-v4',),
         'sections': ('ipv4',),
         'family': 'v4',
         'report_required': True,
     },
     'v6': {
-        'label': '全国三网全测 · IPv6',
+        'label': '三网质量 · IPv6',
         'args': ('-v6',),
         'sections': ('ipv6',),
         'family': 'v6',
         'report_required': True,
     },
     'intl-v4': {
-        'label': '仅国际互联 · IPv4',
+        'label': '国际互联',
         'args': ('--intl',),
         'sections': ('intl',),
         'family': 'v4',
         'report_required': True,
     },
     'route-v4': {
-        'label': '仅识别三网回程 · IPv4',
+        'label': '回程线路 · IPv4',
         'args': ('--route', '-v4'),
         'sections': (),
         'family': 'v4',
         'report_required': False,
     },
     'route-v6': {
-        'label': '仅识别三网回程 · IPv6',
+        'label': '回程线路 · IPv6',
         'args': ('--route', '-v6'),
         'sections': (),
         'family': 'v6',
         'report_required': False,
     },
+    'speedtest': {
+        'label': '三网测速',
+        'args': ('--only-speedtest',),
+        'sections': ('speedtest',),
+        'family': 'v4',
+        'report_required': True,
+    },
     'all': {
-        'label': '完整检测（含测速）',
-        'args': ('--all',),
-        'sections': ('ipv4', 'ipv6', 'cernet', 'intl', 'speedtest'),
+        'label': '完整检测',
+        'args': ('-v4', '-v6', '--intl', '--speedtest'),
+        'sections': ('ipv4', 'ipv6', 'intl', 'speedtest'),
         'family': 'both',
         'report_required': True,
     },
@@ -933,19 +948,32 @@ TCPQUALITY_MODES = {
 
 TCPQUALITY_CATEGORIES = {
     'full': {
-        'label': '全国三网全测',
-        'description': '检测全国三网 TCP 延迟、丢包和回程线路。',
+        'label': '三网质量',
+        'description': '检测全国三网节点的 TCP 延迟、重传和回程线路。',
         'modes': ('v4', 'v6'),
     },
+    # Keep the old callback valid for TCPQuality menus already sent to Telegram.
     'intl': {
-        'label': '仅国际互联',
-        'description': '检测常用网站和 CDN 的国际互联；上游当前仅支持 IPv4。',
+        'label': '国际互联',
+        'description': '检测常用网站和 CDN 的国际互联；上游当前使用 IPv4。',
         'modes': ('intl-v4',),
     },
     'route': {
-        'label': '仅识别三网回程',
+        'label': '回程线路',
         'description': '只识别三网回程，不做 nping 丢包探测，也不会生成公开报告链接。',
         'modes': ('route-v4', 'route-v6'),
+    },
+    'speedtest': {
+        'label': '三网测速',
+        'description': '运行国内三网单线程测速，会消耗较多流量。',
+        'modes': ('speedtest',),
+        'start_label': '🚀 开始三网测速',
+    },
+    'complete': {
+        'label': '完整检测',
+        'description': '运行三网 IPv4 / IPv6、国际互联和三网测速，耗时较长并会消耗较多流量。',
+        'modes': ('all',),
+        'start_label': '🧪 开始完整检测',
     },
 }
 
@@ -967,10 +995,15 @@ def tcpquality_category(category):
 def tcpquality_markup(s):
     sid = server_id(s)
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton('📡 全国三网全测', callback_data=f'tqmode:{sid}:full')],
-        [InlineKeyboardButton('🌍 仅国际互联', callback_data=f'tqmode:{sid}:intl')],
-        [InlineKeyboardButton('🧭 仅识别三网回程', callback_data=f'tqmode:{sid}:route')],
-        [InlineKeyboardButton('🚀 完整检测（含测速）', callback_data=f'tqrun:{sid}:all')],
+        [
+            InlineKeyboardButton('📡 三网质量', callback_data=f'tqmode:{sid}:full'),
+            InlineKeyboardButton('🧭 回程线路', callback_data=f'tqmode:{sid}:route'),
+        ],
+        [
+            InlineKeyboardButton('🌍 国际互联', callback_data=f'tqrun:{sid}:intl-v4'),
+            InlineKeyboardButton('🚀 三网测速', callback_data=f'tqmode:{sid}:speedtest'),
+        ],
+        [InlineKeyboardButton('🧪 完整检测', callback_data=f'tqmode:{sid}:complete')],
         [InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')],
     ])
 
@@ -983,22 +1016,21 @@ def tcpquality_family_markup(s, category):
         mode_config = tcpquality_mode(mode)
         if mode_config['family'] == 'v6' and not server_has_ipv6(s):
             continue
-        family_label = 'IPv6' if mode_config['family'] == 'v6' else 'IPv4'
-        rows.append([InlineKeyboardButton(family_label, callback_data=f'tqrun:{sid}:{mode}')])
+        button_label = config.get('start_label')
+        if not button_label:
+            button_label = 'IPv6' if mode_config['family'] == 'v6' else 'IPv4'
+        rows.append([InlineKeyboardButton(button_label, callback_data=f'tqrun:{sid}:{mode}')])
     rows.append([InlineKeyboardButton('↩️ 返回 TCPQuality', callback_data=f'tqask:{sid}')])
     return InlineKeyboardMarkup(rows)
 
 
 def tcpquality_menu_text(s):
-    ipv6_note = '已配置 IPv6，可在支持的项目中选择 IPv6。' if server_has_ipv6(s) else '未配置 IPv6，相关项目只显示 IPv4。'
+    ipv6_note = '三网质量和回程线路可选 IPv4 / IPv6。' if server_has_ipv6(s) else '当前未配置 IPv6，协议族选项只显示 IPv4。'
     return (
-        f'📡 选择要在 <b>{safe(s.get("name"))}</b> 运行的 TCPQuality 项目：\n\n'
-        '• 全国三网全测：TCP 延迟、丢包和回程线路\n'
-        '• 仅国际互联：上游当前仅支持 IPv4\n'
-        '• 仅识别三网回程：不做丢包探测，不生成公开报告\n'
-        '• 完整检测：三网、IPv4/IPv6、教育网、国际互联和 Speedtest\n\n'
-        f'{safe(ipv6_note)}\n\n'
-        '带报告的结果会上传至 tcpquality.ibsgss.uk 并生成公开链接。'
+        f'📡 <b>{safe(s.get("name"))} · TCPQuality</b>\n\n'
+        '选择检测项目。完整检测包含三网 IPv4 / IPv6、国际互联和三网测速。\n\n'
+        f'{safe(ipv6_note)}\n'
+        '除回程线路外，结果会生成 tcpquality.ibsgss.uk 公开报告。'
     )
 
 
@@ -1006,7 +1038,9 @@ def tcpquality_family_menu_text(s, category):
     config = tcpquality_category(category)
     family_note = '请选择 IPv4 或 IPv6。'
     if category == 'intl':
-        family_note = '上游国际互联当前仅支持 IPv4。'
+        family_note = '国际互联按上游能力使用 IPv4。'
+    elif config.get('start_label'):
+        family_note = '确认后开始执行。'
     elif not server_has_ipv6(s):
         family_note = '这台服务器未配置 IPv6，只能选择 IPv4。'
     return (
@@ -1018,16 +1052,28 @@ def tcpquality_family_menu_text(s, category):
 def tcpquality_remote_command(mode):
     config = tcpquality_mode(mode)
     args = ' '.join(shlex.quote(arg) for arg in config['args'])
+    downloads = []
+    for filename, digest in TCPQUALITY_SHA256.items():
+        destination = f'"$bundle/{filename}"'
+        downloads.extend([
+            (
+                f"curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 "
+                f"--connect-timeout 15 --max-time 120 {shlex.quote(f'{TCPQUALITY_RAW_BASE}/{filename}')} "
+                f"-o {destination} || curl -fsSL --proto '=https' --proto-redir '=https' "
+                f"--retry 2 --connect-timeout 15 --max-time 120 "
+                f"{shlex.quote(f'{TCPQUALITY_MIRROR_BASE}/{filename}')} -o {destination}; "
+            ),
+            f"printf '%s  %s\\n' {shlex.quote(digest)} {destination} | sha256sum -c -; ",
+        ])
     return (
         "set -eu; export TERM=xterm-256color; cd /tmp; "
-        "script=$(mktemp /tmp/tcpquality.XXXXXX.sh); "
-        "cleanup() { rm -f \"$script\"; }; "
+        "bundle=$(mktemp -d /tmp/tcpquality.XXXXXX); "
+        "cleanup() { rm -rf \"$bundle\"; }; "
         "trap cleanup EXIT; trap 'exit 130' HUP INT TERM; "
-        f"curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 15 --max-time 120 {shlex.quote(TCPQUALITY_RAW_URL)} -o \"$script\" || "
-        f"curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 15 --max-time 120 {shlex.quote(TCPQUALITY_MIRROR_URL)} -o \"$script\"; "
-        f"printf '%s  %s\\n' {shlex.quote(TCPQUALITY_SHA256)} \"$script\" | sha256sum -c -; "
-        "chmod 700 \"$script\"; "
-        f'bash "$script" {args}'
+        + ''.join(downloads)
+        + "chmod 700 \"$bundle/runTcpQuality.sh\" \"$bundle/runTcpQuality-core.sh\"; "
+        + f"TCPQUALITY_RAW_BASE={shlex.quote(TCPQUALITY_RAW_BASE)} "
+        + f'bash "$bundle/runTcpQuality.sh" --no-rootfs {args}'
     )
 
 

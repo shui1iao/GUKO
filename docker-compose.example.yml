@@ -3,6 +3,8 @@ services:
   guko-bot:
     image: ghcr.io/shuijiao1/guko:latest
     container_name: guko-bot
+    # Reap orphaned Chromium/Crashpad children left behind by Playwright.
+    init: true
     restart: unless-stopped
     env_file: .env
     volumes:

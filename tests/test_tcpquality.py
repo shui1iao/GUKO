@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -28,8 +29,9 @@ class TcpQualityHelpersTest(unittest.TestCase):
             "https://github.com/ibsgss/TcpQuality",
         )
         command = bot.script_command_text("tcpq", mode="v4")
-        self.assertIn("939674a8309fb9ee26958ad1ddf9fe08665630b9", command)
+        self.assertIn("676789de0df20cc6ade95680c79969b637e3f8fa", command)
         self.assertNotIn("TcpQuality/main/runTcpQuality.sh", command)
+        self.assertIn("--no-rootfs", command)
         self.assertIn("-v4", command)
 
     def test_report_url_parser_keeps_exact_ten_character_token(self):
@@ -75,15 +77,20 @@ class TcpQualityHelpersTest(unittest.TestCase):
         self.assertEqual(bot.tcpquality_mode("route-v6")["args"], ("--route", "-v6"))
         self.assertFalse(bot.tcpquality_mode("route-v4")["report_required"])
         self.assertFalse(bot.tcpquality_mode("route-v6")["report_required"])
-        self.assertEqual(bot.tcpquality_mode("all")["args"], ("--all",))
+        self.assertEqual(bot.tcpquality_mode("speedtest")["args"], ("--only-speedtest",))
+        self.assertEqual(bot.tcpquality_mode("speedtest")["sections"], ("speedtest",))
+        self.assertEqual(
+            bot.tcpquality_mode("all")["args"],
+            ("-v4", "-v6", "--intl", "--speedtest"),
+        )
         self.assertEqual(
             bot.tcpquality_mode("all")["sections"],
-            ("ipv4", "ipv6", "cernet", "intl", "speedtest"),
+            ("ipv4", "ipv6", "intl", "speedtest"),
         )
         with self.assertRaises(ValueError):
             bot.tcpquality_mode("unknown")
 
-    def test_server_panel_and_mode_menu_expose_four_entries(self):
+    def test_server_panel_and_mode_menu_expose_five_focused_entries(self):
         server = {"id": "test-node", "name": "Test", "host": "192.0.2.10"}
         panel = bot.server_markup(server)
         callbacks = [
@@ -97,9 +104,15 @@ class TcpQualityHelpersTest(unittest.TestCase):
         menu = bot.tcpquality_markup(server)
         category_callbacks = [button.callback_data for row in menu.inline_keyboard for button in row]
         self.assertIn("tqmode:test-node:full", category_callbacks)
-        self.assertIn("tqmode:test-node:intl", category_callbacks)
         self.assertIn("tqmode:test-node:route", category_callbacks)
-        self.assertIn("tqrun:test-node:all", category_callbacks)
+        self.assertIn("tqrun:test-node:intl-v4", category_callbacks)
+        self.assertIn("tqmode:test-node:speedtest", category_callbacks)
+        self.assertIn("tqmode:test-node:complete", category_callbacks)
+        self.assertNotIn("tqrun:test-node:speedtest", category_callbacks)
+        self.assertNotIn("tqrun:test-node:all", category_callbacks)
+        self.assertFalse(any("cernet" in callback for callback in category_callbacks))
+        self.assertNotIn("tqmode:test-node:intl", category_callbacks)
+        self.assertNotIn("教育网", bot.tcpquality_menu_text(server))
 
     def test_family_menu_hides_unavailable_ipv6_and_international_ipv6(self):
         server = {"id": "test-node", "name": "Test", "host": "192.0.2.10"}
@@ -108,10 +121,25 @@ class TcpQualityHelpersTest(unittest.TestCase):
         self.assertIn("tqrun:test-node:v4", full_callbacks)
         self.assertNotIn("tqrun:test-node:v6", full_callbacks)
 
-        intl_menu = bot.tcpquality_family_markup(server, "intl")
-        intl_callbacks = [button.callback_data for row in intl_menu.inline_keyboard for button in row]
-        self.assertIn("tqrun:test-node:intl-v4", intl_callbacks)
-        self.assertFalse(any("v6" in callback for callback in intl_callbacks))
+        legacy_intl_menu = bot.tcpquality_family_markup(server, "intl")
+        legacy_intl_callbacks = [
+            button.callback_data for row in legacy_intl_menu.inline_keyboard for button in row
+        ]
+        self.assertIn("tqrun:test-node:intl-v4", legacy_intl_callbacks)
+
+        speedtest_menu = bot.tcpquality_family_markup(server, "speedtest")
+        speedtest_buttons = [button for row in speedtest_menu.inline_keyboard for button in row]
+        self.assertTrue(any(button.text == "🚀 开始三网测速" for button in speedtest_buttons))
+        self.assertTrue(any(button.callback_data == "tqrun:test-node:speedtest" for button in speedtest_buttons))
+        self.assertIn("消耗较多流量", bot.tcpquality_family_menu_text(server, "speedtest"))
+        self.assertIn("确认后开始执行", bot.tcpquality_family_menu_text(server, "speedtest"))
+
+        complete_menu = bot.tcpquality_family_markup(server, "complete")
+        complete_buttons = [button for row in complete_menu.inline_keyboard for button in row]
+        self.assertTrue(any(button.text == "🧪 开始完整检测" for button in complete_buttons))
+        self.assertTrue(any(button.callback_data == "tqrun:test-node:all" for button in complete_buttons))
+        self.assertIn("耗时较长", bot.tcpquality_family_menu_text(server, "complete"))
+        self.assertIn("确认后开始执行", bot.tcpquality_family_menu_text(server, "complete"))
 
         ipv6_server = {**server, "ipv6": "2001:db8::10"}
         full_ipv6_menu = bot.tcpquality_family_markup(ipv6_server, "full")
@@ -145,20 +173,37 @@ class FakeBot:
 class TcpQualityExecutionTest(unittest.TestCase):
     def test_remote_command_pins_and_verifies_the_upstream_script(self):
         command = bot.tcpquality_remote_command("v4")
-        self.assertIn("939674a8309fb9ee26958ad1ddf9fe08665630b9", command)
-        self.assertIn("59041032e173e97d30055461e375605fef8638b2c9b4db8479f3a62625d950e8", command)
+        self.assertIn("676789de0df20cc6ade95680c79969b637e3f8fa", command)
+        self.assertIn("acb8b306725ed496549a01b878a9d1313482dd38c98f294d0492055b202e12d3", command)
+        self.assertIn("6b9800a822c06bfbcc091730522506baf5b1557fb2718e77f4a578d9c4d9247f", command)
         self.assertIn("sha256sum -c", command)
         self.assertNotIn("TcpQuality/main/runTcpQuality.sh", command)
         self.assertNotIn("https://tcpquality.ibsgss.uk/run", command)
         self.assertIn("trap", command)
-        self.assertIn('bash "$script" -v4', command)
+        self.assertIn('bash "$bundle/runTcpQuality.sh" --no-rootfs -v4', command)
 
         intl_command = bot.tcpquality_remote_command("intl-v4")
-        self.assertIn('bash "$script" --intl', intl_command)
+        self.assertIn('bash "$bundle/runTcpQuality.sh" --no-rootfs --intl', intl_command)
         route_v6_command = bot.tcpquality_remote_command("route-v6")
-        self.assertIn('bash "$script" --route -v6', route_v6_command)
+        self.assertIn('bash "$bundle/runTcpQuality.sh" --no-rootfs --route -v6', route_v6_command)
+        speedtest_command = bot.tcpquality_remote_command("speedtest")
+        self.assertIn('bash "$bundle/runTcpQuality.sh" --no-rootfs --only-speedtest', speedtest_command)
         all_command = bot.tcpquality_remote_command("all")
-        self.assertIn('bash "$script" --all', all_command)
+        self.assertIn(
+            'bash "$bundle/runTcpQuality.sh" --no-rootfs -v4 -v6 --intl --speedtest',
+            all_command,
+        )
+
+    def test_all_remote_commands_are_valid_posix_shell(self):
+        for mode in bot.TCPQUALITY_MODES:
+            command = bot.tcpquality_remote_command(mode)
+            result = subprocess.run(
+                ["/bin/sh", "-n", "-c", command],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, f"{mode}: {result.stderr}")
 
     def test_generic_svg_renderer_produces_a_real_png(self):
         async def scenario():
@@ -348,7 +393,7 @@ class TcpQualityExecutionTest(unittest.TestCase):
                     self.assertIn("北京 电信 163", delivered)
                     self.assertNotIn("\x1b[36m", delivered)
                     self.assertNotIn("探测进度", delivered)
-                    self.assertTrue(any("仅识别三网回程" in text for _chat, text, _kwargs in fake_bot.messages))
+                    self.assertTrue(any("回程线路" in text for _chat, text, _kwargs in fake_bot.messages))
                 finally:
                     setattr(bot, "HISTORY_JSON", old_history)
                     bot.JOBS.pop(jid, None)
@@ -443,9 +488,9 @@ class TcpQualityExecutionTest(unittest.TestCase):
                     self.assertEqual(bot.JOBS[jid]["status"], "done")
                     self.assertEqual(
                         attempted_sections,
-                        ["ipv4", "ipv6", "cernet", "intl", "speedtest"],
+                        ["ipv4", "ipv6", "intl", "speedtest"],
                     )
-                    self.assertEqual(len(fake_bot.photos), 3)
+                    self.assertEqual(len(fake_bot.photos), 2)
                     final = fake_bot.messages[-1][1]
                     self.assertIn(report, final)
                     self.assertIn("退出码", final)
