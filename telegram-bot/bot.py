@@ -31,7 +31,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.4.0').strip() or '0.4.0'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.4.1').strip() or '0.4.1'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -1141,6 +1141,36 @@ def nq_answer_script(mask):
 def nq_remote_ipv_arg(s, ip_mode):
     # NodeQuality default runs dual-stack when IPv6 exists. Force -4 for v4-only.
     return '' if (ip_mode == '46' and server_has_ipv6(s)) else '-4'
+
+
+def nodequality_patch_command():
+    return (
+        "sed -i 's#rm -rf \\\"${work_dir}\\\"/#: \\\"${work_dir}\\\"#' \"$script\"; "
+        "sed -i 's#response=$(\\$pingcom 2>\\&1)#response=$(timeout -s SIGKILL 15 $pingcom 2>\\&1)#' \"$script\"; "
+    )
+
+
+def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4'):
+    answers = nq_answer_script(mask)
+    ipv_arg = nq_remote_ipv_arg(s, ip_mode)
+    ensure_curl = (
+        "if ! command -v curl >/dev/null 2>&1; then "
+        "if command -v apt-get >/dev/null 2>&1; then "
+        "export DEBIAN_FRONTEND=noninteractive; apt-get update -qq; apt-get install -y -qq curl ca-certificates; "
+        "elif command -v apk >/dev/null 2>&1; then apk add --no-cache curl ca-certificates; "
+        "elif command -v dnf >/dev/null 2>&1; then dnf install -y curl ca-certificates; "
+        "elif command -v yum >/dev/null 2>&1; then yum install -y curl ca-certificates; "
+        "else echo 'GUKO: NodeQuality requires curl and no supported package manager was found' >&2; exit 127; fi; "
+        "fi; "
+    )
+    return (
+        "set -e; export TERM=xterm-256color; cd /root; "
+        + ensure_curl
+        + "script=$(mktemp /root/nodequality.XXXXXX.sh); "
+        + "curl -fsSL --max-time 60 https://run.NodeQuality.com -o \"$script\"; "
+        + nodequality_patch_command()
+        + "printf %b " + shlex.quote(answers) + " | bash \"$script\" " + ipv_arg
+    )
 
 
 STREAM_REGION_BY_COUNTRY = {
@@ -3745,19 +3775,7 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
     try:
         selected_text = nq_selected_text(mask)
         ip_text = nq_ip_mode_text(ip_mode)
-        answers = nq_answer_script(mask)
-        ipv_arg = nq_remote_ipv_arg(s, ip_mode)
-        # Patch Net.Check.Place's TCP large-packet mtr probes with a per-probe
-        # timeout. On some VPSes mtr can hang forever at the 09% delay stage,
-        # leaving empty net_quality.json/result.zip.
-        remote = (
-            "export TERM=xterm-256color; cd /root && "
-            "script=$(mktemp /root/nodequality.XXXXXX.sh); "
-            "curl -sL https://run.NodeQuality.com > $script; "
-            "sed -i 's#rm -rf \\\"${work_dir}\\\"/#: # rm -rf \\\"${work_dir}\\\"/#' $script; "
-            "sed -i 's#response=$(\\$pingcom 2>\\&1)#response=$(timeout -s SIGKILL 15 $pingcom 2>\\&1)#' $script; "
-            "printf %b " + shlex.quote(answers) + " | bash $script " + ipv_arg
-        )
+        remote = nodequality_remote_command(s, mask, ip_mode)
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=7200, env=ssh_env_for(s))
         JOBS[jid].update({'log': out, 'selected': selected_text, 'ip_mode': ip_text})
         nq = nodequality_url(out)

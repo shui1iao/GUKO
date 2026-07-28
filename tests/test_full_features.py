@@ -140,6 +140,53 @@ class FullFeatureSurfaceTest(unittest.TestCase):
                 self.assertEqual(bot.nq_remote_ipv_arg(dual, "46"), "")
                 self.assertEqual(bot.nq_remote_ipv_arg(dual, "4"), "-4")
 
+    def test_nodequality_remote_command_bootstraps_curl_and_fails_fast(self):
+        command = bot.nodequality_remote_command(
+            {"name": "Minimal", "host": "192.0.2.10"},
+            bot.NQ_ALL_MASK,
+            "4",
+        )
+        checked = subprocess.run(
+            ["/bin/bash", "-n"],
+            input=command,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertIn("set -e", command)
+        self.assertIn("command -v curl", command)
+        self.assertIn("apt-get install", command)
+        self.assertIn("apk add", command)
+        self.assertIn("dnf install", command)
+        self.assertIn("yum install", command)
+        self.assertIn("curl -fsSL --max-time 60", command)
+        self.assertIn('-o "$script"', command)
+        self.assertIn('bash "$script"', command)
+
+    def test_nodequality_patch_command_is_valid_and_keeps_recovery_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "nodequality.sh"
+            script.write_text(
+                'rm -rf "${work_dir}"/\n'
+                'response=$($pingcom 2>&1)\n'
+            )
+            result = subprocess.run(
+                ["/bin/bash", "-c", bot.nodequality_patch_command()],
+                text=True,
+                capture_output=True,
+                check=False,
+                env={**os.environ, "script": str(script)},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            patched = script.read_text()
+            self.assertIn(': "${work_dir}"', patched)
+            self.assertNotIn('rm -rf "${work_dir}"/', patched)
+            self.assertIn(
+                'response=$(timeout -s SIGKILL 15 $pingcom 2>&1)',
+                patched,
+            )
+
     def test_all_tcpquality_modes_are_valid_shell_and_menu_paths(self):
         server = {"name": "Dual", "host": "192.0.2.10", "ipv6": "2001:db8::10"}
         menu = callbacks(bot.tcpquality_markup(server))

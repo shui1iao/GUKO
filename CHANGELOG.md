@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1] - 2026-07-28
+
+### Fixed
+- NodeQuality 在极简系统缺少 `curl` 时自动通过 apt、apk、dnf 或 yum 安装所需依赖。
+- 修复 NodeQuality 工作目录保留补丁中的非法 `sed` 替换，并为下载失败启用立即停止。
+- NodeQuality 下载增加 60 秒超时，临时脚本下载、补丁和执行路径统一使用安全引号。
+
 ## [0.4.0] - 2026-07-27
 
 ### Added
