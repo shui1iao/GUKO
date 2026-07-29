@@ -1,6 +1,6 @@
 # GUKO
 
-[![Docker Image](https://img.shields.io/badge/ghcr.io-guko-blue?logo=docker)](https://github.com/shuijiao1/GUKO/pkgs/container/guko)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-guko-blue?logo=docker)](https://github.com/shui1iao/GUKO/pkgs/container/guko)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [中文](README.md) | **English**
@@ -39,7 +39,7 @@ Two deployment methods are available. **Docker Compose is recommended**.
 mkdir -p guko/keys guko/media guko/results guko/tmp
 cd guko
 
-curl -Lo docker-compose.yml https://github.com/shuijiao1/GUKO/releases/latest/download/docker-compose.example.yml
+curl -Lo docker-compose.yml https://github.com/shui1iao/GUKO/releases/latest/download/docker-compose.example.yml
 
 cat > .env <<'EOF'
 BOT_TOKEN=replace-me
@@ -104,7 +104,7 @@ After startup, send `/addserver` to the Bot to add your first server.
 ### Method 2: Source build (development)
 
 ```bash
-git clone https://github.com/shuijiao1/GUKO.git
+git clone https://github.com/shui1iao/GUKO.git
 cd GUKO
 cp .env.example .env
 cp servers.example.json servers.json
@@ -399,7 +399,7 @@ GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, Ne
 ## 🧩 Source run (development)
 
 ```bash
-git clone https://github.com/shuijiao1/GUKO.git
+git clone https://github.com/shui1iao/GUKO.git
 cd GUKO
 python3 -m venv .venv
 . .venv/bin/activate

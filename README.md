@@ -1,6 +1,6 @@
 # GUKO
 
-[![Docker Image](https://img.shields.io/badge/ghcr.io-guko-blue?logo=docker)](https://github.com/shuijiao1/GUKO/pkgs/container/guko)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-guko-blue?logo=docker)](https://github.com/shui1iao/GUKO/pkgs/container/guko)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **中文** | [English](README.en.md)
@@ -38,7 +38,7 @@
 mkdir -p guko/keys guko/media guko/results guko/tmp
 cd guko
 
-curl -Lo docker-compose.yml https://github.com/shuijiao1/GUKO/releases/latest/download/docker-compose.example.yml
+curl -Lo docker-compose.yml https://github.com/shui1iao/GUKO/releases/latest/download/docker-compose.example.yml
 
 cat > .env <<'EOF'
 BOT_TOKEN=replace-me
@@ -103,7 +103,7 @@ ADMIN_USERS=123456789
 ### 方式二：源码构建（开发用）
 
 ```bash
-git clone https://github.com/shuijiao1/GUKO.git
+git clone https://github.com/shui1iao/GUKO.git
 cd GUKO
 cp .env.example .env
 cp servers.example.json servers.json
@@ -398,7 +398,7 @@ GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextT
 ## 🧩 源码运行（开发用）
 
 ```bash
-git clone https://github.com/shuijiao1/GUKO.git
+git clone https://github.com/shui1iao/GUKO.git
 cd GUKO
 python3 -m venv .venv
 . .venv/bin/activate

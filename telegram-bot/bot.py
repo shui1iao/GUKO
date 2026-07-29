@@ -56,10 +56,10 @@ SCRIPT_SOURCES = {
     'ipq': ('Check.Place', 'https://github.com/xykt/NetQuality'),
     'nq': ('NodeQuality / Check.Place', 'https://github.com/xykt/NodeQuality'),
     'tcpq': ('TcpQuality', 'https://github.com/ibsgss/TcpQuality'),
-    'ss': ('SS-Rust-Manager', 'https://github.com/shuijiao1/SS-Rust-Manager'),
-    'anytls': ('AnyTLS-Manager', 'https://github.com/shuijiao1/AnyTLS-Manager'),
-    'vless': ('Xray-VLESS-Manager', 'https://github.com/shuijiao1/Xray-VLESS-Manager'),
-    'snell': ('Snell-Manager', 'https://github.com/shuijiao1/Snell-Manager'),
+    'ss': ('SS-Rust-Manager', 'https://github.com/shui1iao/SS-Rust-Manager'),
+    'anytls': ('AnyTLS-Manager', 'https://github.com/shui1iao/AnyTLS-Manager'),
+    'vless': ('Xray-VLESS-Manager', 'https://github.com/shui1iao/Xray-VLESS-Manager'),
+    'snell': ('Snell-Manager', 'https://github.com/shui1iao/Snell-Manager'),
 }
 TCPQUALITY_COMMIT = '676789de0df20cc6ade95680c79969b637e3f8fa'
 TCPQUALITY_SHA256 = {
@@ -2379,7 +2379,7 @@ def urlopen_tcpquality(url, timeout=60):
     req = urllib.request.Request(
         url,
         headers={
-            'User-Agent': 'GUKO/0.2 (+https://github.com/shuijiao1/GUKO)',
+            'User-Agent': 'GUKO/0.2 (+https://github.com/shui1iao/GUKO)',
             'Accept': 'image/png,image/*;q=0.8',
             'Referer': 'https://tcpquality.ibsgss.uk/',
         },
