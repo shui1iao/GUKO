@@ -7,7 +7,6 @@ import subprocess
 import sys
 import tempfile
 import unittest
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -20,6 +19,38 @@ spec = importlib.util.spec_from_file_location("guko_bot_under_test", ROOT / "tel
 assert spec and spec.loader
 bot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bot)
+
+
+def _tiny_png_bytes() -> bytes:
+    """Smallest valid PNG the bot should accept and store verbatim."""
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (2, 2), (17, 17, 17)).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def _fake_urlopen(payload: bytes, content_type: str):
+    """Stand in for urlopen_tcpquality() with a canned response."""
+
+    class _Response:
+        headers = {"Content-Type": content_type}
+
+        def read(self, limit=None):
+            return payload[:limit] if limit else payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def _opener(url, timeout=None):
+        return _Response()
+
+    return _opener
 
 
 class TcpQualityHelpersTest(unittest.TestCase):
@@ -205,82 +236,62 @@ class TcpQualityExecutionTest(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, f"{mode}: {result.stderr}")
 
-    def test_generic_svg_renderer_produces_a_real_png(self):
+    def test_official_png_is_downloaded_verbatim(self):
+        """Upstream now serves a real 2x PNG at .png?section=; save it as-is."""
+        payload = _tiny_png_bytes()
+
         async def scenario():
             with tempfile.TemporaryDirectory() as td:
-                root = Path(td)
-                svg = root / "report.svg"
-                png = root / "report.png"
-                svg.write_text(
-                    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10">'
-                    '<rect width="20" height="10" fill="#123456"/></svg>'
-                )
-                await bot.render_tcpquality_png(svg.as_uri(), png)
-                self.assertTrue(png.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"))
+                png = Path(td) / "report.png"
+                with patch.object(bot, "urlopen_tcpquality", _fake_urlopen(payload, "image/png")):
+                    await bot.fetch_tcpquality_png(
+                        "https://tcpquality.ibsgss.uk/r/CWzOTTDR6-.png?section=ipv4",
+                        png,
+                    )
+                self.assertEqual(png.read_bytes(), payload)
 
         asyncio.run(scenario())
 
-    def test_official_svg_is_compacted_and_converted_to_light_theme(self):
-        source = (
-            '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" '
-            'viewBox="0 0 800 200">'
-            '<rect width="100%" height="100%" fill="#1f1e2a"/>'
-            '<style>text{font-size:14px}</style>'
-            '<text x="400" y="28.21" fill="#75b8a6">TcpQuality TCP 重传检测</text>'
-            '<text x="400" y="52.08" fill="#8d887b">特价 VPS 广告</text>'
-            '<line x1="40" x2="760" y1="75.95" y2="75.95" stroke="#8d887b"/>'
-            '<text x="400" y="99.82" fill="#8d887b">报告时间</text>'
-            '<text x="40" y="141.05" fill="#d8d2b8">IPv4 统计摘要</text>'
-            '<text x="180" y="141.05" fill="#87d88d">零丢包</text>'
-            '<text x="330" y="141.05" fill="#d8b96f">一般</text>'
-            '<text x="470" y="141.05" fill="#dc646d">异常</text>'
-            '</svg>'
-        ).encode()
+    def test_svg_response_is_rejected_now_that_upstream_returns_png(self):
+        svg = (
+            b'<?xml version="1.0" encoding="UTF-8"?>'
+            b'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10"></svg>'
+        )
 
-        rendered = bot.prepare_tcpquality_svg(source)
-        root = ET.fromstring(rendered)
-        texts = [''.join(node.itertext()) for node in root.iter() if node.tag.endswith('text')]
-        self.assertNotIn('TcpQuality TCP 重传检测', texts)
-        self.assertNotIn('特价 VPS 广告', texts)
-        self.assertIn('报告时间', texts)
-        self.assertEqual(root.get('height'), '128')
-        self.assertEqual(root.get('viewBox'), '0 0 800 128')
-        self.assertFalse(any(node.tag.endswith('line') for node in root.iter()))
-
-        fills = {node.get('fill') for node in root.iter() if node.get('fill')}
-        self.assertIn('#ffffff', fills)
-        self.assertIn('#1f2937', fills)
-        self.assertIn('#15803d', fills)
-        self.assertIn('#a16207', fills)
-        self.assertIn('#dc2626', fills)
-        groups = [node for node in root if node.tag.endswith('g')]
-        self.assertEqual(len(groups), 1)
-        self.assertEqual(groups[0].get('transform'), 'translate(0,-72)')
-        styles = [node.text or '' for node in root if node.tag.endswith('style')]
-        self.assertTrue(any('letter-spacing:0.6px' in css for css in styles))
-        self.assertFalse(any('letter-spacing:0;' in css for css in styles))
-
-    def test_official_svg_renderer_outputs_white_compact_png(self):
         async def scenario():
             with tempfile.TemporaryDirectory() as td:
-                root = Path(td)
-                svg = root / 'report.svg'
-                png = root / 'report.png'
-                svg.write_text(
-                    '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" '
-                    'viewBox="0 0 800 200">'
-                    '<rect width="100%" height="100%" fill="#1f1e2a"/>'
-                    '<text x="400" y="28" fill="#75b8a6">TcpQuality TCP 重传检测</text>'
-                    '<text x="400" y="52" fill="#8d887b">推广信息</text>'
-                    '<line x1="40" x2="760" y1="76" y2="76" stroke="#8d887b"/>'
-                    '<text x="40" y="100" fill="#d8d2b8">报告时间</text>'
-                    '</svg>'
-                )
-                await bot.render_tcpquality_png(svg.as_uri(), png)
-                with bot.Image.open(png) as image:
-                    self.assertEqual(image.size, (1600, 256))
-                    self.assertEqual(image.convert('RGB').getpixel((0, 0)), (255, 255, 255))
+                png = Path(td) / "report.png"
+                with patch.object(bot, "urlopen_tcpquality", _fake_urlopen(svg, "image/svg+xml")):
+                    with self.assertRaises(RuntimeError) as ctx:
+                        await bot.fetch_tcpquality_png("https://example.invalid/r/x.png", png)
+                self.assertIn("PNG", str(ctx.exception))
+                self.assertFalse(png.exists())
+
         asyncio.run(scenario())
+
+    def test_oversized_png_is_refused(self):
+        async def scenario():
+            with tempfile.TemporaryDirectory() as td:
+                png = Path(td) / "report.png"
+                huge = b"\x89PNG\r\n\x1a\n" + b"0" * (bot.TCPQUALITY_MAX_PNG_BYTES + 1)
+                with patch.object(bot, "urlopen_tcpquality", _fake_urlopen(huge, "image/png")):
+                    with self.assertRaises(RuntimeError) as ctx:
+                        await bot.fetch_tcpquality_png("https://example.invalid/r/x.png", png)
+                self.assertIn("超过", str(ctx.exception))
+                self.assertFalse(png.exists())
+
+        asyncio.run(scenario())
+
+    def test_svg_rewriting_helpers_are_gone(self):
+        for name in (
+            "prepare_tcpquality_svg",
+            "render_tcpquality_png",
+            "TCPQUALITY_LIGHT_COLORS",
+            "TCPQUALITY_HEADER_HEIGHT",
+            "TCPQUALITY_RENDER_SCALE",
+            "TCPQUALITY_LETTER_SPACING",
+        ):
+            self.assertFalse(hasattr(bot, name), f"{name} should be removed")
 
     def test_successful_task_persists_image_and_reports_link(self):
         async def scenario():
@@ -308,7 +319,7 @@ class TcpQualityExecutionTest(unittest.TestCase):
                         bot,
                         "run_subprocess",
                         AsyncMock(return_value=(0, f"报告链接：{report}")),
-                    ), patch.object(bot, "render_tcpquality_png", fake_render):
+                    ), patch.object(bot, "fetch_tcpquality_png", fake_render):
                         await bot.run_tcpquality_task(fake_bot, 100, server, jid, "v4")
 
                     self.assertEqual(bot.JOBS[jid]["status"], "done")
@@ -352,7 +363,7 @@ class TcpQualityExecutionTest(unittest.TestCase):
                         bot,
                         "run_subprocess",
                         AsyncMock(return_value=(0, f"报告链接：{report}")),
-                    ), patch.object(bot, "render_tcpquality_png", fake_render):
+                    ), patch.object(bot, "fetch_tcpquality_png", fake_render):
                         await bot.run_tcpquality_task(fake_bot, 100, server, jid, "intl-v4")
 
                     self.assertEqual(bot.JOBS[jid]["status"], "done")
@@ -483,7 +494,7 @@ class TcpQualityExecutionTest(unittest.TestCase):
                         bot,
                         "run_subprocess",
                         AsyncMock(return_value=(7, f"报告链接：{report}")),
-                    ), patch.object(bot, "render_tcpquality_png", fake_render):
+                    ), patch.object(bot, "fetch_tcpquality_png", fake_render):
                         await bot.run_tcpquality_task(fake_bot, 100, server, jid, "all")
                     self.assertEqual(bot.JOBS[jid]["status"], "done")
                     self.assertEqual(
@@ -570,7 +581,7 @@ class TcpQualityExecutionTest(unittest.TestCase):
                         bot,
                         "run_subprocess",
                         AsyncMock(return_value=(0, f"报告链接：{report}")),
-                    ), patch.object(bot, "render_tcpquality_png", fake_render):
+                    ), patch.object(bot, "fetch_tcpquality_png", fake_render):
                         await bot.run_tcpquality_task(fake_bot, 100, server, jid, "v4")
 
                     self.assertEqual(bot.JOBS[jid]["status"], "done")

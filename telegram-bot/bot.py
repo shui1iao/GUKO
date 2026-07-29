@@ -21,7 +21,6 @@ from typing import Iterable
 from collections import OrderedDict
 from urllib.parse import urlparse
 import urllib.error
-import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw, ImageFont
 
 from auth import inventory_defaults, resolve_ssh, scp_from_args, ssh_args as build_ssh_args
@@ -31,7 +30,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.4.1').strip() or '0.4.1'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.4.2').strip() or '0.4.2'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -2369,162 +2368,48 @@ async def render_checkplace_png(svg_url, out_png):
             raise RuntimeError(out[-1000:])
 
 
-TCPQUALITY_LIGHT_COLORS = {
-    '#1f1e2a': '#ffffff',
-    '#75b8a6': '#0f766e',
-    '#87d88d': '#15803d',
-    '#8d887b': '#6b7280',
-    '#d8b96f': '#a16207',
-    '#d8d2b8': '#1f2937',
-    '#dc646d': '#dc2626',
-}
-TCPQUALITY_HEADER_HEIGHT = 72.0
-TCPQUALITY_RENDER_SCALE = 2
-TCPQUALITY_LETTER_SPACING = '0.6px'
+TCPQUALITY_MAX_PNG_BYTES = 10 * 1024 * 1024
 
 
-def _svg_local_name(element):
-    return element.tag.rsplit('}', 1)[-1] if isinstance(element.tag, str) else ''
+def urlopen_tcpquality(url, timeout=60):
+    """Fetch an official TCPQuality report asset.
+
+    Split out as a module-level function so tests can stub the network.
+    """
+    req = urllib.request.Request(
+        url,
+        headers={
+            'User-Agent': 'GUKO/0.2 (+https://github.com/shuijiao1/GUKO)',
+            'Accept': 'image/png,image/*;q=0.8',
+            'Referer': 'https://tcpquality.ibsgss.uk/',
+        },
+    )
+    return urllib.request.urlopen(req, timeout=timeout)
 
 
-def _svg_number(value):
-    try:
-        return float(str(value).strip())
-    except (TypeError, ValueError):
-        return None
+async def fetch_tcpquality_png(image_url, out_png):
+    """Download the official report PNG verbatim.
 
-
-def _shrink_svg_length(value, amount):
-    match = re.fullmatch(r'\s*([0-9]+(?:\.[0-9]+)?)([A-Za-z%]*)\s*', value or '')
-    if not match:
-        return value
-    number = max(1.0, float(match.group(1)) - amount)
-    rendered = f'{number:.2f}'.rstrip('0').rstrip('.')
-    return rendered + match.group(2)
-
-
-def prepare_tcpquality_svg(payload):
-    """Convert the official dark report to a compact, readable light report."""
-    if not isinstance(payload, bytes):
-        raise RuntimeError('TCPQuality SVG 内容格式无效')
-    lowered = payload[:4096].lower()
-    if b'<!doctype' in lowered or b'<!entity' in lowered:
-        raise RuntimeError('TCPQuality SVG 包含不支持的文档声明')
-    try:
-        root = ET.fromstring(payload)
-    except ET.ParseError as error:
-        raise RuntimeError(f'TCPQuality SVG 解析失败：{error}') from error
-    if _svg_local_name(root) != 'svg':
-        raise RuntimeError('TCPQuality 图片接口没有返回 SVG')
-
-    background = None
-    for child in root:
-        if (
-            _svg_local_name(child) == 'rect'
-            and child.get('width') in ('100%', root.get('width'))
-            and child.get('height') in ('100%', root.get('height'))
-        ):
-            background = child
-            break
-
-    report_text = ''.join(root.itertext()).lower()
-    is_official_report = 'tcpquality' in report_text and background is not None
-    if not is_official_report:
-        return payload
-
-    for element in root.iter():
-        for attribute in ('fill', 'stroke'):
-            color = element.get(attribute, '').lower()
-            if color in TCPQUALITY_LIGHT_COLORS:
-                element.set(attribute, TCPQUALITY_LIGHT_COLORS[color])
-        if _svg_local_name(element) == 'style':
-            css = element.text or ''
-            if re.search(r'letter-spacing\s*:', css):
-                css = re.sub(
-                    r'letter-spacing\s*:\s*[^;}]+',
-                    f'letter-spacing:{TCPQUALITY_LETTER_SPACING}',
-                    css,
-                )
-            else:
-                css += f'\ntext{{letter-spacing:{TCPQUALITY_LETTER_SPACING}}}'
-            element.text = css
-    background.set('fill', '#ffffff')
-
-    # The official SVG starts with a product slogan and a promotional line.
-    # Remove both plus their now-orphaned divider, then reclaim the empty space.
-    for child in list(root):
-        tag = _svg_local_name(child)
-        y = _svg_number(child.get('y'))
-        y1 = _svg_number(child.get('y1'))
-        y2 = _svg_number(child.get('y2'))
-        if tag == 'text' and y is not None and y < 75:
-            root.remove(child)
-        elif tag == 'line' and y1 is not None and y2 is not None and max(y1, y2) < 90:
-            root.remove(child)
-
-    svg_namespace = root.tag[1:].split('}', 1)[0] if root.tag.startswith('{') else None
-    group_tag = f'{{{svg_namespace}}}g' if svg_namespace else 'g'
-    content_group = ET.Element(group_tag, {'transform': f'translate(0,-{TCPQUALITY_HEADER_HEIGHT:g})'})
-    for child in list(root):
-        if child is background or _svg_local_name(child) in ('style', 'defs', 'metadata'):
-            continue
-        root.remove(child)
-        content_group.append(child)
-    root.append(content_group)
-
-    root.set('height', _shrink_svg_length(root.get('height'), TCPQUALITY_HEADER_HEIGHT))
-    view_box = (root.get('viewBox') or '').replace(',', ' ').split()
-    if len(view_box) == 4:
-        height = _svg_number(view_box[3])
-        if height is not None:
-            view_box[3] = f'{max(1.0, height - TCPQUALITY_HEADER_HEIGHT):.2f}'.rstrip('0').rstrip('.')
-            root.set('viewBox', ' '.join(view_box))
-
-    if svg_namespace:
-        ET.register_namespace('', svg_namespace)
-    return ET.tostring(root, encoding='utf-8', xml_declaration=True)
-
-
-async def render_tcpquality_png(svg_url, out_png):
+    Upstream started serving a real 2x-rendered PNG at `.png?section=...`
+    (rv=...-rsvg-2x-20260726), so GUKO no longer fetches the SVG or does any
+    local recolouring/cropping — 水饺 asked for the official image as-is.
+    """
     out_png = Path(out_png)
     out_png.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as td:
-        svg_path = Path(td) / 'tcpquality.svg'
 
-        def download():
-            req = urllib.request.Request(
-                svg_url,
-                headers={
-                    'User-Agent': 'GUKO/0.2 (+https://github.com/shuijiao1/GUKO)',
-                    'Accept': 'image/svg+xml,*/*;q=0.8',
-                    'Referer': 'https://tcpquality.ibsgss.uk/',
-                },
-            )
-            with urllib.request.urlopen(req, timeout=60) as response:
-                payload = response.read(10 * 1024 * 1024 + 1)
-            if len(payload) > 10 * 1024 * 1024:
-                raise RuntimeError('TCPQuality SVG 超过 10MB 限制')
-            prefix = payload.lstrip()[:512].lower()
-            if b'<svg' not in prefix:
-                raise RuntimeError('TCPQuality 图片接口没有返回 SVG')
-            svg_path.write_bytes(prepare_tcpquality_svg(payload))
+    def download():
+        with urlopen_tcpquality(image_url, timeout=60) as response:
+            payload = response.read(TCPQUALITY_MAX_PNG_BYTES + 1)
+        if len(payload) > TCPQUALITY_MAX_PNG_BYTES:
+            raise RuntimeError('TCPQuality 报告图超过 10MB 限制')
+        if not payload.startswith(b'\x89PNG\r\n\x1a\n'):
+            raise RuntimeError('TCPQuality 图片接口没有返回 PNG')
+        return payload
 
-        await asyncio.to_thread(download)
-        code, out = await run_subprocess(
-            [
-                'rsvg-convert',
-                str(svg_path),
-                '--zoom',
-                str(TCPQUALITY_RENDER_SCALE),
-                '--output',
-                str(out_png),
-            ],
-            timeout=90,
-        )
-        if code != 0:
-            raise RuntimeError(trim_log(out, 1000) or f'TCPQuality SVG 转 PNG 失败：{code}')
-        if not out_png.exists() or out_png.stat().st_size <= 8:
-            raise RuntimeError('TCPQuality PNG 生成后为空')
+    payload = await asyncio.to_thread(download)
+    out_png.write_bytes(payload)
+    if out_png.stat().st_size <= 8:
+        raise RuntimeError('TCPQuality PNG 保存后为空')
 
 
 async def send_report_images(bot, chat_id, report_links, prefix):
@@ -2869,7 +2754,7 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
                 image_url = f'{report}.png?section={section}'
                 png = out_dir / f'tcpq-{safe_sid}-{section}.png'
                 try:
-                    await render_tcpquality_png(image_url, png)
+                    await fetch_tcpquality_png(image_url, png)
                     saved = persist_result_file(s, 'tcpq', png, f'-{section}.png', clear=False)
                     if saved:
                         media_paths.append(saved)

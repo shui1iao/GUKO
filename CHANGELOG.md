@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.2] - 2026-07-29
+
+### Fixed
+- TCPQuality 报告图恢复正常发送。上游 `tcpquality.ibsgss.uk` 已改为直接提供 2 倍分辨率 PNG，GUKO 仍按旧的 SVG 流程请求并强制校验 SVG，导致近期检测只回链接、图片全部发送失败。
+
+### Changed
+- TCPQuality 报告图改为直接使用官方 PNG 原图，不再本地转换配色、裁剪顶部或重新渲染。
+
 ## [0.4.1] - 2026-07-28
 
 ### Fixed
