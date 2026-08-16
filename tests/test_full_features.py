@@ -293,17 +293,17 @@ class FullFeatureSurfaceTest(unittest.TestCase):
 
     def test_stream_region_mapping_covers_configured_countries(self):
         expected = {
-            "tw": "1",
-            "hk": "2",
-            "jp": "3",
-            "us": "4",
-            "br": "5",
-            "gb": "6",
-            "au": "7",
-            "kr": "8",
-            "sg": "9",
-            "in": "10",
-            "za": "11",
+            "tw": "tw",
+            "hk": "hk",
+            "jp": "jp",
+            "us": "na",
+            "br": "sa",
+            "gb": "eu",
+            "au": "oc",
+            "kr": "kr",
+            "sg": "",
+            "in": "",
+            "za": "af",
         }
         for country, region in expected.items():
             with self.subTest(country=country):

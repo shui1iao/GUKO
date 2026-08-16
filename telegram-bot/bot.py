@@ -30,7 +30,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.4.2').strip() or '0.4.2'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.0').strip() or '0.5.0'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -52,7 +52,7 @@ ADMIN_USERS = {x.strip() for x in os.environ.get('ADMIN_USERS', '').split(',') i
 ALLOW_INSECURE_STARTUP = os.environ.get('ALLOW_INSECURE_STARTUP', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 SCRIPT_SOURCES = {
     'nexttrace': ('NextTrace', 'https://github.com/nxtrace/NTrace-core'),
-    'stream': ('RegionRestrictionCheck', 'https://github.com/lmc999/RegionRestrictionCheck'),
+    'stream': ('UnlockScope', 'https://github.com/shui1iao/UnlockScope'),
     'ipq': ('Check.Place', 'https://github.com/xykt/NetQuality'),
     'nq': ('NodeQuality / Check.Place', 'https://github.com/xykt/NodeQuality'),
     'tcpq': ('TcpQuality', 'https://github.com/ibsgss/TcpQuality'),
@@ -61,6 +61,11 @@ SCRIPT_SOURCES = {
     'vless': ('Xray-VLESS-Manager', 'https://github.com/shui1iao/Xray-VLESS-Manager'),
     'snell': ('Snell-Manager', 'https://github.com/shui1iao/Snell-Manager'),
 }
+UNLOCKSCOPE_VERSION = 'v0.1.0'
+UNLOCKSCOPE_INSTALL_URL = 'https://unlock.shuijiao.de'
+UNLOCKSCOPE_INSTALL_FALLBACK = (
+    f'https://raw.githubusercontent.com/shui1iao/UnlockScope/{UNLOCKSCOPE_VERSION}/install.sh'
+)
 TCPQUALITY_COMMIT = '676789de0df20cc6ade95680c79969b637e3f8fa'
 TCPQUALITY_SHA256 = {
     'runTcpQuality.sh': 'acb8b306725ed496549a01b878a9d1313482dd38c98f294d0492055b202e12d3',
@@ -706,12 +711,15 @@ def script_command_text(kind, **kwargs):
             f'nexttrace {target}'
         )
     if kind == 'stream':
-        region_id = kwargs.get('region_id') or '<地区编号>'
-        proto_arg = kwargs.get('proto_arg') or '-M 4'
+        ip_mode = kwargs.get('ip_mode') or 'auto'
+        region_id = str(kwargs.get('region_id') or '').strip()
+        args = f'--scope auto --json --no-color --ip {ip_mode}'
+        if region_id:
+            args += f' --region {shlex.quote(region_id)}'
         return (
             '脚本命令：\n'
-            'bash <(curl -L -s check.unlock.media) '
-            f'{proto_arg} -R {region_id}'
+            f'UNLOCKSCOPE_VERSION={UNLOCKSCOPE_VERSION} bash <(curl -Ls {UNLOCKSCOPE_INSTALL_URL})\n'
+            f'unlockscope {args}'
         )
     if kind == 'ipq':
         return '脚本命令：\nbash <(curl -Ls https://IP.Check.Place) -y'
@@ -1173,31 +1181,16 @@ def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4'):
 
 
 STREAM_REGION_BY_COUNTRY = {
-    'tw': ('1', '跨国 + 台湾'),
-    'hk': ('2', '跨国 + 香港'),
-    'mo': ('2', '跨国 + 香港'),
-    'jp': ('3', '跨国 + 日本'),
-    'us': ('4', '跨国 + 北美'),
-    'ca': ('4', '跨国 + 北美'),
-    'br': ('5', '跨国 + 南美'),
-    'ar': ('5', '跨国 + 南美'),
-    'cl': ('5', '跨国 + 南美'),
-    'gb': ('6', '跨国 + 欧洲'),
-    'uk': ('6', '跨国 + 欧洲'),
-    'de': ('6', '跨国 + 欧洲'),
-    'fr': ('6', '跨国 + 欧洲'),
-    'nl': ('6', '跨国 + 欧洲'),
-    'au': ('7', '跨国 + 大洋洲'),
-    'nz': ('7', '跨国 + 大洋洲'),
-    'kr': ('8', '跨国 + 韩国'),
-    'sg': ('9', '跨国 + 东南亚'),
-    'my': ('9', '跨国 + 东南亚'),
-    'th': ('9', '跨国 + 东南亚'),
-    'vn': ('9', '跨国 + 东南亚'),
-    'ph': ('9', '跨国 + 东南亚'),
-    'id': ('9', '跨国 + 东南亚'),
-    'in': ('10', '跨国 + 印度'),
-    'za': ('11', '跨国 + 非洲'),
+    'tw': ('tw', '全球 + 台湾'),
+    'hk': ('hk', '全球 + 香港'),
+    'mo': ('hk', '全球 + 香港'),
+    'jp': ('jp', '全球 + 日本'),
+    'kr': ('kr', '全球 + 韩国'),
+    **{code: ('na', '全球 + 北美') for code in ('us', 'ca', 'mx', 'gl', 'bm')},
+    **{code: ('sa', '全球 + 南美') for code in ('br', 'ar', 'cl', 'co', 'pe', 've', 'uy', 'py', 'bo', 'ec', 'gy', 'sr')},
+    **{code: ('oc', '全球 + 大洋洲') for code in ('au', 'nz', 'fj', 'pg', 'ws', 'to', 'vu', 'nc', 'pf')},
+    **{code: ('af', '全球 + 非洲') for code in ('za', 'ng', 'ke', 'gh', 'eg', 'ma', 'dz', 'tn', 'et', 'tz', 'ug', 'sn', 'ci', 'ao', 'mz', 'bw', 'na', 'zw', 'zm')},
+    **{code: ('eu', '全球 + 欧洲') for code in ('gb', 'uk', 'ie', 'fr', 'de', 'nl', 'be', 'lu', 'es', 'pt', 'it', 'ch', 'at', 'pl', 'cz', 'sk', 'hu', 'ro', 'bg', 'gr', 'cy', 'mt', 'dk', 'se', 'no', 'fi', 'is', 'ee', 'lv', 'lt', 'si', 'hr', 'rs', 'ba', 'me', 'mk', 'al', 'md', 'ua')},
 }
 
 
@@ -1205,7 +1198,7 @@ def stream_region_for_server(s):
     code = str(s.get('country') or '').lower()
     if not code:
         code = geolocate_host(s.get('host')) or ''
-    return STREAM_REGION_BY_COUNTRY.get(code, ('0', '只测跨国平台'))
+    return STREAM_REGION_BY_COUNTRY.get(code, ('', '全球平台（自动识别）'))
 
 
 def stream_menu_text(s):
@@ -1215,7 +1208,7 @@ def stream_menu_text(s):
         f'🎬 准备在 <b>{safe(s.get("name"))}</b> 跑流媒体检测：\n\n'
         f'地区选项：<b>{safe(label)}</b>\n'
         f'协议策略：<b>{safe(proto)}</b>\n\n'
-        '会在目标机器本机执行 RegionRestrictionCheck，并把结果整理成更好读的摘要。'
+        f'会在目标机器本机执行 UnlockScope {UNLOCKSCOPE_VERSION}，优先读取 --json 结果并整理成摘要。'
     )
 
 
@@ -3109,115 +3102,86 @@ async def run_gb5_task(bot, chat_id, s, jid):
     finally:
         finish_job(jid, key)
 
-def stream_clean_output(text):
-    clean = strip_ansi(text or '')
-    clean = clean.replace('\r', '\n')
-    lines = []
-    for raw in clean.splitlines():
-        line = raw.strip()
-        if not line:
-            continue
-        if set(line) <= set('-_=* '):
-            continue
-        skip_needles = [
-            '请选择检测项目', '请输入正确数字', '检测脚本当天运行次数', '本次测试已结束',
-            '感谢使用此脚本', '广告招租', '请联系', 'Github', 'YouTube', '支持系统',
-            'RegionRestrictionCheck', 'Streaming Media Unlock Test', '正在下载', 'Downloading',
-            'Number of Script Runs', 'Testing Done', 'Press ENTER', 'Input Number', '请输入',
-        ]
-        if any(x.lower() in line.lower() for x in skip_needles):
-            continue
-        lines.append(line)
-    return lines
+STREAM_STATES = {'available', 'unavailable', 'region_only', 'failed', 'unknown'}
+STREAM_CATEGORY_LABELS = {
+    'streaming': '流媒体',
+    'ai': 'AI',
+    'social': '社交',
+    'knowledge': '知识与社区',
+    'games': '游戏 / 商店',
+    'sports': '体育',
+}
+
+
+def stream_json_results(text):
+    """Decode UnlockScope's stable JSON array; never infer results from text."""
+    try:
+        payload = json.loads(str(text or '').strip())
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(payload, list):
+        return None
+    required = ('id', 'service', 'category', 'regions', 'state', 'duration_ms', 'checked_at')
+    for item in payload:
+        if not isinstance(item, dict) or any(key not in item for key in required):
+            return None
+        if not all(isinstance(item[key], str) and item[key].strip() for key in ('id', 'service', 'category', 'state', 'checked_at')):
+            return None
+        if not isinstance(item['regions'], list) or not all(isinstance(x, str) for x in item['regions']):
+            return None
+        if not isinstance(item['duration_ms'], int) or isinstance(item['duration_ms'], bool) or item['duration_ms'] < 0:
+            return None
+        if item['state'] not in STREAM_STATES:
+            return None
+        if any(key in item and not isinstance(item[key], str) for key in ('region', 'note')):
+            return None
+    return payload
 
 
 def parse_stream_results(text):
-    lines = stream_clean_output(text)
-    net_type = ''
-    section = ''
-    results = []
-    network = []
-    for line in lines:
-        l = line.strip()
-        if '正在测试 IPv4' in l or 'Checking Results Under IPv4' in l:
-            net_type = 'IPv4'
-            continue
-        if '正在测试 IPv6' in l or 'Checking Results Under IPv6' in l:
-            net_type = 'IPv6'
-            continue
-        if '正在测试默认网络' in l or 'Checking Results Under Default' in l:
-            net_type = '默认网络'
-            continue
-        if '您的网络为:' in l or 'Your Network Provider:' in l:
-            network.append(l.replace('**', '').strip())
-            continue
-        # Original script section lines:
-        # ============[ Multination ]============
-        #  ---Game---
-        msec = re.search(r'\[\s*([^\]]+?)\s*\]', l)
-        if msec and set(l.replace(msec.group(0), '')) <= set('=-_ '):
-            section = msec.group(1).strip()
-            continue
-        msub = re.match(r'^-+\s*([^\-]+?)\s*-+$', l)
-        if msub:
-            section = msub.group(1).strip()
-            continue
-        if set(l) <= set('= '):
-            continue
-        m = re.match(r'(.+?):\s*(Yes|No|Failed|Originals Only|IPv6 Is Not Currently Supported|Available For .* Soon|即将推出|Unsupported|N/A)(.*)$', l, re.I)
-        if not m:
-            continue
-        name = m.group(1).strip()
-        status = m.group(2).strip()
-        extra = m.group(3).strip()
-        sec = section or net_type or '-'
-        results.append({'section': sec, 'net': net_type, 'name': name, 'status': status, 'extra': extra})
-    return network, results
+    """Return UnlockScope JSON results, or an empty list for invalid output."""
+    return stream_json_results(text) or []
 
 
 def stream_status_icon(status, extra=''):
-    status_l = str(status or '').lower()
-    t = f'{status} {extra}'.lower()
-    if 'only available' in t or 'only avaliable' in t or 'mobile app' in t:
-        return '🟡'
-    if status_l == 'yes' or 'region:' in t or 'available for' in t:
-        return '✅'
-    if status_l == 'no' or 'not available' in t or 'blocked' in t:
-        return '❌'
-    if 'originals only' in t:
-        return '🟡'
-    if 'ipv6 is not currently supported' in t or 'unsupported' in t:
-        return '➖'
-    return '⚠️'
+    return {
+        'available': '✅',
+        'unavailable': '❌',
+        'region_only': '🟡',
+        'failed': '⚠️',
+        'unknown': '⚠️',
+    }.get(str(status or '').lower(), '⚠️')
 
 
 def format_stream_summary(s, out, proto, region_label, region_id):
-    network, results = parse_stream_results(out)
+    results = parse_stream_results(out)
     groups = OrderedDict()
-    for r in results:
-        groups.setdefault(r['section'], []).append(r)
+    for result in results:
+        groups.setdefault(result['category'], []).append(result)
     total = len(results)
-    yes = sum(1 for r in results if stream_status_icon(r['status'], r.get('extra')) == '✅')
-    no = sum(1 for r in results if stream_status_icon(r['status'], r.get('extra')) == '❌')
-    warn = max(0, total - yes - no)
+    available = sum(1 for r in results if r['state'] == 'available')
+    unavailable = sum(1 for r in results if r['state'] == 'unavailable')
+    other = max(0, total - available - unavailable)
+    detected_regions = sorted({r['region'] for r in results if r.get('region')})
     head = [
         f'🎬 <b>{safe(s.get("name"))} 流媒体检测完成</b>',
-        f'协议：<b>{safe(proto)}</b> · 地区：<b>{safe(region_label)}</b>',
+        f'工具：<b>UnlockScope {UNLOCKSCOPE_VERSION}</b> · 协议：<b>{safe(proto)}</b> · 地区：<b>{safe(region_label)}</b>',
         f'检测时间：<code>{safe(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))}</code>',
     ]
-    if network:
-        head.append(safe(network[-1]))
+    if detected_regions:
+        head.append('探测地区：' + safe(', '.join(detected_regions)))
     if total:
-        head.append(f'结果：Yes {yes} / No {no} / Error {warn}')
+        head.append(f'结果：可用 {available} / 不可用 {unavailable} / 其他 {other}')
     parts = ['\n'.join(head)]
     if not results:
-        parts.append('没解析到结构化结果，末尾日志：\n<pre>' + safe(trim_log(strip_ansi(out), 2600)) + '</pre>')
+        parts.append('没有拿到有效的 UnlockScope JSON，末尾输出：\n<pre>' + safe(trim_log(strip_ansi(out), 2600)) + '</pre>')
         return '\n\n'.join(parts)
-    for sec, items in groups.items():
-        lines = [f'<b>{safe(sec)}</b>']
-        for r in items[:80]:
-            extra = (' ' + r.get('extra', '')) if r.get('extra') else ''
-            lines.append(f'{safe(r["name"])}：<code>{safe(r["status"] + extra)}</code>')
+    for category, items in groups.items():
+        lines = [f'<b>{safe(STREAM_CATEGORY_LABELS.get(category, category))}</b>']
+        for result in items[:80]:
+            state = stream_status_label(result['state'], result.get('region'))
+            note = (' · ' + result['note']) if result.get('note') else ''
+            lines.append(f'{safe(result["service"])}：{stream_status_icon(result["state"])} <code>{safe(state)}</code>{safe(note)}')
         parts.append('\n'.join(lines))
     text = '\n\n'.join(parts)
     return text[:3900] + ('\n\n…结果较长，已截断。' if len(text) > 3900 else '')
@@ -3229,16 +3193,22 @@ def stream_status_color(status, extra=''):
         return (22, 163, 74)
     if icon == '❌':
         return (220, 38, 38)
-    return (202, 138, 4)
+    if icon == '🟡':
+        return (202, 138, 4)
+    return (124, 58, 237)
 
 
 def stream_status_label(status, extra=''):
-    text = (str(status or '') + (' ' + str(extra).strip() if extra else '')).strip()
-    if not text:
-        return 'Error'
-    if text.lower().startswith('failed'):
-        return re.sub(r'^Failed', 'Error', text, flags=re.I)
-    return text
+    labels = {
+        'available': '可用',
+        'unavailable': '不可用',
+        'region_only': '仅地区可用',
+        'failed': '检测失败',
+        'unknown': '未知',
+    }
+    value = labels.get(str(status or '').lower(), str(status or '未知'))
+    extra = str(extra or '').strip()
+    return f'{value} ({extra})' if extra else value
 
 
 def load_font(candidates, size):
@@ -3251,16 +3221,16 @@ def load_font(candidates, size):
 
 
 def stream_result_image(s, out, proto, region_label, region_id, out_png):
-    network, results = parse_stream_results(out)
+    results = parse_stream_results(out)
     if not results:
         return None
     groups = OrderedDict()
-    for r in results:
-        groups.setdefault(r['section'], []).append(r)
+    for result in results:
+        groups.setdefault(result['category'], []).append(result)
     total = len(results)
-    yes = sum(1 for r in results if stream_status_icon(r['status'], r.get('extra')) == '✅')
-    no = sum(1 for r in results if stream_status_icon(r['status'], r.get('extra')) == '❌')
-    warn = max(0, total - yes - no)
+    available = sum(1 for result in results if result['state'] == 'available')
+    unavailable = sum(1 for result in results if result['state'] == 'unavailable')
+    other = max(0, total - available - unavailable)
 
     font_cjk = [
         '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
@@ -3280,7 +3250,7 @@ def stream_result_image(s, out, proto, region_label, region_id, out_png):
     W = 1120
     pad = 50
     row_h = 32
-    title_h = 190
+    title_h = 158
     section_h = 42
     footer_h = 78
     max_rows = sum(len(v) for v in groups.values())
@@ -3301,7 +3271,8 @@ def stream_result_image(s, out, proto, region_label, region_id, out_png):
     meta_font = load_font(font_cjk, 21)
     mono_font = load_font(mono_fonts, 23)
     mono_small = load_font(mono_fonts, 20)
-    section_font = load_font(mono_fonts, 24)
+    # Section labels contain Chinese; a Latin-only mono font renders them as tofu boxes.
+    section_font = load_font(font_cjk_bold, 24)
     status_font = load_font(font_cjk_bold, 23)
     small_font = load_font(font_cjk, 20)
 
@@ -3309,14 +3280,8 @@ def stream_result_image(s, out, proto, region_label, region_id, out_png):
 
     server_name = str(s.get('name') or s.get('host') or 'Server')
     d.text((pad, 44), f'{server_name} 流媒体解锁测试', fill=dark, font=title_font)
-    d.text((W-pad, 52), source_repo('stream'), fill=muted, font=meta_font, anchor='ra')
-    d.text((pad, 92), f'{proto} · {region_label} · {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', fill=muted, font=meta_font)
-    d.text((W-pad, 92), f'Yes {yes}   No {no}   Error {warn}', fill=blue, font=meta_font, anchor='ra')
-    if network:
-        nt = network[-1].replace('**', '').strip()
-        if len(nt) > 90:
-            nt = nt[:87] + '…'
-        d.text((pad, 126), nt, fill=muted, font=small_font)
+    d.text((pad, 96), f'{proto} · {region_label} · {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', fill=muted, font=meta_font)
+    d.text((W-pad, 96), f'可用 {available}   不可用 {unavailable}   其他 {other}', fill=blue, font=meta_font, anchor='ra')
     d.line([pad, title_h-18, W-pad, title_h-18], fill=line, width=2)
 
     y = title_h + 4
@@ -3343,14 +3308,15 @@ def stream_result_image(s, out, proto, region_label, region_id, out_png):
         right_count = left_count
         return '=' * left_count + text + '=' * right_count
 
-    for sec, items in groups.items():
-        rule = fit_text(centered_rule(str(sec or '-')), section_font, table_right - table_left)
+    for category, items in groups.items():
+        section = STREAM_CATEGORY_LABELS.get(category, category)
+        rule = fit_text(centered_rule(str(section or '-')), section_font, table_right - table_left)
         d.text(((W - d.textlength(rule, font=section_font)) / 2, y), rule, fill=blue, font=section_font)
         y += section_h
-        for r in items:
-            name = fit_text((str(r.get('name') or '-').rstrip(':') + ':'), mono_font, name_col_width)
-            status = fit_text(stream_status_label(r.get('status'), r.get('extra')), status_font, 470)
-            color = stream_status_color(r.get('status'), r.get('extra'))
+        for result in items:
+            name = fit_text((str(result.get('service') or '-').rstrip(':') + ':'), mono_font, name_col_width)
+            status = fit_text(stream_status_label(result.get('state'), result.get('region')), status_font, 470)
+            color = stream_status_color(result.get('state'), result.get('region'))
             d.text((table_left, y), name, fill=dark, font=mono_font)
             d.text((status_x, y), status, fill=color, font=status_font, anchor='ra')
             y += row_h
@@ -3368,6 +3334,40 @@ async def remote_has_ipv4(s):
     remote = "curl -4fsS --max-time 8 https://api.ipify.org >/dev/null"
     code, _out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=15, env=ssh_env_for(s))
     return code == 0
+
+
+def unlockscope_remote_command(ip_mode='auto', region_id=''):
+    ip_mode = str(ip_mode or 'auto').strip().lower()
+    if ip_mode not in {'auto', '4', '6'}:
+        raise ValueError(f'unsupported UnlockScope IP mode: {ip_mode}')
+    args = f'--scope auto --json --no-color --ip {ip_mode} --timeout 8s --total-timeout 120s --concurrency 12'
+    region_id = str(region_id or '').strip().lower()
+    if region_id:
+        args += f' --region {shlex.quote(region_id)}'
+    installer_url = shlex.quote(UNLOCKSCOPE_INSTALL_URL)
+    installer_fallback = shlex.quote(UNLOCKSCOPE_INSTALL_FALLBACK)
+    version = shlex.quote(UNLOCKSCOPE_VERSION)
+    curl_family = '-4 ' if ip_mode == '4' else '-6 ' if ip_mode == '6' else ''
+    cache_name = shlex.quote(f'unlockscope-{UNLOCKSCOPE_VERSION}')
+    return (
+        'set -eu; umask 077; export TERM=xterm-256color; '
+        f'install_dir="${{XDG_CACHE_HOME:-$HOME/.cache}}/guko/{cache_name}"; '
+        'mkdir -p "$install_dir"; chmod 700 "$install_dir"; unlockscope_bin="$install_dir/unlockscope"; '
+        f'if [ ! -x "$unlockscope_bin" ] || [ "$("$unlockscope_bin" --version 2>/dev/null || true)" != {version} ]; then '
+        '  workdir="$(mktemp -d "${TMPDIR:-/tmp}/guko-unlockscope-install.XXXXXX")"; '
+        '  cleanup(){ rm -rf "$workdir"; }; trap cleanup EXIT INT TERM; '
+        '  installer="$workdir/install.sh"; '
+        f'  curl {curl_family}-LfsS --max-time 60 {installer_url} -o "$installer" >/dev/null 2>&1 || '
+        f'  curl {curl_family}-LfsS --max-time 60 {installer_fallback} -o "$installer" >/dev/null 2>&1; '
+        '  chmod 700 "$installer"; '
+        f'  if ! UNLOCKSCOPE_VERSION={version} PREFIX="$workdir/bin" bash "$installer" '
+        '>"$workdir/install.log" 2>&1; then cat "$workdir/install.log" >&2; exit 1; fi; '
+        '  install -m 0755 "$workdir/bin/unlockscope" "$unlockscope_bin"; '
+        '  cleanup; trap - EXIT INT TERM; '
+        'fi; '
+        f'test "$("$unlockscope_bin" --version 2>/dev/null)" = {version}; '
+        'exec "$unlockscope_bin" ' + args + ' 2>&1'
+    )
 
 
 
@@ -3615,19 +3615,18 @@ async def run_stream_task(bot, chat_id, s, jid):
     try:
         region_id, region_label = stream_region_for_server(s)
         use_v4 = await remote_has_ipv4(s)
-        proto_arg = '-M 4' if use_v4 else '-M 6'
+        ip_mode = '4' if use_v4 else '6'
         proto_text = 'IPv4' if use_v4 else 'IPv6（无 IPv4，自动切换）'
-        remote = (
-            "export TERM=xterm-256color; cd /tmp; "
-            "script=$(mktemp /tmp/stream-unlock.XXXXXX.sh); "
-            "curl -4LfsS --max-time 30 check.unlock.media -o $script || "
-            "curl -4LfsS --max-time 30 http://check.unlock.media -o $script || "
-            "curl -4LfsS --max-time 30 https://raw.githubusercontent.com/lmc999/RegionRestrictionCheck/main/check.sh -o $script || "
-            "curl -6LfsS --max-time 30 https://raw.githubusercontent.com/lmc999/RegionRestrictionCheck/main/check.sh -o $script; "
-            "bash $script " + proto_arg + " -R " + shlex.quote(region_id) + " 2>&1"
-        )
+        remote = unlockscope_remote_command(ip_mode, region_id)
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=1800, env=ssh_env_for(s))
-        JOBS[jid].update({'status': 'done' if code == 0 else 'failed', 'log': out, 'proto': proto_text, 'region': region_label})
+        valid_results = stream_json_results(out)
+        valid_json = bool(valid_results)
+        JOBS[jid].update({
+            'status': 'done' if code == 0 and valid_json else 'failed',
+            'log': out,
+            'proto': proto_text,
+            'region': region_label,
+        })
         out_dir = Path('/tmp/guko-results')
         out_dir.mkdir(parents=True, exist_ok=True)
         png = out_dir / f"stream-{server_id(s)}-{int(time.time())}.jpg"
@@ -3640,13 +3639,13 @@ async def run_stream_task(bot, chat_id, s, jid):
             JOBS[jid].update({'media_path': saved})
             with img.open('rb') as f:
                 await bot.send_photo(chat_id, photo=f)
-            await bot.send_message(chat_id, script_command_text('stream', proto_arg=proto_arg, region_id=region_id))
+            await bot.send_message(chat_id, script_command_text('stream', ip_mode=ip_mode, region_id=region_id))
             if code != 0:
-                await bot.send_message(chat_id, '提示：脚本退出码不为 0，图片是已抓到的部分结果。')
+                await bot.send_message(chat_id, '提示：UnlockScope 退出码不为 0，图片是已抓到的部分结果。')
         else:
             msg = format_stream_summary(s, out, proto_text, region_label, region_id)
             if code != 0:
-                msg = '⚠️ 脚本退出码不为 0，但下面是已抓到的输出：\n\n' + msg
+                msg = '⚠️ UnlockScope 退出码不为 0，但下面是已抓到的输出：\n\n' + msg
             await bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as e:
         JOBS[jid].update({'status': 'failed', 'log': repr(e)})

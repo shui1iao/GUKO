@@ -392,7 +392,7 @@ You can also export sanitized config from the Bot:
 
 ## 🧩 Optional tools
 
-GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. TCPQuality is organized into five task-focused entries: carrier quality, return path, international connectivity, carrier speed test, and complete test. Carrier quality and return-path checks support IPv4 or IPv6 when configured; international connectivity uses IPv4 as supported upstream. Speed-test and complete-test entries show a traffic warning and require confirmation to prevent accidental runs. The complete test runs carrier IPv4/IPv6, international connectivity, and carrier speed tests; CERNET checks are excluded. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while return-path mode sends text directly. Related buttons can be disabled with environment variables.
+GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. The streaming entry runs the pinned [UnlockScope v0.1.0](https://github.com/shui1iao/UnlockScope) release on the target server and prefers its `--json` output; Telegram summaries, images, history records, and result files remain compatible. TCPQuality is organized into five task-focused entries: carrier quality, return path, international connectivity, carrier speed test, and complete test. Carrier quality and return-path checks support IPv4 or IPv6 when configured; international connectivity uses IPv4 as supported upstream. Speed-test and complete-test entries show a traffic warning and require confirmation to prevent accidental runs. The complete test runs carrier IPv4/IPv6, international connectivity, and carrier speed tests; CERNET checks are excluded. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while return-path mode sends text directly. Related buttons can be disabled with environment variables.
 
 ---
 
@@ -423,7 +423,7 @@ make check
 - The repository does not contain any Bot Token, real user ID, server password, or private key.
 - `.env`, `servers.json`, `keys/`, `media/`, and `tmp/` are ignored by Git. Do not commit real configuration.
 - Whitelist mode is enabled by default. The Bot refuses to start when allowed users are not configured.
-- IPPure, bgp.tools, NodeQuality, TCPQuality, streaming checks, and similar features will access corresponding third-party services. TCPQuality report-producing modes upload results to `tcpquality.ibsgss.uk` to generate a public report; route-only mode does not upload a report.
+- IPPure, bgp.tools, NodeQuality, TCPQuality, UnlockScope streaming checks, and similar features will access corresponding third-party services. UnlockScope uses public HTTP probes without login or form submission. TCPQuality report-producing modes upload results to `tcpquality.ibsgss.uk` to generate a public report; route-only mode does not upload a report.
 - Deleting a server only removes local Bot configuration. It does not delete or reinstall the remote machine.
 
 ## License
