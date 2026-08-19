@@ -30,7 +30,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.0').strip() or '0.5.0'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.1').strip() or '0.5.1'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -61,7 +61,7 @@ SCRIPT_SOURCES = {
     'vless': ('Xray-VLESS-Manager', 'https://github.com/shui1iao/Xray-VLESS-Manager'),
     'snell': ('Snell-Manager', 'https://github.com/shui1iao/Snell-Manager'),
 }
-UNLOCKSCOPE_VERSION = 'v0.1.0'
+UNLOCKSCOPE_VERSION = 'v0.1.1'
 UNLOCKSCOPE_INSTALL_URL = 'https://unlock.shuijiao.de'
 UNLOCKSCOPE_INSTALL_FALLBACK = (
     f'https://raw.githubusercontent.com/shui1iao/UnlockScope/{UNLOCKSCOPE_VERSION}/install.sh'
@@ -3104,12 +3104,12 @@ async def run_gb5_task(bot, chat_id, s, jid):
 
 STREAM_STATES = {'available', 'unavailable', 'region_only', 'failed', 'unknown'}
 STREAM_CATEGORY_LABELS = {
-    'streaming': '流媒体',
+    'streaming': 'Streaming',
     'ai': 'AI',
-    'social': '社交',
-    'knowledge': '知识与社区',
-    'games': '游戏 / 商店',
-    'sports': '体育',
+    'social': 'Social',
+    'knowledge': 'Knowledge & Community',
+    'games': 'Games / Stores',
+    'sports': 'Sports',
 }
 
 
@@ -3162,7 +3162,7 @@ def format_stream_summary(s, out, proto, region_label, region_id):
     available = sum(1 for r in results if r['state'] == 'available')
     unavailable = sum(1 for r in results if r['state'] == 'unavailable')
     other = max(0, total - available - unavailable)
-    detected_regions = sorted({r['region'] for r in results if r.get('region')})
+    detected_regions = sorted({str(r['region']).upper() for r in results if r.get('region')})
     head = [
         f'🎬 <b>{safe(s.get("name"))} 流媒体检测完成</b>',
         f'工具：<b>UnlockScope {UNLOCKSCOPE_VERSION}</b> · 协议：<b>{safe(proto)}</b> · 地区：<b>{safe(region_label)}</b>',
@@ -3199,6 +3199,7 @@ def stream_status_color(status, extra=''):
 
 
 def stream_status_label(status, extra=''):
+    normalized = str(status or '').lower()
     labels = {
         'available': '可用',
         'unavailable': '不可用',
@@ -3206,9 +3207,9 @@ def stream_status_label(status, extra=''):
         'failed': '检测失败',
         'unknown': '未知',
     }
-    value = labels.get(str(status or '').lower(), str(status or '未知'))
-    extra = str(extra or '').strip()
-    return f'{value} ({extra})' if extra else value
+    value = labels.get(normalized, str(status or '未知'))
+    extra = str(extra or '').strip().upper()
+    return f'{value}（{extra}）' if extra and normalized != 'unavailable' else value
 
 
 def load_font(candidates, size):
@@ -3287,9 +3288,11 @@ def stream_result_image(s, out, proto, region_label, region_id, out_png):
     y = title_h + 4
     table_left = pad
     table_right = W - pad
-    status_x = table_right
-    # mirror the script's tabbed layout: service name column then a fixed result column
+    # Right-align the visible glyph bounds, not the font advance width. Full-width
+    # closing parentheses have a larger right side bearing than short labels such
+    # as “未知”, which otherwise makes the short labels look pushed past the edge.
     name_col_width = 500
+    status_right = table_right - 12
 
     def fit_text(value, font, max_width):
         value = str(value or '-')
@@ -3318,7 +3321,9 @@ def stream_result_image(s, out, proto, region_label, region_id, out_png):
             status = fit_text(stream_status_label(result.get('state'), result.get('region')), status_font, 470)
             color = stream_status_color(result.get('state'), result.get('region'))
             d.text((table_left, y), name, fill=dark, font=mono_font)
-            d.text((status_x, y), status, fill=color, font=status_font, anchor='ra')
+            status_ink_bbox = status_font.getmask(status).getbbox()
+            status_ink_right = status_ink_bbox[2] if status_ink_bbox else int(d.textlength(status, font=status_font))
+            d.text((status_right - status_ink_right, y), status, fill=color, font=status_font)
             y += row_h
         end_rule = '=' * max(8, int((table_right - table_left) / max(d.textlength('=', font=mono_small), 1)))
         d.text((table_left, y), fit_text(end_rule, mono_small, table_right - table_left), fill=line, font=mono_small)

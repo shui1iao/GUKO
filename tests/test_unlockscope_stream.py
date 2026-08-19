@@ -82,12 +82,18 @@ class UnlockScopeStreamTest(unittest.TestCase):
         text = bot.format_stream_summary(
             {"name": "Tokyo"}, json.dumps(payload), "IPv4", "全球 + 日本", "jp"
         )
-        self.assertIn("UnlockScope v0.1.0", text)
+        self.assertIn("UnlockScope v0.1.1", text)
         self.assertIn("可用 1 / 不可用 0 / 其他 2", text)
-        self.assertIn("Netflix：✅", text)
+        self.assertIn("<b>Streaming</b>", text)
+        self.assertIn("<b>AI</b>", text)
+        self.assertIn("<b>Games / Stores</b>", text)
+        self.assertIn("Netflix：✅ <code>可用（JP）</code>", text)
         self.assertIn("Claude：⚠️", text)
-        self.assertIn("Steam Store：🟡", text)
-        self.assertEqual(bot.STREAM_CATEGORY_LABELS["knowledge"], "知识与社区")
+        self.assertIn("Steam Store：🟡 <code>仅地区可用（JP）</code>", text)
+        self.assertIn("探测地区：JP", text)
+        self.assertEqual(bot.stream_status_label("unavailable", "jp"), "不可用")
+        self.assertEqual(bot.stream_status_label("unknown", "jp"), "未知（JP）")
+        self.assertEqual(bot.STREAM_CATEGORY_LABELS["knowledge"], "Knowledge & Community")
         self.assertNotIn("<script>", text)
         self.assertIn("&lt;script&gt;", text)
 
@@ -95,7 +101,7 @@ class UnlockScopeStreamTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch.object(
             bot, "load_font", wraps=bot.load_font
         ) as load_font:
-            path = Path(tmp) / "stream.jpg"
+            path = Path(tmp) / "stream.png"
             rendered = bot.stream_result_image(
                 {"name": "Tokyo"}, json.dumps(result_payload()), "IPv4", "全球 + 日本", "jp", path
             )
@@ -104,10 +110,25 @@ class UnlockScopeStreamTest(unittest.TestCase):
             with Image.open(path) as image:
                 self.assertEqual(image.width, 1120)
                 self.assertGreater(image.height, 500)
+                pixels = image.load()
+                status_colors = [(22, 163, 74), (202, 138, 4), (124, 58, 237)]
+                right_edges = [
+                    max(
+                        x
+                        for y in range(image.height)
+                        for x in range(image.width)
+                        if pixels[x, y] == color
+                    )
+                    for color in status_colors
+                ]
+                self.assertLessEqual(max(right_edges) - min(right_edges), 1)
 
             image_source = inspect.getsource(bot.stream_result_image)
             self.assertNotIn("source_repo('stream')", image_source)
             self.assertNotIn("UNLOCKSCOPE_VERSION", image_source)
+            self.assertIn("status_right = table_right - 12", image_source)
+            self.assertIn("status_font.getmask(status).getbbox()", image_source)
+            self.assertIn("status_right - status_ink_right", image_source)
 
             fonts_at_section_size = [
                 call.args[0] for call in load_font.call_args_list if call.args[1] == 24
@@ -126,8 +147,8 @@ class UnlockScopeStreamTest(unittest.TestCase):
     def test_remote_command_is_pinned_json_and_shell_valid(self):
         command = bot.unlockscope_remote_command("4", "jp")
         self.assertIn("https://unlock.shuijiao.de", command)
-        self.assertIn("UnlockScope/v0.1.0/install.sh", command)
-        self.assertIn("UNLOCKSCOPE_VERSION=v0.1.0", command)
+        self.assertIn("UnlockScope/v0.1.1/install.sh", command)
+        self.assertIn("UNLOCKSCOPE_VERSION=v0.1.1", command)
         self.assertIn("--scope auto --json", command)
         self.assertIn("--ip 4", command)
         self.assertIn("--region jp", command)
