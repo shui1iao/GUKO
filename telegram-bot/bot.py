@@ -30,7 +30,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.1').strip() or '0.5.1'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.2').strip() or '0.5.2'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -61,7 +61,7 @@ SCRIPT_SOURCES = {
     'vless': ('Xray-VLESS-Manager', 'https://github.com/shui1iao/Xray-VLESS-Manager'),
     'snell': ('Snell-Manager', 'https://github.com/shui1iao/Snell-Manager'),
 }
-UNLOCKSCOPE_VERSION = 'v0.1.1'
+UNLOCKSCOPE_VERSION = 'v0.1.2'
 UNLOCKSCOPE_INSTALL_URL = 'https://unlock.shuijiao.de'
 UNLOCKSCOPE_INSTALL_FALLBACK = (
     f'https://raw.githubusercontent.com/shui1iao/UnlockScope/{UNLOCKSCOPE_VERSION}/install.sh'
@@ -712,10 +712,7 @@ def script_command_text(kind, **kwargs):
         )
     if kind == 'stream':
         ip_mode = kwargs.get('ip_mode') or 'auto'
-        region_id = str(kwargs.get('region_id') or '').strip()
         args = f'--scope auto --json --no-color --ip {ip_mode}'
-        if region_id:
-            args += f' --region {shlex.quote(region_id)}'
         return (
             '脚本命令：\n'
             f'UNLOCKSCOPE_VERSION={UNLOCKSCOPE_VERSION} bash <(curl -Ls {UNLOCKSCOPE_INSTALL_URL})\n'
@@ -3111,6 +3108,59 @@ STREAM_CATEGORY_LABELS = {
     'games': 'Games / Stores',
     'sports': 'Sports',
 }
+STREAM_COMMON_DISPLAY_IDS = frozenset({
+    # Global
+    'netflix', 'disney-plus', 'youtube-premium', 'prime-video', 'spotify',
+    'max', 'crunchyroll', 'apple-tv-plus', 'pluto-tv', 'tubi', 'discovery-plus',
+    # North America
+    'hulu', 'paramount-plus', 'peacock', 'youtube-tv', 'cbc-gem-na', 'crave-na',
+    # Hong Kong
+    'viu-hk', 'now-tv-hk', 'mytv-super-hk', 'tvb-hk', 'hbo-go-asia-hk',
+    # Taiwan
+    'kkbox-tw', 'bahamut-tw', 'kktv-tw', 'hami-video-tw', 'myvideo-tw', '4gtv-tw',
+    # Japan
+    'abema-jp', 'u-next-jp', 'dmm-tv-jp', 'tver-jp', 'wowow-jp', 'nhk-plus-jp', 'radiko-jp',
+    # Korea
+    'wavve-kr', 'watcha-kr', 'tving-kr', 'coupang-play-kr', 'kbs-kr',
+    # Europe
+    'bbc-iplayer-eu', 'itvx-eu', 'channel4-eu', 'zdf-eu', 'ard-eu',
+    'canal-plus-eu', 'raiplay-eu', 'skyshowtime-eu',
+    # South America / Africa / Oceania
+    'globoplay-sa', 'vix-sa', 'showmax-af', 'dstv-af',
+    'stan-oc', '9now-oc', '7plus-oc', 'abc-iview-oc', 'tvnz-oc',
+})
+
+
+def stream_display_results(results, region_id=''):
+    """Keep reports concise and show the runtime detector country."""
+    visible = []
+    for result in results:
+        if result.get('category') == 'streaming' and result.get('id') not in STREAM_COMMON_DISPLAY_IDS:
+            continue
+        result = dict(result)
+        country = str(result.get('country') or '').strip().lower()
+        if len(country) != 2 or not country.isalpha():
+            country = ''
+        result['region'] = country
+        visible.append(result)
+    return visible
+
+
+def stream_runtime_evidence(results):
+    """Return the shared egress country/source, never a service verdict."""
+    if not results:
+        return '', ''
+    countries = {str(result.get('country') or '').strip().upper() for result in results}
+    countries.discard('')
+    if len(countries) == 1 and all(str(result.get('country') or '').strip() for result in results):
+        sources = {str(result.get('country_source') or '').strip() for result in results}
+        sources.discard('')
+        return next(iter(countries)), (next(iter(sources)) if len(sources) == 1 else '')
+    egress_regions = {str(result.get('_egress_region') or '').strip().lower() for result in results}
+    egress_regions.discard('')
+    if len(egress_regions) == 1 and next(iter(egress_regions)) in {'hk', 'tw', 'jp', 'kr'}:
+        return next(iter(egress_regions)).upper(), ''
+    return '', ''
 
 
 def stream_json_results(text):
@@ -3133,7 +3183,7 @@ def stream_json_results(text):
             return None
         if item['state'] not in STREAM_STATES:
             return None
-        if any(key in item and not isinstance(item[key], str) for key in ('region', 'note')):
+        if any(key in item and not isinstance(item[key], str) for key in ('country', 'country_source', 'detected_country', 'region', 'note')):
             return None
     return payload
 
@@ -3154,7 +3204,7 @@ def stream_status_icon(status, extra=''):
 
 
 def format_stream_summary(s, out, proto, region_label, region_id):
-    results = parse_stream_results(out)
+    results = stream_display_results(parse_stream_results(out))
     groups = OrderedDict()
     for result in results:
         groups.setdefault(result['category'], []).append(result)
@@ -3170,6 +3220,8 @@ def format_stream_summary(s, out, proto, region_label, region_id):
     ]
     if detected_regions:
         head.append('探测地区：' + safe(', '.join(detected_regions)))
+    else:
+        head.append('探测地区：未知')
     if total:
         head.append(f'结果：可用 {available} / 不可用 {unavailable} / 其他 {other}')
     parts = ['\n'.join(head)]
@@ -3222,7 +3274,7 @@ def load_font(candidates, size):
 
 
 def stream_result_image(s, out, proto, region_label, region_id, out_png):
-    results = parse_stream_results(out)
+    results = stream_display_results(parse_stream_results(out))
     if not results:
         return None
     groups = OrderedDict()
@@ -3232,7 +3284,6 @@ def stream_result_image(s, out, proto, region_label, region_id, out_png):
     available = sum(1 for result in results if result['state'] == 'available')
     unavailable = sum(1 for result in results if result['state'] == 'unavailable')
     other = max(0, total - available - unavailable)
-
     font_cjk = [
         '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
         '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
@@ -3346,9 +3397,6 @@ def unlockscope_remote_command(ip_mode='auto', region_id=''):
     if ip_mode not in {'auto', '4', '6'}:
         raise ValueError(f'unsupported UnlockScope IP mode: {ip_mode}')
     args = f'--scope auto --json --no-color --ip {ip_mode} --timeout 8s --total-timeout 120s --concurrency 12'
-    region_id = str(region_id or '').strip().lower()
-    if region_id:
-        args += f' --region {shlex.quote(region_id)}'
     installer_url = shlex.quote(UNLOCKSCOPE_INSTALL_URL)
     installer_fallback = shlex.quote(UNLOCKSCOPE_INSTALL_FALLBACK)
     version = shlex.quote(UNLOCKSCOPE_VERSION)
@@ -3371,7 +3419,20 @@ def unlockscope_remote_command(ip_mode='auto', region_id=''):
         '  cleanup; trap - EXIT INT TERM; '
         'fi; '
         f'test "$("$unlockscope_bin" --version 2>/dev/null)" = {version}; '
-        'exec "$unlockscope_bin" ' + args + ' 2>&1'
+        'country_a="$(curl ' + curl_family + '-fsS --max-time 8 https://ipinfo.io/country 2>/dev/null | tr -d "\\r\\n" | tr "[:lower:]" "[:upper:]" || true)"; '
+        'country_b="$(curl ' + curl_family + '-fsS --max-time 8 "https://ipwho.is/?fields=country_code" 2>/dev/null | sed -n \'s/.*"country_code"[[:space:]]*:[[:space:]]*"\\([A-Za-z][A-Za-z]\\)".*/\\1/p\' | tr "[:lower:]" "[:upper:]" || true)"; '
+        'case "$country_a" in [A-Z][A-Z]) ;; *) country_a="";; esac; '
+        'case "$country_b" in [A-Z][A-Z]) ;; *) country_b="";; esac; '
+        'country=""; region_args=""; '
+        'if [ -n "$country_a" ] && [ "$country_a" = "$country_b" ]; then country="$country_a"; region_args=" --region ${country_a,,}"; fi; '
+        'output_file="$(mktemp "${TMPDIR:-/tmp}/guko-unlockscope-output.XXXXXX")"; '
+        'cleanup_output(){ rm -f "$output_file"; }; trap cleanup_output EXIT INT TERM; '
+        'if "$unlockscope_bin" ' + args + ' $region_args >"$output_file" 2>&1; then code=0; else code=$?; fi; '
+        'if grep -q '"'"'"country"'"'"' "$output_file"; then cat "$output_file"; '
+        'elif [ -n "$country" ] && [ "$code" -eq 0 ]; then '
+        '  sed "s/^  {$/  {\\n    \\"country\\": \\"$country\\",\\n    \\"country_source\\": \\"ipinfo.io + ipwho.is (一致)\\",/" "$output_file"; '
+        'else cat "$output_file"; fi; '
+        'exit "$code"'
     )
 
 

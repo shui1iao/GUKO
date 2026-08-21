@@ -76,19 +76,139 @@ class UnlockScopeStreamTest(unittest.TestCase):
         self.assertIsNone(bot.stream_json_results(json.dumps(malformed)))
         self.assertEqual(bot.parse_stream_results("{}"), [])
 
+    def test_display_results_keep_common_streaming_and_all_other_categories(self):
+        payload = result_payload()
+        payload.extend([
+            {
+                "id": "hulu",
+                "service": "Hulu",
+                "category": "streaming",
+                "regions": ["na"],
+                "region": "na",
+                "state": "available",
+                "duration_ms": 21,
+                "checked_at": "2026-08-16T00:00:00Z",
+            },
+            {
+                "id": "mubi",
+                "service": "MUBI",
+                "category": "streaming",
+                "regions": [],
+                "region": "na",
+                "state": "available",
+                "duration_ms": 19,
+                "checked_at": "2026-08-16T00:00:00Z",
+            },
+        ])
+
+        visible = bot.stream_display_results(payload)
+
+        self.assertEqual(
+            [item["id"] for item in visible],
+            ["netflix", "claude", "steam-store", "hulu"],
+        )
+
+        payload[0]["region"] = "AF"
+        normalized = bot.stream_display_results(payload, "na")
+        self.assertEqual(normalized[0]["region"], "")
+        self.assertEqual(payload[0]["region"], "AF")
+
+    def test_display_uses_runtime_country_only(self):
+        payload = result_payload()
+        payload[0]["country"] = "US"
+        payload[0]["region"] = "na"
+        visible = bot.stream_display_results(payload)
+
+        self.assertEqual(visible[0]["region"], "us")
+        self.assertEqual(visible[1]["region"], "")
+        self.assertEqual(visible[2]["region"], "")
+
+    def test_runtime_country_code_is_shown_without_server_fallback(self):
+        payload = result_payload()
+        for item in payload:
+            item["country"] = "HK"
+        visible = bot.stream_display_results(payload)
+        self.assertTrue(all(item["region"] == "hk" for item in visible))
+        text = bot.format_stream_summary(
+            {"name": "Configured US", "country": "us"},
+            json.dumps(payload),
+            "IPv4",
+            "全球 + 香港",
+            "hk",
+        )
+        self.assertIn("探测地区：HK", text)
+        self.assertIn("Netflix：✅ <code>可用（HK）</code>", text)
+        self.assertNotIn("可用（US）", text)
+        self.assertNotIn("来源：", text)
+
+    def test_hk_detector_result_is_not_rewritten_as_us(self):
+        payload = result_payload()
+        for item in payload:
+            item["country"] = "HK"
+            item["region"] = "na"
+        visible = bot.stream_display_results(payload)
+        self.assertTrue(all(item["region"] == "hk" for item in visible))
+        text = bot.format_stream_summary(
+            {"name": "Configured US", "country": "us"},
+            json.dumps(payload),
+            "IPv4",
+            "全球 + 香港",
+            "hk",
+        )
+        self.assertIn("探测地区：HK", text)
+        self.assertIn("可用（HK）", text)
+        self.assertNotIn("可用（US）", text)
+
+    def test_missing_runtime_country_is_unknown(self):
+        payload = result_payload()
+        for item in payload:
+            item.pop("country", None)
+            item.pop("region", None)
+        text = bot.format_stream_summary(
+            {"name": "Configured US", "country": "us"},
+            json.dumps(payload),
+            "IPv4",
+            "全球 + 北美",
+            "na",
+        )
+        self.assertIn("探测地区：未知", text)
+        self.assertNotIn("实际出口", text)
+        self.assertNotIn("可用（US）", text)
+        self.assertNotIn("可用（NA）", text)
+
+    def test_summary_uses_runtime_country_not_server_configuration(self):
+        payload = result_payload()
+        for item in payload:
+            item["country"] = "US"
+            item["country_source"] = "ipinfo.io + ipwho.is (一致)"
+        text = bot.format_stream_summary(
+            {"name": "Haruka", "country": "jp"},
+            json.dumps(payload),
+            "IPv4",
+            "全球 + 北美",
+            "na",
+        )
+        self.assertIn("探测地区：US", text)
+        self.assertIn("Netflix：✅ <code>可用（US）</code>", text)
+        self.assertNotIn("来源：ipinfo.io + ipwho.is (一致)", text)
+        self.assertNotIn("可用（NA）", text)
+        self.assertNotIn("可用（JP）", text)
+
     def test_summary_uses_unlockscope_states_and_escapes_notes(self):
         payload = result_payload()
+        for item in payload:
+            item["country"] = "JP"
         payload[0]["note"] = "<script>alert(1)</script>"
         text = bot.format_stream_summary(
             {"name": "Tokyo"}, json.dumps(payload), "IPv4", "全球 + 日本", "jp"
         )
-        self.assertIn("UnlockScope v0.1.1", text)
+        self.assertIn("UnlockScope v0.1.2", text)
         self.assertIn("可用 1 / 不可用 0 / 其他 2", text)
         self.assertIn("<b>Streaming</b>", text)
         self.assertIn("<b>AI</b>", text)
         self.assertIn("<b>Games / Stores</b>", text)
         self.assertIn("Netflix：✅ <code>可用（JP）</code>", text)
-        self.assertIn("Claude：⚠️", text)
+        self.assertIn("Claude：⚠️ <code>未知（JP）</code>", text)
         self.assertIn("Steam Store：🟡 <code>仅地区可用（JP）</code>", text)
         self.assertIn("探测地区：JP", text)
         self.assertEqual(bot.stream_status_label("unavailable", "jp"), "不可用")
@@ -147,11 +267,16 @@ class UnlockScopeStreamTest(unittest.TestCase):
     def test_remote_command_is_pinned_json_and_shell_valid(self):
         command = bot.unlockscope_remote_command("4", "jp")
         self.assertIn("https://unlock.shuijiao.de", command)
-        self.assertIn("UnlockScope/v0.1.1/install.sh", command)
-        self.assertIn("UNLOCKSCOPE_VERSION=v0.1.1", command)
+        self.assertIn("UnlockScope/v0.1.2/install.sh", command)
+        self.assertIn("UNLOCKSCOPE_VERSION=v0.1.2", command)
         self.assertIn("--scope auto --json", command)
         self.assertIn("--ip 4", command)
-        self.assertIn("--region jp", command)
+        self.assertIn("https://ipinfo.io/country", command)
+        self.assertIn("grep -q '\"country\"'", command)
+        self.assertIn("https://ipwho.is/?fields=country_code", command)
+        self.assertIn("region_args", command)
+        self.assertNotIn("--region na", command)
+        self.assertNotIn("--region us", command)
         self.assertIn("--total-timeout 120s", command)
         old_host = "check" + ".unlock.media"
         old_owner = "lmc" + "999"
@@ -165,7 +290,7 @@ class UnlockScopeStreamTest(unittest.TestCase):
         self.assertIn("bash <(curl -Ls https://unlock.shuijiao.de)", command)
         self.assertIn("unlockscope --scope auto --json", command)
         self.assertIn("--ip 6", command)
-        self.assertIn("--region eu", command)
+        self.assertNotIn("--region ", command)
 
     def test_invalid_ip_mode_is_rejected(self):
         with self.assertRaises(ValueError):
