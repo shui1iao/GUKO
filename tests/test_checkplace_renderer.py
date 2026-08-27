@@ -18,7 +18,7 @@ spec.loader.exec_module(renderer)
 
 
 class CheckPlaceRendererTest(unittest.TestCase):
-    def test_cli_defaults_keep_the_accepted_tight_terminal_grid(self):
+    def test_cli_defaults_use_the_bright_nodequality_style_grid(self):
         svg_text = (
             '<svg xmlns="http://www.w3.org/2000/svg" width="10ch" height="2em">'
             '<rect x="5ch" y="0em" width="2ch" height="1em" class="ba7"/>'
@@ -38,14 +38,14 @@ class CheckPlaceRendererTest(unittest.TestCase):
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             with Image.open(output) as image:
-                self.assertEqual(image.size, (136, 64))
+                self.assertEqual(image.size, (170, 80))
                 rgb = image.convert("RGB")
-                self.assertEqual(rgb.getpixel((0, 0)), (0, 0, 0))
-                self.assertEqual(rgb.getpixel((70, 10)), renderer.BG["ba7"])
+                self.assertEqual(rgb.getpixel((0, 0)), renderer.TERMINAL_BG)
+                self.assertEqual(rgb.getpixel((90, 10)), renderer.BG["ba7"])
 
     def test_terminal_colors_cover_all_report_highlights_and_remain_non_bold(self):
-        self.assertEqual(renderer.FG["fa2"], (45, 205, 65))
-        self.assertEqual(renderer.FG["fa7"], (205, 205, 205))
+        self.assertEqual(renderer.FG["fa2"], (100, 255, 116))
+        self.assertEqual(renderer.FG["fa7"], (246, 246, 246))
         for ansi in (4, 5, 6, 7):
             self.assertIn(f"fa{ansi}", renderer.FG)
             self.assertIn(f"ba{ansi}", renderer.BG)
