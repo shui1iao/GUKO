@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-import argparse, gzip, ipaddress, re, sys, time, socket, zlib
+import argparse, gzip, ipaddress, json, re, shlex, subprocess, sys, tempfile, time, socket, zlib
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from html.parser import HTMLParser
+from xml.etree import ElementTree
 
 OUTDIR = Path('/data/media/bgp')
+MAX_SVG_BYTES = 5 * 1024 * 1024
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.112 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -128,23 +130,134 @@ def search_prefixes(ip):
     rows.sort(key=lambda x: (x[3], x[0].prefixlen, -x[4]), reverse=True)
     return [(net, visibility, asn) for net, visibility, asn, _rank, _idx in rows]
 
+
+def _inflate_limited(data, wbits):
+    decompressor = zlib.decompressobj(wbits)
+    output = bytearray()
+    pending = data
+    while pending:
+        remaining = MAX_SVG_BYTES + 1 - len(output)
+        if remaining <= 0:
+            raise ValueError('decompressed response exceeds SVG size limit')
+        output.extend(decompressor.decompress(pending, remaining))
+        if len(output) > MAX_SVG_BYTES:
+            raise ValueError('decompressed response exceeds SVG size limit')
+        pending = decompressor.unconsumed_tail
+    remaining = MAX_SVG_BYTES + 1 - len(output)
+    output.extend(decompressor.flush(remaining))
+    if len(output) > MAX_SVG_BYTES:
+        raise ValueError('decompressed response exceeds SVG size limit')
+    if not decompressor.eof or decompressor.unused_data:
+        raise zlib.error('incomplete or concatenated compressed response')
+    return bytes(output)
+
+
+def decompress_limited(data, encoding):
+    if encoding == 'gzip':
+        return _inflate_limited(data, zlib.MAX_WBITS | 16)
+    if encoding == 'deflate':
+        try:
+            return _inflate_limited(data, zlib.MAX_WBITS)
+        except zlib.error:
+            return _inflate_limited(data, -zlib.MAX_WBITS)
+    return data
+
+
 def fetch(url, timeout=20):
     req=Request(url, headers=HEADERS)
     with urlopen(req, timeout=timeout) as r:
-        data = r.read()
+        data = r.read(MAX_SVG_BYTES + 1)
+        if len(data) > MAX_SVG_BYTES:
+            raise URLError('response exceeds SVG size limit')
         enc = (r.headers.get('content-encoding') or '').lower()
-        if enc == 'gzip':
-            data = gzip.decompress(data)
-        elif enc == 'deflate':
-            try:
-                data = zlib.decompress(data)
-            except zlib.error:
-                data = zlib.decompress(data, -zlib.MAX_WBITS)
+        try:
+            data = decompress_limited(data, enc)
+        except (ValueError, zlib.error) as exc:
+            raise URLError(str(exc)) from exc
         return data, r.headers.get('content-type','')
 
 def placeholder(svg: bytes):
     txt = svg[:20000].decode('utf-8', 'ignore')
     return 'Not_Visible' in txt and 'in_DFZ' in txt
+
+
+def is_svg_document(data: bytes):
+    try:
+        root = ElementTree.fromstring(data)
+    except (ElementTree.ParseError, ValueError):
+        return False
+    return root.tag in ('svg', '{http://www.w3.org/2000/svg}svg')
+
+
+def valid_ssh_host(host):
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return bool(
+            len(host) <= 253
+            and re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?', host)
+            and '..' not in host
+        )
+
+
+def fetch_via_managed_server(url, relay_config, timeout=40):
+    try:
+        raw = json.loads(Path(relay_config).read_text())
+        user = str(raw.get('user') or '')
+        host = str(raw.get('host') or '')
+        key = Path(str(raw.get('key') or ''))
+        known_hosts = Path(str(raw.get('known_hosts') or ''))
+        port = int(raw.get('port'))
+    except (OSError, TypeError, ValueError):
+        return None
+    if (
+        not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]*', user)
+        or not valid_ssh_host(host)
+        or not key.is_file()
+        or not known_hosts.is_file()
+        or not 1 <= port <= 65535
+    ):
+        return None
+    remote = (
+        f'curl -fsSL --max-time 25 --max-filesize {MAX_SVG_BYTES} '
+        '-A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122 Safari/537.36" '
+        '-H "Referer: https://bgp.tools/" '
+        '-H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" '
+        + shlex.quote(url)
+    )
+    try:
+        with tempfile.TemporaryFile() as output:
+            result = subprocess.run(
+                [
+                    'ssh', '-i', str(key),
+                    '-o', 'BatchMode=yes',
+                    '-o', 'IdentitiesOnly=yes',
+                    '-o', 'PasswordAuthentication=no',
+                    '-o', 'StrictHostKeyChecking=accept-new',
+                    '-o', f'UserKnownHostsFile={known_hosts}',
+                    '-o', 'ConnectTimeout=12',
+                    '-p', str(port), f'{user}@{host}', remote,
+                ],
+                stdout=output,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=timeout,
+            )
+            output.seek(0, 2)
+            if output.tell() > MAX_SVG_BYTES:
+                return None
+            output.seek(0)
+            data = output.read(MAX_SVG_BYTES + 1)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if (
+        result.returncode
+        or len(data) > MAX_SVG_BYTES
+        or not is_svg_document(data)
+    ):
+        return None
+    return data, 'image/svg+xml'
 
 def svg_to_png(svg_path: Path, png_path: Path):
     # Prefer cairosvg if present, fallback to rsvg-convert, then ImageMagick.
@@ -163,7 +276,7 @@ def svg_to_png(svg_path: Path, png_path: Path):
         return
     raise RuntimeError(f'no SVG converter available; install cairosvg/sharp/librsvg/imagemagick. last={last}')
 
-def fetch_bgp(ip, domain=None, outdir=OUTDIR):
+def fetch_bgp(ip, domain=None, outdir=OUTDIR, relay_config=None):
     outdir.mkdir(parents=True, exist_ok=True)
     tried=[]; ph=None
     for net in prefixes(ip):
@@ -171,15 +284,22 @@ def fetch_bgp(ip, domain=None, outdir=OUTDIR):
         urlip=pfx.replace('/','_')
         url=f'https://bgp.tools/pathimg/rt-{urlip}?4c1db184-e649-4491-8b7f-06177bcb4f25&loggedin'
         tried.append(url)
+        data = None
         try:
             data, ctype = fetch(url)
         except HTTPError as e:
             if e.code == 404: continue
-            continue
-        except URLError:
-            continue
-        if placeholder(data):
+        except (URLError, TimeoutError):
+            pass
+        if data is not None and placeholder(data):
             ph=pfx; continue
+        if data is None or not is_svg_document(data):
+            relayed = fetch_via_managed_server(url, relay_config) if relay_config else None
+            if not relayed:
+                continue
+            data, ctype = relayed
+            if placeholder(data):
+                ph=pfx; continue
         stamp=int(time.time())
         base=f'bgp-{str(net).replace("/","_")}-{stamp}'
         svg=outdir/(base+'.svg')
@@ -232,10 +352,13 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--dns', action='store_true')
     ap.add_argument('--outdir', default=str(OUTDIR), help='directory for generated BGP images')
+    ap.add_argument('--relay-config', help='mode-0600 resolved key-only SSH relay config')
     ap.add_argument('ip')
     args=ap.parse_args()
     ip, domain = resolve_target(args.ip)
-    return fetch_dns(ip, domain) if args.dns else fetch_bgp(ip, domain, Path(args.outdir))
+    return fetch_dns(ip, domain) if args.dns else fetch_bgp(
+        ip, domain, Path(args.outdir), Path(args.relay_config) if args.relay_config else None
+    )
 
 if __name__ == '__main__':
     raise SystemExit(main())

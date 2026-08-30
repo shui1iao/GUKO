@@ -30,7 +30,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.3').strip() or '0.5.3'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.4').strip() or '0.5.4'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -2249,19 +2249,57 @@ async def ensure_ippure_tool():
             raise RuntimeError('Playwright 自动安装失败：\n' + trim_log(out, 1000))
 
 
-async def generate_bgp_png(ip):
+def build_bgp_relay_config(server):
+    inv = load_inventory()
+    sid = str(server_id(server))
+    matches = [item for item in (inv.get('servers') or []) if str(server_id(item)) == sid]
+    if len(matches) != 1 or str(matches[0].get('host') or '') != str(server.get('host') or ''):
+        return None
+    cfg = resolve_ssh(matches[0], inv)
+    if cfg.get('auth') != 'key' or not cfg.get('key'):
+        return None
+    known_hosts = TMP_DIR / 'ssh_known_hosts'
+    known_hosts.parent.mkdir(parents=True, exist_ok=True)
+    known_hosts.touch(mode=0o600, exist_ok=True)
+    os.chmod(known_hosts, 0o600)
+    return {
+        'host': cfg.get('host'),
+        'user': cfg.get('user'),
+        'port': cfg.get('port'),
+        'key': cfg.get('key'),
+        'known_hosts': str(known_hosts),
+    }
+
+
+async def generate_bgp_png(ip, relay_server=None):
     await ensure_bgp_tool()
-    outdir = BGP_OUT_ROOT / f'bgp-{int(time.time())}-{os.getpid()}'
-    outdir.mkdir(parents=True, exist_ok=True)
-    code, out = await run_subprocess(['python3', str(BGP_FETCH), '--outdir', str(outdir), ip], timeout=120)
-    if code != 0:
-        if is_bgp_temporary_no_path(out):
-            raise RuntimeError(bgp_retry_message())
-        raise RuntimeError(trim_log(out, 1000) or f'BGP 生成失败：{code}')
-    png = parse_bgp_png(out, ip, outdir)
-    if not png.exists() or png.stat().st_size <= 0:
-        raise RuntimeError('BGP 图片生成后未找到文件')
-    return png
+    BGP_OUT_ROOT.mkdir(parents=True, exist_ok=True)
+    outdir = Path(tempfile.mkdtemp(prefix='bgp-', dir=str(BGP_OUT_ROOT)))
+    complete = False
+    try:
+        args = ['python3', str(BGP_FETCH), '--outdir', str(outdir)]
+        if relay_server:
+            relay = build_bgp_relay_config(relay_server)
+            if relay:
+                relay_path = outdir / 'relay.json'
+                fd = os.open(relay_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+                    json.dump(relay, handle)
+                args.extend(['--relay-config', str(relay_path)])
+        args.append(ip)
+        code, out = await run_subprocess(args, timeout=120)
+        if code != 0:
+            if is_bgp_temporary_no_path(out):
+                raise RuntimeError(bgp_retry_message())
+            raise RuntimeError(trim_log(out, 1000) or f'BGP 生成失败：{code}')
+        png = parse_bgp_png(out, ip, outdir)
+        if not png.exists() or png.stat().st_size <= 0:
+            raise RuntimeError('BGP 图片生成后未找到文件')
+        complete = True
+        return png
+    finally:
+        if not complete:
+            shutil.rmtree(outdir, True)
 
 
 async def generate_ippure_png(ip):
@@ -2286,18 +2324,22 @@ async def send_png_and_cleanup(bot, chat_id, png, cleanup_dir=None):
         if cleanup_dir:
             await asyncio.to_thread(shutil.rmtree, str(cleanup_dir), True)
 
-async def run_bgp_task(bot, chat_id, s, jid):
+async def run_bgp_task(bot, chat_id, s, jid, allow_relay=True):
     key = (server_id(s), 'bgp')
+    cleanup_dir = None
     try:
         ip = s.get('host')
-        png = await generate_bgp_png(ip)
+        png = await generate_bgp_png(ip, s if allow_relay else None)
+        cleanup_dir = Path(png).parent
         saved = persist_result_file(s, 'bgp', png, '.png')
         JOBS[jid].update({'status': 'done', 'log': str(png), 'media_path': saved})
-        await send_png_and_cleanup(bot, chat_id, png, Path(png).parent)
+        await send_png_and_cleanup(bot, chat_id, png, cleanup_dir)
     except Exception as e:
         JOBS[jid].update({'status': 'failed', 'log': repr(e)})
         await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} BGP 图失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
     finally:
+        if cleanup_dir:
+            shutil.rmtree(cleanup_dir, True)
         finish_job(jid, key)
 
 
@@ -4607,7 +4649,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.answer('这个 IP 的 BGP 图已经在生成了', show_alert=True)
             return
         await send_running_notice(context.bot, q.message.chat_id, pseudo, 'BGP 图任务')
-        asyncio.create_task(run_bgp_task(context.bot, q.message.chat_id, pseudo, jid))
+        asyncio.create_task(run_bgp_task(context.bot, q.message.chat_id, pseudo, jid, False))
     elif data.startswith('ippureip:'):
         ip = data.split(':', 1)[1]
         if not is_ipv4(ip):
