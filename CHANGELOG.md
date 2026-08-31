@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.5] - 2026-08-31
+
+### Changed
+- 同步独立 IP 查询 Bot 的 BGP 路由图请求与安全渲染逻辑；对齐 GUKO 的宿主网络、Playwright/Chromium 运行参数，并保留受管服务器中继回退。
+
+### Upgrade notes
+- 更新镜像并同步 Compose 运行参数后生效。
+
 ## [0.5.4] - 2026-08-30
 
 ### Fixed

@@ -9,23 +9,10 @@ from xml.etree import ElementTree
 OUTDIR = Path('/data/media/bgp')
 MAX_SVG_BYTES = 5 * 1024 * 1024
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.112 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'User-Agent': 'IP-Tools-Telegram-Bot/0.1.8 (+https://github.com/shui1iao/IP-Tools-Telegram-Bot)',
+    'Accept': 'image/svg+xml,text/html;q=0.8,*/*;q=0.5',
     'Accept-Encoding': 'gzip, deflate',
     'Referer': 'https://bgp.tools/',
-    'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
-    'Upgrade-Insecure-Requests': '1',
-    'Cache-Control': 'max-age=0',
-    'Sec-Ch-Ua': '"Chromium";v="122", "Google Chrome";v="122", "Not=A?Brand";v="99"',
-    'Sec-Ch-Ua-Mobile': '?0',
-    'Sec-Ch-Ua-Platform': '"Windows"',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Sec-Fetch-Dest': 'document',
-    'Dnt': '1',
-    'Sec-Gpc': '1',
-    'Pragma': 'no-cache',
 }
 
 class TextParser(HTMLParser):
@@ -260,21 +247,67 @@ def fetch_via_managed_server(url, relay_config, timeout=40):
     return data, 'image/svg+xml'
 
 def svg_to_png(svg_path: Path, png_path: Path):
-    # Prefer cairosvg if present, fallback to rsvg-convert, then ImageMagick.
+    # Try every available renderer. A single sharp/cairosvg failure must not
+    # prevent the bundled librsvg fallback from producing the BGP image.
+    import subprocess, shutil
+
+    errors = []
+
+    def valid_output():
+        return png_path.is_file() and png_path.stat().st_size > 0
+
+    def reset_output():
+        try:
+            png_path.unlink()
+        except FileNotFoundError:
+            pass
+
     try:
         import cairosvg
+        reset_output()
         cairosvg.svg2png(url=str(svg_path), write_to=str(png_path), output_width=2400)
-        return
+        if valid_output():
+            return
+        raise RuntimeError('converter produced an empty PNG')
     except Exception as e:
-        last=e
-    import subprocess, shutil
+        errors.append(f'cairosvg: {e}')
+        reset_output()
+
+    node_converter = Path(__file__).with_name('svg_to_png.js')
+    if node_converter.exists() and shutil.which('node'):
+        try:
+            subprocess.check_call(['node', str(node_converter), str(svg_path), str(png_path)])
+            if valid_output():
+                return
+            raise RuntimeError('converter produced an empty PNG')
+        except Exception as e:
+            errors.append(f'sharp: {e}')
+            reset_output()
+
     if shutil.which('rsvg-convert'):
-        subprocess.check_call(['rsvg-convert','-w','2400','-f','png','-o',str(png_path),str(svg_path)])
-        return
+        try:
+            subprocess.check_call(['rsvg-convert', '-w', '2400', '-f', 'png',
+                                   '-o', str(png_path), str(svg_path)])
+            if valid_output():
+                return
+            raise RuntimeError('converter produced an empty PNG')
+        except Exception as e:
+            errors.append(f'librsvg: {e}')
+            reset_output()
+
     if shutil.which('magick'):
-        subprocess.check_call(['magick','-density','300',str(svg_path),'-resize','2400x1800>',str(png_path)])
-        return
-    raise RuntimeError(f'no SVG converter available; install cairosvg/sharp/librsvg/imagemagick. last={last}')
+        try:
+            subprocess.check_call(['magick', '-density', '300', str(svg_path),
+                                   '-resize', '2400x1800>', str(png_path)])
+            if valid_output():
+                return
+            raise RuntimeError('converter produced an empty PNG')
+        except Exception as e:
+            errors.append(f'imagemagick: {e}')
+            reset_output()
+
+    detail = '; '.join(errors) if errors else 'no converter executable found'
+    raise RuntimeError(f'failed to convert SVG to PNG: {detail}')
 
 def fetch_bgp(ip, domain=None, outdir=OUTDIR, relay_config=None):
     outdir.mkdir(parents=True, exist_ok=True)
@@ -282,7 +315,7 @@ def fetch_bgp(ip, domain=None, outdir=OUTDIR, relay_config=None):
     for net in prefixes(ip):
         pfx=str(net)
         urlip=pfx.replace('/','_')
-        url=f'https://bgp.tools/pathimg/rt-{urlip}?4c1db184-e649-4491-8b7f-06177bcb4f25&loggedin'
+        url=f'https://bgp.tools/pathimg/rt-{urlip}'
         tried.append(url)
         data = None
         try:

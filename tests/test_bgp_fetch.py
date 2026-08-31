@@ -116,6 +116,27 @@ class BGPFetchTest(unittest.TestCase):
                 self.assertNotEqual(bgp.fetch_bgp(ip, outdir=root, relay_config=root / "relay.json"), 0)
                 relayed.assert_not_called()
 
+    def test_direct_request_uses_current_ip_bot_path_without_legacy_query(self):
+        ip = ipaddress.IPv4Address("51.241.130.238")
+        prefix = ipaddress.IPv4Network("51.241.130.0/24")
+        seen = []
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            def fetch_direct(url):
+                seen.append(url)
+                return VALID_SVG, "image/svg+xml"
+
+            def convert(_svg_path: Path, png_path: Path):
+                png_path.write_bytes(b"\\x89PNG\\r\\n\\x1a\\nvalid")
+
+            with patch.object(bgp, "prefixes", return_value=[prefix]), patch.object(
+                bgp, "fetch", side_effect=fetch_direct
+            ), patch.object(bgp, "svg_to_png", side_effect=convert):
+                self.assertEqual(bgp.fetch_bgp(ip, outdir=root), 0)
+
+        self.assertEqual(seen, ["https://bgp.tools/pathimg/rt-51.241.130.0_24"])
+
     def test_compressed_response_is_decompressed_with_a_hard_output_bound(self):
         compressed = gzip.compress(b"x" * (bgp.MAX_SVG_BYTES + 1), compresslevel=9)
 

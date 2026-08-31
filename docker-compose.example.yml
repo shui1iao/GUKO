@@ -3,6 +3,10 @@ services:
   guko-bot:
     image: ghcr.io/shui1iao/guko:latest
     container_name: guko-bot
+    network_mode: host
+    shm_size: "1gb"
+    security_opt:
+      - seccomp=unconfined
     # Reap orphaned Chromium/Crashpad children left behind by Playwright.
     init: true
     restart: unless-stopped
