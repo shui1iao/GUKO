@@ -289,6 +289,36 @@ def server_id(s):
         return compact_server_identifier(value)
     return compact_server_identifier(s.get('name'))
 
+
+def reorder_servers(servers, sid: str, direction: str):
+    offset = {'up': -1, 'down': 1}.get(direction)
+    if offset is None:
+        return None
+    reordered = list(servers)
+    index = next(
+        (i for i, server in enumerate(reordered) if str(server_id(server)) == str(sid)),
+        None,
+    )
+    if index is None:
+        return None
+    target = index + offset
+    if target < 0 or target >= len(reordered):
+        return None
+    reordered[index], reordered[target] = reordered[target], reordered[index]
+    return reordered
+
+
+def move_server_by_id(sid: str, direction: str):
+    inv = load_inventory()
+    reordered = reorder_servers(inv.get('servers') or [], sid, direction)
+    if reordered is None:
+        return False
+    inv['servers'] = reordered
+    inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
+    save_inventory(inv)
+    return True
+
+
 def update_server_by_id(sid: str, patch: dict):
     inv = load_inventory()
     servers = inv.get('servers') or []
@@ -784,6 +814,21 @@ def main_menu_markup():
         InlineKeyboardButton('➕ 添加服务器', callback_data='add:start'),
         InlineKeyboardButton('📥 批量导入', callback_data='add:bulk'),
     ])
+    rows.append([InlineKeyboardButton('↕️ 调整顺序', callback_data='sort:list')])
+    return InlineKeyboardMarkup(rows)
+
+
+def server_sort_markup(servers):
+    rows = []
+    last = len(servers) - 1
+    for index, server in enumerate(servers):
+        sid = server_id(server)
+        rows.append([
+            InlineKeyboardButton(f'{index + 1}. {server.get("name") or sid}', callback_data='sort:stay'),
+            InlineKeyboardButton('⬆️', callback_data=f'sort:up:{sid}' if index > 0 else 'sort:stay'),
+            InlineKeyboardButton('⬇️', callback_data=f'sort:down:{sid}' if index < last else 'sort:stay'),
+        ])
+    rows.append([InlineKeyboardButton('↩️ 返回服务器列表', callback_data='act:list')])
     return InlineKeyboardMarkup(rows)
 
 
@@ -4319,6 +4364,20 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.answer('该功能未启用', show_alert=True)
     elif data == 'act:list':
         await send_or_edit(update, menu_text(), main_menu_markup())
+    elif data.startswith('sort:'):
+        if not await admin_guard(update): return
+        if data == 'sort:stay':
+            return
+        if data != 'sort:list':
+            parts = data.split(':', 2)
+            if len(parts) == 3 and parts[1] in ('up', 'down'):
+                move_server_by_id(parts[2], parts[1])
+        servers = load_inventory().get('servers', [])
+        await q.edit_message_text(
+            '↕️ <b>调整服务器顺序</b>\n\n点击箭头后立即保存。',
+            parse_mode=ParseMode.HTML,
+            reply_markup=server_sort_markup(servers),
+        )
     elif data.startswith('edit:'):
         if not await admin_guard(update): return
         sid = data.split(':', 1)[1]
