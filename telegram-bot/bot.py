@@ -4370,8 +4370,10 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if data != 'sort:list':
             parts = data.split(':', 2)
-            if len(parts) == 3 and parts[1] in ('up', 'down'):
-                move_server_by_id(parts[2], parts[1])
+            if len(parts) != 3 or parts[1] not in ('up', 'down') or not parts[2]:
+                return
+            if not move_server_by_id(parts[2], parts[1]):
+                return
         servers = load_inventory().get('servers', [])
         await q.edit_message_text(
             '↕️ <b>调整服务器顺序</b>\n\n点击箭头后立即保存。',

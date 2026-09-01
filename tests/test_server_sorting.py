@@ -234,6 +234,44 @@ class ServerSortCallbackTest(unittest.TestCase):
             with self.subTest(direction=direction):
                 asyncio.run(exercise(direction))
 
+    def test_unmoved_callback_does_not_reload_or_edit(self):
+        async def exercise():
+            update, query = callback_update("sort:up:bravo")
+            move = MagicMock(return_value=False)
+            load = MagicMock()
+            with patch.object(bot, "ALLOWED_USERS", {"1"}), patch.object(
+                bot, "ADMIN_USERS", {"1"}
+            ), patch.object(bot, "move_server_by_id", move, create=True), patch.object(
+                bot, "load_inventory", load
+            ):
+                await bot.on_button(update, SimpleNamespace())
+
+            move.assert_called_once_with("bravo", "up")
+            load.assert_not_called()
+            query.edit_message_text.assert_not_awaited()
+
+        asyncio.run(exercise())
+
+    def test_invalid_sort_callbacks_do_not_move_reload_or_edit(self):
+        async def exercise(data: str):
+            update, query = callback_update(data)
+            move = MagicMock()
+            load = MagicMock()
+            with patch.object(bot, "ALLOWED_USERS", {"1"}), patch.object(
+                bot, "ADMIN_USERS", {"1"}
+            ), patch.object(bot, "move_server_by_id", move, create=True), patch.object(
+                bot, "load_inventory", load
+            ):
+                await bot.on_button(update, SimpleNamespace())
+
+            move.assert_not_called()
+            load.assert_not_called()
+            query.edit_message_text.assert_not_awaited()
+
+        for data in ("sort:up", "sort:left:bravo", "sort:up:"):
+            with self.subTest(data=data):
+                asyncio.run(exercise(data))
+
     def test_stay_callback_does_not_move_reload_or_edit(self):
         async def exercise():
             update, query = callback_update("sort:stay")
