@@ -18,7 +18,7 @@ spec.loader.exec_module(renderer)
 
 
 class CheckPlaceRendererTest(unittest.TestCase):
-    def test_cli_defaults_use_the_bright_nodequality_style_grid(self):
+    def test_cli_defaults_use_source_ratio_grid_with_high_contrast(self):
         svg_text = (
             '<svg xmlns="http://www.w3.org/2000/svg" width="10ch" height="2em">'
             '<rect x="5ch" y="0em" width="2ch" height="1em" class="ba7"/>'
@@ -38,12 +38,12 @@ class CheckPlaceRendererTest(unittest.TestCase):
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             with Image.open(output) as image:
-                self.assertEqual(image.size, (170, 80))
+                self.assertEqual(image.size, (160, 76))
                 rgb = image.convert("RGB")
                 self.assertEqual(rgb.getpixel((0, 0)), renderer.TERMINAL_BG)
                 self.assertEqual(rgb.getpixel((90, 10)), renderer.BG["ba7"])
 
-    def test_terminal_colors_cover_all_report_highlights_and_remain_non_bold(self):
+    def test_terminal_colors_and_regular_default_faces_are_preserved(self):
         self.assertEqual(renderer.FG["fa2"], (100, 255, 116))
         self.assertEqual(renderer.FG["fa7"], (246, 246, 246))
         for ansi in (4, 5, 6, 7):
@@ -71,7 +71,7 @@ class CheckPlaceRendererTest(unittest.TestCase):
                 renderer.FG[foreground_name],
             )
 
-    def test_braille_latency_graph_uses_symbols_font_when_installed(self):
+    def test_braille_fallback_font_has_glyphs_when_installed(self):
         self.assertTrue(renderer.is_braille("⣀"))
         symbols_path = Path(renderer.DEFAULT_SYMBOLS)
         if not symbols_path.is_file():

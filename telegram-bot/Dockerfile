@@ -16,6 +16,9 @@ ENV NODE_PATH=/usr/lib/node_modules PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 COPY auth.py guko.py jiaoops.py /app/
 RUN mkdir -p /data/keys /data/media /data/tmp
 COPY telegram-bot/bot.py telegram-bot/render_checkplace.py /app/
+# Fail the build if a required regular/bold/oblique face is missing. Private
+# xyBarMono stays outside the public image; mount it via CHECKPLACE_GRAPH_FONT.
+RUN python -c "from PIL import ImageFont; import render_checkplace as r; [ImageFont.truetype(getattr(r, name), 28) for name in ('DEFAULT_LATIN', 'DEFAULT_LATIN_ITALIC', 'DEFAULT_LATIN_BOLD', 'DEFAULT_LATIN_BOLD_ITALIC', 'DEFAULT_CJK', 'DEFAULT_CJK_BOLD', 'DEFAULT_SYMBOLS')]"
 COPY telegram-bot/tools/ /app/tools/
 ENV BGP_FETCH=/app/tools/bgp_fetch.py IPPURE_DOWNLOAD=/app/tools/download_ippure.js
 CMD ["python", "/app/bot.py"]
