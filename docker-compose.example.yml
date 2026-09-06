@@ -18,3 +18,5 @@ services:
       - ./results:/data/results
       - ./history.json:/data/history.json
       - ./tmp:/data/tmp
+      # Supply xyBarNQ.ttf locally; the licensed font is not in the image.
+      - ./fonts:/data/fonts:ro

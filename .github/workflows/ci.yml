@@ -25,5 +25,9 @@ jobs:
         run: python -m py_compile auth.py guko.py jiaoops.py telegram-bot/bot.py optional/update_from_nezha.py
       - name: Docker build
         run: docker build -t guko-ci -f telegram-bot/Dockerfile .
+      # Openly licensed font is only for synthetic safety/geometry tests.
+      # Private approved-image golden tests are run by the operator, never uploaded.
+      - name: ANSI renderer tests
+        run: docker run --rm --network none -e CHECKPLACE_TERMINAL_FONT=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf -v "$PWD:/src:ro" -w /src guko-ci sh -c 'node --test telegram-bot/tests/test_render_ansi*.js'
       - name: Unit tests
         run: docker run --rm --network none -v "$PWD:/src:ro" -w /src guko-ci python -m unittest discover -s tests -v

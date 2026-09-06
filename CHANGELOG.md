@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.7] - 2026-09-06
+
+### Changed
+- 独立 IP质量及 NQ 单项/部分结果图统一使用离线 ANSI 终端渲染，保留字体粗细、斜体、原始图形和终端比例。
+- 修复彩色背景块内文字偏上；长回程图保持居中修正并完整显示内容。
+- NQ 全选四项仍只发送官方总报告链接。
+
+### Fixed
+- 使用本次 NQ 原始日志，避免读取历史结果；隔离 SSH 提示信息，防止污染报告。
+- 增加输入及图片尺寸限制、离线安全策略、渲染超时/取消清理；转换失败明确提示并保留报告链接。
+
+### Upgrade notes
+- 配置新增私有显示字体：将合法取得的 `xyBarNQ.ttf` 放入 Compose 目录的 `fonts/`，只读挂载至 `/data/fonts`，设置 `CHECKPLACE_TERMINAL_FONT=/data/fonts/xyBarNQ.ttf`。字体不随源码或镜像分发，请遵守其授权。详见 `telegram-bot/resources/checkplace-terminal/README.md`。
+- 未配置字体时检测仍可运行并返回链接，独立 IP/NQ 分项图片转换会明确失败，不会静默回退旧 SVG 绘图。
+- 无服务器资料或历史数据迁移；更新镜像和 Compose 配置即可。
+
 ## [0.5.6] - 2026-09-01
 
 ### Added
