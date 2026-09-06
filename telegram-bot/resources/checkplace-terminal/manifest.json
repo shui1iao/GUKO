@@ -1,0 +1,37 @@
+{
+  "version": "official-index-HO53nBUc-content-addressed (upstream semver not asserted)",
+  "sources": {
+    "bundle": {
+      "url": "https://nodequality.com/assets/index-HO53nBUc.js",
+      "sha256": "ebbeb22e5357a7386074a53358c7037ba1bc50f08a878a47c9c6f70c94b5cacf"
+    },
+    "css": {
+      "description": "Official CSS saved as nq.css alongside audited bundle",
+      "sha256": "4782b16eff28b8566a5223f2ccc6cc25539b8ca39138c0ee223bdfd2a6dc022d"
+    }
+  },
+  "extraction": {
+    "runtimeStartCharacters": 128531,
+    "runtimeEndCharacters": 411043,
+    "runtimeUnmodifiedSha256": "04c852e790743ca9afcaa6b6ab46b254b53e538359cdd5750a058b4dc3815b8c",
+    "xtermCSSRules": 43
+  },
+  "files": {
+    "xterm.js": {
+      "sha256": "f37e7a86f4f2285570558c1dfc16d288c281e4db4c7fabf97058ceb4e6f1d853",
+      "bytes": 284332
+    },
+    "xterm.css": {
+      "sha256": "2255bfaeca30fe93c0f8a096d45797c7663ce3c84b01fec4af9d466f5bdef4bd",
+      "bytes": 4613
+    },
+    "theme-adventure-time.json": {
+      "sha256": "2ad43fa0c980d03fcb29ba03b1ef40e4bef79ac4e8553d986f1cdef14f065bfc",
+      "bytes": 478
+    },
+    "LICENSE.xterm": {
+      "sha256": "f18c60ef467344d9886e3c0782be05af9216902c9a8206e0cfca2c389d3c63cf",
+      "bytes": 1580
+    }
+  }
+}
