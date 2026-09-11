@@ -34,6 +34,24 @@ class AnsiExtractionTest(unittest.TestCase):
         self.assertNotIn('Downloading', result)
         self.assertNotIn('\x1b[2J', result)
 
+    def test_progress_and_report_divider_sharing_lf_line_preserves_header(self):
+        for reset in ['', '\x1b[0m', '\x1b[0m\x1b[1;37m']:
+            with self.subTest(reset=reset):
+                expected = '\r' + reset + REPORT.lstrip('\r')
+                raw = '正在检测黑名单数据库 95%\r\r' + expected + '\x1b[2Jgoodbye'
+                result = bot.extract_ip_ansi_report(raw, URL)
+                self.assertRegex(bot.strip_ansi(result.split('\n')[0]).strip(), r'^#{72}$')
+                self.assertNotIn('95%', result)
+                self.assertNotIn('正在检测', result)
+                self.assertIn('\x1b[42m低', result)
+                self.assertEqual(result[result.index('#'):], bot.extract_ip_ansi_report(REPORT, URL)[bot.extract_ip_ansi_report(REPORT, URL).index('#'):])
+
+    def test_divider_in_progress_without_carriage_return_is_not_header(self):
+        raw = 'Downloading ' + '#'*72 + '\n' + REPORT.split('\n',1)[1]
+        result = bot.extract_ip_ansi_report(raw, URL)
+        self.assertNotIn('Downloading', result)
+        self.assertIn('IP质量体检报告', result.split('\n')[0])
+
     def test_ipv6_followup_is_not_combined_with_first_report(self):
         second = REPORT.replace(URL, URL.replace('ABC123', 'SECOND')).replace('192.0.2.*', '2001:db8::*')
         result = bot.extract_ip_ansi_report(RAW + second, URL)
@@ -177,6 +195,9 @@ class NodeQualityShellTest(unittest.TestCase):
             td = Path(td)
             upstream = td / 'upstream.sh'
             upstream.write_text('''#!/bin/bash
+function run_ip_quality(){
+    chroot_run bash <(curl -Ls https://IP.Check.Place) $opt_ipv $opt_lang -y -o /result/$ip_quality_json_filename
+}
 while getopts '4d:' opt; do [ "$opt" != d ] || base=$OPTARG; done
 work_dir="$base/.nodequalityCURRENT"
 mkdir -p "$work_dir/BenchOs/result"

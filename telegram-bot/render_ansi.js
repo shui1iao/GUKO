@@ -177,6 +177,60 @@ async function renderAnsi({input, output, kind}) {
       }
     }, kind);
     if (JSON.stringify(before) !== JSON.stringify(await page.evaluate(geometry))) throw new Error('Background or cell geometry changed');
+    // Source headers are centered with spaces for the original terminal width.
+    // Safe columns and long route rows widen the PNG. Move only header rows,
+    // using the rendered text bounds (including CJK), never rewrite ANSI cells.
+    const headerRows = await page.evaluate(kind => {
+      const rows = [...document.querySelectorAll('.xterm-rows > div')];
+      const lines = rows.map(row => row.textContent.trim());
+      const titles = {ip: /^(?:IP质量体检报告|IP QUALITY CHECK REPORT)\s*[:：]/u,
+        hardware: /^硬件质量体检报告\s*[:：]/u,
+        net: /^网络质量体检报告\s*[:：]/u, backroute: /^网络质量体检报告\s*[:：]/u};
+      const divider = text => /^([#*+])\1{19,}$/u.test(text);
+      // Require the complete six-row frame. A missing closing divider must not
+      // turn subsequent body rows into a header. Keep unknown layouts intact.
+      if (!divider(lines[0] || '') || !titles[kind].test(lines[1] || '') ||
+          lines[5] !== lines[0] || lines.slice(2, 5).some(line => !line || divider(line))) return [];
+      const end = 5;
+      const capture = document.getElementById('capture').getBoundingClientRect();
+      const center = capture.x + capture.width / 2;
+      const result = [];
+      for (let index = 0; index <= end; index++) {
+        const row = rows[index];
+        const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+        const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+        const first = nodes.find(node => /\S/u.test(node.textContent));
+        const last = nodes.findLast(node => /\S/u.test(node.textContent));
+        if (!first) continue;
+        const range = document.createRange();
+        range.setStart(first, first.textContent.search(/\S/u));
+        range.setEnd(last, last.textContent.trimEnd().length);
+        const bounds = range.getBoundingClientRect();
+        const shift = center - (bounds.left + bounds.right) / 2;
+        row.style.transform = `translateX(${shift}px)`;
+        const after = range.getBoundingClientRect();
+        if (Math.abs((after.left + after.right) / 2 - center) > 0.1 ||
+            after.left < capture.left + 19.9 || after.right > capture.right - 19.9) {
+          throw new Error('Report header is not centered or would be clipped');
+        }
+        result.push({row: index, shift, left: after.left - capture.left,
+          right: after.right - capture.left, centerX: (after.left + after.right) / 2 - capture.left});
+      }
+      return result;
+    }, kind);
+    const centeredGeometry = await page.evaluate(geometry);
+    // Only header x coordinates may change; body, colors, cell sizes and text
+    // must remain identical to the approved rendering.
+    const rowHeight = metrics.screenHeight / metrics.rows;
+    for (let i = 0; i < before.length; i++) {
+      const previous = before[i], current = centeredGeometry[i];
+      const row = Math.round((previous[1] - 20) / rowHeight);
+      const shift = headerRows.find(header => header.row === row)?.shift || 0;
+      if (!current || Math.abs(current[0] - previous[0] - shift) > 0.1 ||
+          JSON.stringify(current.slice(1)) !== JSON.stringify(previous.slice(1))) {
+        throw new Error('Header centering changed non-header geometry or report content');
+      }
+    }
     const box = await page.locator('#capture').boundingBox();
     assertTelegramPhoto(Math.round(box.width * 2), Math.round(box.height * 2), 1);
     const png = await page.locator('#capture').screenshot({type: 'png', timeout: 15000});
@@ -184,7 +238,7 @@ async function renderAnsi({input, output, kind}) {
     assertTelegramPhoto(width, height, png.length);
     // Inspect after screenshot as well: checking classes before screenshot missed a
     // real tall-report repaint bug in the prototype.
-    if (JSON.stringify(before) !== JSON.stringify(await page.evaluate(geometry))) throw new Error('Screenshot changed terminal geometry');
+    if (JSON.stringify(centeredGeometry) !== JSON.stringify(await page.evaluate(geometry))) throw new Error('Screenshot changed terminal geometry');
     const spans = await page.evaluate(() => [...document.querySelectorAll('.xterm-rows > div > span')].map(span => ({
       text: span.textContent, padding: getComputedStyle(span).paddingTop, boxSizing: getComputedStyle(span).boxSizing,
       colored: span.classList.contains('colored-label'), background: getComputedStyle(span).backgroundColor,
@@ -198,7 +252,7 @@ async function renderAnsi({input, output, kind}) {
     try {fs.writeFileSync(temporary, png, {flag: 'wx', mode: 0o600}); fs.renameSync(temporary, output);}
     finally {try {fs.unlinkSync(temporary);} catch (error) {if (error.code !== 'ENOENT') throw error;}}
     return {...metrics, width, height, bytes: png.length, sha256: sha256(png), kind,
-      cellGeometryUnchanged: true, networkRequests, fontSha256: sha256(font),
+      cellGeometryUnchanged: true, headerGeometryOnly: true, headerRows, networkRequests, fontSha256: sha256(font),
       resources: resources.manifest.files, spans};
   } finally {
     try {if (page) await page.close();}

@@ -85,6 +85,56 @@ if (available) {
     assert.equal(metrics.height,fs.readFileSync(path.join(dir,'synthetic.png')).readUInt32BE(20));
     assert.ok(metrics.spans.every(s=>s.boxSizing==='border-box'));
   });
+  test('all report headers center within the final canvas without changing terminal data', async () => {
+    for (const [kind,title,width] of [['ip','IP质量体检报告',72],['hardware','硬件质量体检报告',80],['net','网络质量体检报告',80],['backroute','网络质量体检报告',80]]) {
+      const divider = '#'.repeat(width);
+      const raw = [divider, '    \x1b[1;33m'+title+'：192.0.2.123\x1b[0m',
+        '     https://github.com/xykt/Test', '    bash test', '  报告时间：2026-01-01', divider,
+        '\x1b[47;30m机房\x1b[0m '+(kind==='backroute'?'A'.repeat(120):'body'),
+        '         正文缩进不能变', divider].join('\n\r');
+      const metrics = await renderAnsi({input:input('header-'+kind,raw),output:path.join(dir,'header-'+kind+'.png'),kind});
+      assert.equal(metrics.headerRows?.length,6,kind+' header must be measured and centered');
+      assert.equal(metrics.headerGeometryOnly,true);
+      assert.equal(metrics.contentsPreserved,true);
+      assert.ok(metrics.text.includes('         正文缩进不能变'));
+      for (const row of metrics.headerRows) {
+        assert.ok(Math.abs(row.centerX-metrics.width/4)<0.5,`${kind} row ${row.row} not centered`);
+        assert.ok(row.left>=20 && row.right<=metrics.width/2-20,kind+' header clipped');
+      }
+      assert.ok(metrics.spans.filter(s=>s.text.includes('机房')).every(s=>s.padding==='3px'));
+    }
+  });
+  test('unknown terminal content is not mistaken for a report header', async () => {
+    const metrics=await renderAnsi({input:input('no-header','####################\n    ordinary title\n####################\nbody'),output:path.join(dir,'no-header.png'),kind:'ip'});
+    assert.deepEqual(metrics.headerRows,[]);
+  });
+  test('incomplete or mismatched header dividers never move body rows', async () => {
+    const divider='#'.repeat(72);
+    const header=[divider,'    IP质量体检报告：192.0.2.1','    https://github.com/xykt/IPQuality','    bash test','    报告时间：2026-01-01'];
+    for (const [name,tail] of [
+      ['missing',['body','more body',divider]],
+      ['different-type',['*'.repeat(72),'body']],
+      ['different-width',['#'.repeat(70),'body']],
+      ['early',[divider,'body']],
+    ]) {
+      const lines=name==='early'?[...header.slice(0,4),...tail]:[...header,...tail];
+      const metrics=await renderAnsi({input:input('bad-header-'+name,lines.join('\n')),output:path.join(dir,'bad-header-'+name+'.png'),kind:'ip'});
+      assert.deepEqual(metrics.headerRows,[],name+' must preserve original layout');
+    }
+  });
+  test('English IP header and negative shifts preserve colored header cells', async () => {
+    const divider='#'.repeat(100);
+    const raw=[divider,' '.repeat(65)+'\x1b[1;43m  IP QUALITY CHECK REPORT: 192.0.2.1  \x1b[0m',
+      '   https://github.com/xykt/IPQuality','   bash test','   Report time: 2026-01-01',divider,'body'].join('\n');
+    const metrics=await renderAnsi({input:input('english-header',raw),output:path.join(dir,'english-header.png'),kind:'ip'});
+    assert.equal(metrics.headerRows.length,6);
+    assert.ok(metrics.headerRows[1].shift<0,'title should move left');
+    for (const row of metrics.headerRows) assert.ok(Math.abs(row.centerX-metrics.width/4)<0.1);
+    const title=metrics.spans.find(s=>s.text.includes('IP QUALITY CHECK REPORT'));
+    assert.equal(title.colored,true);
+    assert.equal(title.padding,'3px');
+    assert.equal(metrics.headerGeometryOnly,true);
+  });
   test('IP excludes vertical risk markers but permits colored box glyph labels', async () => {
     const metrics=await renderAnsi({input:input('ip','\x1b[47;30m机房\x1b[0m \x1b[41m|||\x1b[0m\n\x1b[42m─图\x1b[0m'),output:path.join(dir,'ip.png'),kind:'ip'});
     assert.equal(metrics.spans.find(s=>s.text.includes('|||')).padding,'1px');

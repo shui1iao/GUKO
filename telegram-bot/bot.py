@@ -30,7 +30,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.7').strip() or '0.5.7'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.8').strip() or '0.5.8'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -1192,6 +1192,43 @@ def nq_remote_ipv_arg(s, ip_mode):
     return '' if (ip_mode == '46' and server_has_ipv6(s)) else '-4'
 
 
+def ipquality_hotfix_definition():
+    """Patch only the known upstream PrimeVideo parser before its report is built."""
+    old = "local result=$(echo $tmpresult|grep '\"currentTerritory\":'|sed 's/.*currentTerritory//'|cut -f3 -d'\"'|head -n 1)"
+    new = '''local result=""
+local territory_pattern='"currentTerritory"[[:space:]]*:[[:space:]]*"([A-Z]{2})"'
+if [[ $tmpresult =~ $territory_pattern ]]; then
+result="${BASH_REMATCH[1]}"
+else
+amazon[ustatus]="${smedia[bad]}"
+amazon[uregion]="${smedia[nodata]}"
+amazon[utype]="${smedia[nodata]}"
+return
+fi'''
+    return (
+        'guko_ipquality_script() { local source old new rest; '
+        'source=$(curl -fLsS --max-time 60 https://IP.Check.Place) || return; '
+        + 'old=' + shlex.quote(old) + '; new=' + shlex.quote(new) + '; '
+        + 'if [[ "$source" != *"$old"* ]]; then '
+        + "printf '%s\\n' 'GUKO: IPQuality Amazon parser changed; refusing unverified patch' >&2; return 65; fi; "
+        + 'rest=${source#*"$old"}; if [[ "$rest" == *"$old"* ]]; then '
+        + "printf '%s\\n' 'GUKO: ambiguous IPQuality Amazon parser' >&2; return 65; fi; "
+        + 'source=${source/"$old"/"$new"}; printf \'%s\\n\' "$source"; }; '
+        + 'export -f guko_ipquality_script; '
+    )
+
+
+def nodequality_ipquality_patch_command():
+    return (
+        ipquality_hotfix_definition()
+        + 'script_text=$(<"$script"); old_download=\'curl -Ls https://IP.Check.Place\'; '
+        + 'if [[ "$script_text" != *"$old_download"* ]]; then '
+        + "printf '%s\\n' 'GUKO: NodeQuality IP entry changed; refusing unverified patch' >&2; exit 65; fi; "
+        + 'script_text=${script_text//"$old_download"/guko_ipquality_script}; '
+        + 'printf \'%s\\n\' "$script_text" > "$script"; '
+    )
+
+
 def nodequality_patch_command():
     return (
         "sed -i 's#rm -rf \\\"${work_dir}\\\"/#: \\\"${work_dir}\\\"#' \"$script\"; "
@@ -1242,6 +1279,7 @@ def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4', *, work_dir=Non
         + "script=$(mktemp /root/nodequality.XXXXXX.sh); "
         + "curl -fsSL --max-time 60 https://run.NodeQuality.com -o \"$script\"; "
         + nodequality_patch_command()
+        + (nodequality_ipquality_patch_command() if mask & 2 else '')
         + log_patch
         + "printf %b " + shlex.quote(answers) + " | bash \"$script\" " + ipv_arg + dir_arg
     )
@@ -2467,9 +2505,21 @@ def extract_ip_ansi_report(output, report_url):
     if not titles:
         raise ValueError('IP ANSI 日志缺少完整报告标题')
     start_line = titles[-1]
-    if start_line and re.fullmatch(r'\s*#{20,}\s*', strip_ansi(lines[start_line - 1])):
-        start_line -= 1
     start = sum(len(line) + 1 for line in lines[:start_line])
+    if start_line:
+        previous = lines[start_line - 1]
+        if re.fullmatch(r'\s*#{20,}\s*', strip_ansi(previous)):
+            start -= len(previous) + 1
+        else:
+            # Standalone upstream finishes its progress spinner with CR, not
+            # LF. The opening divider can share that physical line. Preserve
+            # its exact SGR bytes while dropping only the preceding progress.
+            sgr = r'\x1b\[[0-9;:]*m'
+            divider = re.search(
+                rf'\r(?:[ \t]|{sgr})*#{{20,}}(?:[ \t\r]|{sgr})*$', previous,
+            )
+            if divider:
+                start -= len(previous) + 1 - divider.start()
     return output[start:end + len(report_url)] + '\x1b[0m\n'
 
 
@@ -3035,7 +3085,8 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
 async def run_ip_quality_task(bot, chat_id, s, jid):
     key = (server_id(s), 'ipq')
     try:
-        remote = "export TERM=xterm-256color; cd /tmp && bash <(curl -Ls https://IP.Check.Place) -y"
+        remote = ('export TERM=xterm-256color; cd /tmp && '
+                  + ipquality_hotfix_definition() + 'bash <(guko_ipquality_script) -y')
         code, out, url = await run_until_report(ssh_args(s, remote, tty=False), timeout=900, env=ssh_env_for(s))
         JOBS[jid].update({'status': 'done' if url else 'failed', 'log': out})
         if not url:
