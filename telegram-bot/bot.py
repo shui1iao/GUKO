@@ -3,6 +3,7 @@ import asyncio
 import csv
 import hashlib
 import html
+import ipaddress
 import json
 import os
 import select
@@ -30,7 +31,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.8').strip() or '0.5.8'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.9').strip() or '0.5.9'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -326,7 +327,7 @@ def update_server_by_id(sid: str, patch: dict):
         if str(server_id(s)) == str(sid):
             merged = dict(s)
             ssh = dict(merged.get('ssh') or {})
-            for k in ('name', 'host', 'aliases', 'role', 'specs'):
+            for k in ('name', 'host', 'aliases', 'role', 'specs', 'ipv6', 'ipv6_status'):
                 if k in patch:
                     merged[k] = patch[k]
             if 'ssh' in patch:
@@ -749,7 +750,8 @@ def script_command_text(kind, **kwargs):
             f'unlockscope {args}'
         )
     if kind == 'ipq':
-        return '脚本命令：\nbash <(curl -Ls https://IP.Check.Place) -y'
+        suffix = ' -4' if kwargs.get('ip_mode', '4') == '4' else ''
+        return '脚本命令：\nbash <(curl -Ls https://IP.Check.Place) -y' + suffix
     if kind in PROXY_TOOLS:
         tool = PROXY_TOOLS[kind]
         action = kwargs.get('action') or '<install|view>'
@@ -1146,7 +1148,122 @@ def tcpquality_remote_command(mode):
     )
 
 
-def confirm_nq_markup(s, mask=NQ_DEFAULT_MASK, ip_mode='4'):
+IPV6_UNCHECKED = (False, '尚未确认 IPv6 可用，仅可测试 IPv4。')
+IPV6_PROBE_COMMAND = r'''if [ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" = 1 ]; then
+printf 'GUKO_IPV6=disabled\n'; exit 0; fi
+if command -v ip >/dev/null 2>&1; then
+if ! addresses=$(ip -6 -o addr show scope global 2>/dev/null); then
+printf 'GUKO_IPV6=unknown\n'; exit 0; fi
+if [ -z "$addresses" ]; then printf 'GUKO_IPV6=no-address\n'; exit 0; fi
+fi
+if ! command -v curl >/dev/null 2>&1; then printf 'GUKO_IPV6=no-curl\n'; exit 0; fi
+for u in https://api64.ipify.org https://ipv6.icanhazip.com; do
+v=$(curl --noproxy '*' -6 -fsS --connect-timeout 2 --max-time 4 "$u" 2>/dev/null) || continue
+case "$v" in *[!0-9a-fA-F:]*|'') continue;; *:*) printf 'GUKO_IPV6=%s\n' "$v"; exit 0;; esac
+done
+printf 'GUKO_IPV6=unknown\n'
+'''
+
+
+def stored_ipv6_status(s):
+    record = s.get('ipv6_status') or {}
+    if record.get('available') in (True, False):
+        return bool(record['available']), record.get('reason') or '已记录 IPv6 状态。'
+    # Preserve legacy discovered addresses until the next real test refreshes them.
+    if server_has_ipv6(s):
+        return True, '已记录 IPv6，实际测试时更新状态。'
+    return IPV6_UNCHECKED
+
+
+def ssh_endpoint(s):
+    cfg = ssh_config(s)
+    return cfg.get('host'), cfg.get('port')
+
+
+def update_ipv6_from_output(s, output, *, expected_endpoint=None):
+    values = re.findall(r'^GUKO_IPV6=([^\r\n]+)', output, re.M)
+    if not values:
+        return None  # SSH/timeout without evidence must not erase known addresses.
+    value = values[-1].strip()
+    reasons = {
+        'disabled': '系统已禁用 IPv6，仅可测试 IPv4。',
+        'no-address': '未检测到全局 IPv6 地址，仅可测试 IPv4。',
+    }
+    if value in reasons:
+        available, address, reason = False, '', reasons[value]
+    else:
+        try:
+            ip = ipaddress.IPv6Address(value)
+        except ValueError:
+            return None
+        if not ip.is_global:
+            return None
+        available, address, reason = True, str(ip), '已记录 IPv6 可用，实际测试时更新状态。'
+    # Reload only the matching endpoint; don't overwrite a retargeted/deleted node.
+    current = find_server_by_id(server_id(s))
+    if (not current or current.get('host') != s.get('host')
+            or ssh_endpoint(current) != (expected_endpoint or ssh_endpoint(s))):
+        return None
+    patch = {'ipv6': address, 'ipv6_status': {
+        'available': available, 'reason': reason, 'checked_at': iso_now(),
+    }}
+    updated = update_server_by_id(server_id(s), patch)
+    if updated is None:
+        return None
+    s.update(patch)
+    return available, reason
+
+
+async def detect_server_ipv6(s):
+    """One initial detection when adding/importing, never from menu callbacks."""
+    try:
+        endpoint = ssh_endpoint(s)
+        code, out = await run_subprocess(ssh_args(s, IPV6_PROBE_COMMAND, tty=False),
+                                         timeout=20, env=ssh_env_for(s))
+        if code == 0:
+            status = update_ipv6_from_output(s, out, expected_endpoint=endpoint)
+            if status is not None:
+                return status
+    except Exception:
+        pass
+    return False, 'IPv6 状态未确认；实际测试时更新，不影响已保存的服务器。'
+
+
+def ipquality_markup(s, ip_mode='4', ipv6_status=IPV6_UNCHECKED):
+    if not ipv6_status[0]:
+        ip_mode = '4'
+    sid = server_id(s)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(('✅ ' if mode == ip_mode else '☐ ') + label,
+                              callback_data=f'ipqproto:{sid}:{mode}')
+         for mode, label in NQ_IP_MODES.items() if mode == '4' or ipv6_status[0]],
+        [InlineKeyboardButton('✅ 开始测试', callback_data=f'ipqrun:{sid}:{ip_mode}')],
+        [InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')],
+    ])
+
+
+def ipquality_menu_text(s, ip_mode='4', ipv6_status=IPV6_UNCHECKED):
+    if not ipv6_status[0]:
+        ip_mode = '4'
+    return (
+        f'🧪 <b>{safe(s.get("name"))} · IP质量</b>\n\n'
+        f'IP 协议：<b>{safe(nq_ip_mode_text(ip_mode))}</b>\n\n'
+        '选择 IPv4 + IPv6 时，会等待两种协议检测结束并分别返回报告。\n'
+        f'{safe(ipv6_status[1])}'
+    )
+
+
+def ipquality_remote_command(ip_mode='4'):
+    if ip_mode not in NQ_IP_MODES:
+        raise ValueError('未知 IP质量协议选项')
+    suffix = ' -4' if ip_mode == '4' else ''
+    return ('export TERM=xterm-256color; cd /tmp && '
+            + ipquality_hotfix_definition() + 'bash <(guko_ipquality_script) -y' + suffix)
+
+
+def confirm_nq_markup(s, mask=NQ_DEFAULT_MASK, ip_mode='4', ipv6_status=IPV6_UNCHECKED):
+    if not ipv6_status[0]:
+        ip_mode = '4'
     sid = server_id(s)
     rows = []
     for _key, label, _full, bit in NQ_ITEMS:
@@ -1157,11 +1274,9 @@ def confirm_nq_markup(s, mask=NQ_DEFAULT_MASK, ip_mode='4'):
         InlineKeyboardButton('全选', callback_data=f'nqsel:{sid}:{NQ_ALL_MASK}:{ip_mode}'),
         InlineKeyboardButton('清空', callback_data=f'nqsel:{sid}:0:{ip_mode}'),
     ])
-    if server_has_ipv6(s):
-        rows.append([
-            InlineKeyboardButton(('✅ ' if ip_mode == '4' else '☐ ') + '仅 IPv4', callback_data=f'nqproto:{sid}:{mask}:4'),
-            InlineKeyboardButton(('✅ ' if ip_mode == '46' else '☐ ') + 'IPv4 + IPv6', callback_data=f'nqproto:{sid}:{mask}:46'),
-        ])
+    rows.append([InlineKeyboardButton(('✅ ' if ip_mode == mode else '☐ ') + label,
+                                      callback_data=f'nqproto:{sid}:{mask}:{mode}')
+                 for mode, label in NQ_IP_MODES.items() if mode == '4' or ipv6_status[0]])
     run_text = '✅ 开始测试' if mask != NQ_ALL_MASK else '✅ 开始全测'
     rows.append([InlineKeyboardButton(run_text, callback_data=f'nqrun:{sid}:{mask}:{ip_mode}')])
     rows.append([InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')])
@@ -1188,8 +1303,8 @@ def nq_answer_script(mask):
 
 
 def nq_remote_ipv_arg(s, ip_mode):
-    # NodeQuality default runs dual-stack when IPv6 exists. Force -4 for v4-only.
-    return '' if (ip_mode == '46' and server_has_ipv6(s)) else '-4'
+    # Let upstream detect live IPv6; inventory metadata may be absent or stale.
+    return '' if ip_mode == '46' else '-4'
 
 
 def ipquality_hotfix_definition():
@@ -1325,12 +1440,15 @@ def stream_markup(s):
     ])
 
 
-def nq_menu_text(s, mask, ip_mode):
+def nq_menu_text(s, mask, ip_mode, ipv6_status=IPV6_UNCHECKED):
+    if not ipv6_status[0]:
+        ip_mode = '4'
     return (
         f'📊 选择要在 <b>{safe(s.get("name"))}</b> 跑的 NodeQuality 项目：\n\n'
         f'当前项目：<b>{safe(nq_selected_text(mask))}</b>\n'
         f'IP 协议：<b>{safe(nq_ip_mode_text(ip_mode))}</b>\n\n'
-        '点击项目进行选择/取消；全选就是完整 NodeQuality。'
+        '点击项目进行选择/取消；全选就是完整 NodeQuality。\n'
+        f'{safe(ipv6_status[1])}'
     )
 
 def menu_text():
@@ -1599,6 +1717,8 @@ async def finish_single_add(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     if sess.get('auth_kind') in ('key', 'password', 'default'):
         ok, out = await test_server_login(saved)
         ok_text = ('✅ 登录成功：' if ok else '⚠️ 已保存，但登录测试失败：') + safe(out[-800:])
+    _ipv6_ok, ipv6_reason = await detect_server_ipv6(saved)
+    ok_text += '\n' + safe(ipv6_reason)
     clear_add_session(update.effective_chat.id)
     verb = '更新' if action == 'updated' else '添加'
     cfg = ssh_config(saved)
@@ -1625,15 +1745,20 @@ async def finish_bulk_add(update: Update, context: ContextTypes.DEFAULT_TYPE, se
     for item in items:
         saved, action = upsert_server(item)
         results.append((saved, action))
+    sem = asyncio.Semaphore(3)
+    async def initialize_ipv6(saved):
+        async with sem:
+            return await detect_server_ipv6(saved)
+    ipv6_results = await asyncio.gather(*(initialize_ipv6(saved) for saved, _action in results))
     clear_add_session(update.effective_chat.id)
     lines = [f'✅ 已导入 {len(results)} 台服务器。']
     if errors:
         lines.append(f'⚠️ 跳过 {len(errors)} 行：')
         lines.extend(errors[:6])
     lines.append('\n前几台：')
-    for saved, action in results[:8]:
+    for (saved, action), (_ipv6_ok, ipv6_reason) in zip(results[:8], ipv6_results[:8]):
         cfg = ssh_config(saved)
-        lines.append(f'- {saved.get("name")}  {cfg.get("user")}@{cfg.get("host")}:{cfg.get("port")}  {action}')
+        lines.append(f'- {saved.get("name")}  {cfg.get("user")}@{cfg.get("host")}:{cfg.get("port")}  {action}\n  {ipv6_reason}')
     await update.effective_message.reply_text('\n'.join(safe(x) for x in lines), parse_mode=ParseMode.HTML, reply_markup=main_menu_markup())
 
 
@@ -2204,7 +2329,7 @@ async def send_long_text(bot, chat_id, text, *, parse_mode=None):
 
 
 
-async def run_until_report(args, timeout=900, env=None):
+async def run_until_report(args, timeout=900, env=None, *, wait_for_exit=False):
     proc = await asyncio.create_subprocess_exec(
         *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, env=env
     )
@@ -2227,7 +2352,7 @@ async def run_until_report(args, timeout=900, env=None):
                 out.extend(chunk)
                 text = out.decode(errors='replace')
                 report = first_report_url(text, 'ip') or report
-                if report:
+                if report and not wait_for_exit:
                     proc.terminate()
                     try:
                         await asyncio.wait_for(proc.wait(), timeout=3)
@@ -2245,6 +2370,7 @@ async def run_until_report(args, timeout=900, env=None):
                 proc.kill()
             except ProcessLookupError:
                 pass
+        await proc.wait()
 
 
 async def run_subprocess(args, timeout, *, send_enter_after=None, env=None):
@@ -2487,16 +2613,46 @@ NQ_ANSI_REPORTS = (
 )
 
 
+def ipquality_ansi_reports(output):
+    """Collect full terminal reports, including upstream Lite without a URL."""
+    lines = output.split('\n')
+    starts = [i for i, line in enumerate(lines)
+              if re.search(r'IP质量体检报告|IP QUALITY CHECK REPORT', strip_ansi(line))]
+    reports = []
+    for index, start in enumerate(starts):
+        end = starts[index + 1] - 1 if index + 1 < len(starts) else len(lines)
+        section = '\n'.join(lines[max(0, start - 1):end])
+        url = next((u for u in extract_urls(strip_ansi(section))
+                    if re.fullmatch(r'https://Report\.Check\.Place/ip/[A-Za-z0-9_-]+\.svg', u)), None)
+        try:
+            reports.append((url, extract_ip_ansi_report(section, url)))
+        except ValueError:
+            # A title alone is not a report, especially when a dual run times out.
+            continue
+    return reports
+
+
 def extract_ip_ansi_report(output, report_url):
     """Slice the final report verbatim; strip ANSI only for boundary detection.
 
     IP.Check.Place prints its complete colored report before its SVG URL. Keep
     LFCR/SGR intact, excluding download progress and later terminal clear codes.
-    The first URL remains the existing standalone task's completion boundary.
+    Each requested URL selects its own preceding report, including IPv6.
     """
-    end = output.find(report_url)
-    if end < 0:
-        raise ValueError('IP ANSI 日志缺少报告链接')
+    if report_url:
+        end = output.find(report_url)
+        if end < 0:
+            raise ValueError('IP ANSI 日志缺少报告链接')
+    else:
+        # Lite reports deliberately do not upload. Require the full footer,
+        # never manufacture a public URL or render an unfinished progress log.
+        end = 0
+        for line in output.splitlines(keepends=True):
+            end += len(line)
+            if re.search(r'感谢使用xy系列脚本|Thanks for running xy scripts!', strip_ansi(line)):
+                break
+        else:
+            raise ValueError('IP ANSI 日志缺少完整报告结尾')
     prefix = output[:end]
     # Split only at LF: splitlines() treats upstream LFCR as two separate rows.
     lines = prefix.split('\n')
@@ -2520,7 +2676,7 @@ def extract_ip_ansi_report(output, report_url):
             )
             if divider:
                 start -= len(previous) + 1 - divider.start()
-    return output[start:end + len(report_url)] + '\x1b[0m\n'
+    return output[start:end + len(report_url or '')] + '\x1b[0m\n'
 
 
 async def run_ansi_subprocess(args, timeout=120, *, separate_stderr=False, env=None):
@@ -3082,31 +3238,67 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
         finish_job(jid, key)
 
 
-async def run_ip_quality_task(bot, chat_id, s, jid):
+async def run_ip_quality_task(bot, chat_id, s, jid, ip_mode='4'):
     key = (server_id(s), 'ipq')
     try:
-        remote = ('export TERM=xterm-256color; cd /tmp && '
-                  + ipquality_hotfix_definition() + 'bash <(guko_ipquality_script) -y')
-        code, out, url = await run_until_report(ssh_args(s, remote, tty=False), timeout=900, env=ssh_env_for(s))
-        JOBS[jid].update({'status': 'done' if url else 'failed', 'log': out})
-        if not url:
-            await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} IP质量没拿到报告链接。\n<pre>{safe(trim_log(out))}</pre>", parse_mode=ParseMode.HTML)
-            return
-        out_dir = Path('/tmp/guko-results')
-        out_dir.mkdir(parents=True, exist_ok=True)
-        png = out_dir / f"ipq-{server_id(s)}-{int(time.time())}.png"
+        endpoint = ssh_endpoint(s)
+        remote = '(' + IPV6_PROBE_COMMAND + '); ' + ipquality_remote_command(ip_mode)
+        code, out, _first_url = await run_until_report(
+            ssh_args(s, remote, tty=False), timeout=1800 if ip_mode == '46' else 900,
+            env=ssh_env_for(s), wait_for_exit=ip_mode == '46',
+        )
+        ipv6_status = update_ipv6_from_output(s, out, expected_endpoint=endpoint)
+        reports = ipquality_ansi_reports(out)
+        if ip_mode == '4':
+            reports = reports[:1]
+        # Upstream ends with a conditional IPv6 check; unavailable IPv6 exits 1.
+        completed = bool(reports) and code in (0, 1)
+        JOBS[jid].update({'status': 'done' if completed else 'failed', 'log': out,
+                          'ip_mode': nq_ip_mode_text(ip_mode), 'media_paths': []})
+        if not reports:
+            message = f"❌ {safe(s.get('name'))} IP质量没拿到完整报告。\n<pre>{safe(trim_log(out))}</pre>"
+        else:
+            errors = []
+            media_paths = JOBS[jid]['media_paths']
+            with tempfile.TemporaryDirectory(prefix='guko-ipq-') as td:
+                for index, (url, raw_report) in enumerate(reports, 1):
+                    png = Path(td) / f'report-{index}.png'
+                    try:
+                        await render_ansi_png(raw_report, png, kind='ip')
+                        saved = persist_result_file(s, 'ipq', png, f'-{index}.png', clear=not media_paths)
+                        if saved:
+                            media_paths.append(saved)
+                    except Exception as e:
+                        errors.append(f'第 {index} 份转 PNG 失败：{e}')
+                        continue
+                    try:
+                        with png.open('rb') as photo:
+                            await bot.send_photo(chat_id, photo=photo)
+                    except Exception as e:
+                        errors.append(f'第 {index} 份图片发送失败：{e}')
+            state = '✅' if completed else '⚠️'
+            result = '完成' if completed else f'未完成（退出码 {code}，保留已生成报告）'
+            message = f"{state} {safe(s.get('name'))} IP质量{result}（{safe(nq_ip_mode_text(ip_mode))}）\n"
+            message += '\n'.join(safe(url) if url else f'第 {index} 份报告：上游未提供公开链接，已保留终端报告。'
+                                 for index, (url, _raw) in enumerate(reports, 1))
+            if ip_mode == '46' and len(reports) == 1 and not (ipv6_status is not None and not ipv6_status[0]):
+                message += '\n\n双栈模式仅收到一份报告，另一协议可能不可用或未生成。'
+            message += f"\n\n{script_command_html('ipq', ip_mode=ip_mode)}"
+            if errors:
+                message += '\n\n' + safe(trim_log('；'.join(errors), 800))
+                JOBS[jid]['delivery_error'] = '；'.join(errors)
+        if ipv6_status is not None and not ipv6_status[0]:
+            message += '\n\n⚠️ 没有可用 IPv6，已更新服务器 IP 状态；本次仅测试 IPv4。'
         try:
-            await render_ansi_png(extract_ip_ansi_report(out, url), png, kind='ip')
-            saved = persist_result_file(s, 'ipq', png, '.png')
-            JOBS[jid].update({'media_path': saved})
-            with png.open('rb') as f:
-                await bot.send_photo(chat_id, photo=f)
-            await bot.send_message(chat_id, f"✅ {safe(s.get('name'))} IP质量完成\n{safe(url)}\n\n{script_command_html('ipq')}", parse_mode=ParseMode.HTML)
+            await bot.send_message(chat_id, message, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
         except Exception as e:
-            await bot.send_message(chat_id, f"✅ {safe(s.get('name'))} IP质量报告：\n{safe(url)}\n\n{script_command_html('ipq')}\n\n转 PNG 失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
+            JOBS[jid]['delivery_error'] = str(e)
     except Exception as e:
         JOBS[jid].update({'status': 'failed', 'log': repr(e)})
-        await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} IP质量任务失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
+        try:
+            await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} IP质量任务失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
+        except Exception as delivery_error:
+            JOBS[jid]['delivery_error'] = str(delivery_error)
     finally:
         finish_job(jid, key)
 
@@ -4026,8 +4218,10 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
         selected_text = nq_selected_text(mask)
         ip_text = nq_ip_mode_text(ip_mode)
         work_dir = '/root/guko-nodequality-' + os.urandom(16).hex()
-        remote = nodequality_remote_command(s, mask, ip_mode, work_dir=work_dir)
+        endpoint = ssh_endpoint(s)
+        remote = '(' + IPV6_PROBE_COMMAND + '); ' + nodequality_remote_command(s, mask, ip_mode, work_dir=work_dir)
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=7200, env=ssh_env_for(s))
+        ipv6_status = update_ipv6_from_output(s, out, expected_endpoint=endpoint)
         JOBS[jid].update({'log': out, 'selected': selected_text, 'ip_mode': ip_text})
         nq = nodequality_url(out)
         gb_urls = geekbench_urls(out)
@@ -4073,6 +4267,8 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
         final_ok = bool(nq or report_links or image_ok)
         JOBS[jid].update({'status': 'done' if final_ok else 'failed'})
         msg = f"✅ {safe(s.get('name'))} NodeQuality 完成：{safe(selected_text)}；{safe(ip_text)}" if final_ok else f"❌ {safe(s.get('name'))} NodeQuality 失败：{safe(selected_text)}；{safe(ip_text)}"
+        if ipv6_status is not None and not ipv6_status[0]:
+            msg += '\n\n⚠️ 没有可用 IPv6，已更新服务器 IP 状态；本次仅测试 IPv4。'
         if nq:
             msg += f"\n\nNodeQuality:\n{safe(nq)}"
         if gb_urls:
@@ -4110,6 +4306,19 @@ async def send_history_result(bot, chat_id, s, kind):
         p = Path(x)
         if p.exists() and p.is_file() and p.stat().st_size > 0:
             media_paths.append(p)
+    if kind == 'ipq':
+        errors = []
+        for media in media_paths:
+            try:
+                with media.open('rb') as photo:
+                    await bot.send_photo(chat_id, photo=photo)
+            except Exception as e:
+                errors.append(str(e))
+        text = history_detail_text(s, kind)
+        if errors:
+            text += '\n\n图片重发失败：' + safe(trim_log('；'.join(errors), 500))
+        await bot.send_message(chat_id, text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        return bool(media_paths or item.get('urls'))
     if kind == 'tcpq':
         if item.get('status') != 'done':
             await bot.send_message(
@@ -4856,14 +5065,26 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"TCPQuality（{safe(config['label'])}）",
             jid is not None,
         )
-    elif data.startswith('ipq:'):
-        sid = data.split(':', 1)[1]
+    elif data.startswith(('ipq:', 'ipqproto:', 'ipqrun:')):
+        parts = data.split(':')
+        action, sid = parts[:2]
+        ip_mode = parts[2] if len(parts) > 2 else '4'
         s = find_server_by_id(sid)
         if not s:
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
-        jid = launch_job(s, 'ipq', run_ip_quality_task, context.bot, q.message.chat_id, s)
-        await bot_task_started_notice(context.bot, q.message.chat_id, s, 'IP质量任务', jid is not None)
+        if ip_mode not in NQ_IP_MODES:
+            await q.answer('未知 IP质量协议选项', show_alert=True)
+            return
+        ipv6_status = stored_ipv6_status(s)
+        blocked = ip_mode == '46' and not ipv6_status[0]
+        if action != 'ipqrun' or blocked:
+            await q.edit_message_text(ipquality_menu_text(s, ip_mode, ipv6_status), parse_mode=ParseMode.HTML,
+                                      reply_markup=ipquality_markup(s, ip_mode, ipv6_status))
+            return
+        ip_text = nq_ip_mode_text(ip_mode)
+        jid = launch_job(s, 'ipq', run_ip_quality_task, context.bot, q.message.chat_id, s, ip_mode, ip_mode=ip_text)
+        await bot_task_started_notice(context.bot, q.message.chat_id, s, f'IP质量任务（{safe(ip_text)}）', jid is not None)
     elif data.startswith('gb5:'):
         sid = data.split(':', 1)[1]
         s = find_server_by_id(sid)
@@ -4961,9 +5182,10 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
         mask = NQ_DEFAULT_MASK
+        ipv6_status = stored_ipv6_status(s)
         await q.edit_message_text(
-            nq_menu_text(s, mask, '4'),
-            parse_mode=ParseMode.HTML, reply_markup=confirm_nq_markup(s, mask, '4')
+            nq_menu_text(s, mask, '4', ipv6_status),
+            parse_mode=ParseMode.HTML, reply_markup=confirm_nq_markup(s, mask, '4', ipv6_status)
         )
     elif data.startswith('nqtoggle:') or data.startswith('nqsel:') or data.startswith('nqproto:'):
         parts = data.split(':')
@@ -4977,11 +5199,10 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             mask = NQ_DEFAULT_MASK
         ip_mode = parts[3] if len(parts) > 3 else '4'
-        if ip_mode == '46' and not server_has_ipv6(s):
-            ip_mode = '4'
+        ipv6_status = stored_ipv6_status(s)
         await q.edit_message_text(
-            nq_menu_text(s, mask, ip_mode),
-            parse_mode=ParseMode.HTML, reply_markup=confirm_nq_markup(s, mask, ip_mode)
+            nq_menu_text(s, mask, ip_mode, ipv6_status),
+            parse_mode=ParseMode.HTML, reply_markup=confirm_nq_markup(s, mask, ip_mode, ipv6_status)
         )
     elif data.startswith('nqrun:'):
         parts = data.split(':')
@@ -4995,15 +5216,19 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not s:
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
+        ipv6_status = stored_ipv6_status(s)
+        if ip_mode == '46':
+            if not ipv6_status[0]:
+                await q.edit_message_text(nq_menu_text(s, mask, ip_mode, ipv6_status), parse_mode=ParseMode.HTML,
+                                          reply_markup=confirm_nq_markup(s, mask, ip_mode, ipv6_status))
+                return
         if mask == 0:
             await q.answer('至少选一项', show_alert=True)
             await q.edit_message_text(
-                nq_menu_text(s, mask, ip_mode) + '\n\n至少选一项才能开始。',
-                parse_mode=ParseMode.HTML, reply_markup=confirm_nq_markup(s, mask, ip_mode)
+                nq_menu_text(s, mask, ip_mode, ipv6_status) + '\n\n至少选一项才能开始。',
+                parse_mode=ParseMode.HTML, reply_markup=confirm_nq_markup(s, mask, ip_mode, ipv6_status)
             )
             return
-        if ip_mode == '46' and not server_has_ipv6(s):
-            ip_mode = '4'
         selected_text = nq_selected_text(mask)
         ip_text = nq_ip_mode_text(ip_mode)
         jid = launch_job(s, 'nq', run_nq_task, context.bot, q.message.chat_id, s, mask, ip_mode, selected=selected_text, ip_mode=ip_text)

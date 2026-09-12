@@ -135,7 +135,7 @@ class FullFeatureSurfaceTest(unittest.TestCase):
                 answers = bot.nq_answer_script(mask)
                 self.assertEqual(len(answers.splitlines()), len(bot.NQ_ITEMS))
                 self.assertEqual(answers.count("y\n"), mask.bit_count())
-                markup = callbacks(bot.confirm_nq_markup(dual, mask, "46"))
+                markup = callbacks(bot.confirm_nq_markup(dual, mask, "46", (True, 'IPv6 连通性检测通过')))
                 self.assertIn(f"nqrun:{bot.server_id(dual)}:{mask}:46", markup)
                 self.assertEqual(bot.nq_remote_ipv_arg(dual, "46"), "")
                 self.assertEqual(bot.nq_remote_ipv_arg(dual, "4"), "-4")
