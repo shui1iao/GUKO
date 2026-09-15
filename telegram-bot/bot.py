@@ -16,6 +16,7 @@ from datetime import datetime
 import urllib.request
 import shutil
 import shlex
+from proxy_nodes import remote_command
 import socket
 from pathlib import Path
 from typing import Iterable
@@ -31,7 +32,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.0').strip() or '0.6.0'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.1').strip() or '0.6.1'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -81,7 +82,6 @@ PROXY_TOOLS = {
         'service': 'ss-rust',
         'script_url': 'https://ss.shuijiao.de',
         'install_arg': 'install',
-        'view_arg': 'view',
         'button': '🔐 SS',
     },
     'anytls': {
@@ -89,7 +89,6 @@ PROXY_TOOLS = {
         'service': 'anytls',
         'script_url': 'https://anytls.shuijiao.de',
         'install_arg': 'install',
-        'view_arg': 'view',
         'button': '🛡 AnyTLS',
     },
     'vless': {
@@ -97,7 +96,6 @@ PROXY_TOOLS = {
         'service': 'xray',
         'script_url': 'https://xray.shuijiao.de',
         'install_arg': 'install',
-        'view_arg': 'view',
         'button': '⚡ VLESS',
     },
     'snell': {
@@ -105,7 +103,6 @@ PROXY_TOOLS = {
         'service': 'snell',
         'script_url': 'https://snell.shuijiao.de',
         'install_arg': 'install',
-        'view_arg': 'view',
         'button': '🌀 Snell',
     },
 }
@@ -754,12 +751,14 @@ def script_command_text(kind, **kwargs):
         return '脚本命令：\nbash <(curl -Ls https://IP.Check.Place) -y' + suffix
     if kind in PROXY_TOOLS:
         tool = PROXY_TOOLS[kind]
-        action = kwargs.get('action') or '<install|view>'
-        arg = tool['install_arg'] if action in ('install', 'ensure') else tool['view_arg']
-        if kind == 'vless' and action in ('install', 'ensure'):
+        action = kwargs.get('action') or 'ensure'
+        if action == 'view':
+            return 'GUKO 只读配置：直接解析目标服务器现有文件，不调用管理脚本、不写配置。'
+        arg = tool['install_arg']
+        if kind == 'vless':
             mode = kwargs.get('mode') or '<plain|reality>'
-            return f"脚本命令：\nbash <(curl -Ls {tool['script_url']})  # 选择 {mode}"
-        return f"脚本命令：\nbash <(curl -Ls {tool['script_url']}) {arg}"
+            return f"原管理脚本（仅未安装时调用；已有节点只读）：\nbash <(curl -Ls {tool['script_url']})  # 选择 {mode}"
+        return f"原管理脚本（仅未安装时调用；已有节点只读）：\nbash <(curl -Ls {tool['script_url']}) {arg}"
     if kind == 'nq':
         selected = kwargs.get('selected')
         ip_mode = kwargs.get('ip_mode')
@@ -2882,7 +2881,8 @@ def proxy_menu_text(s, kind):
     tool = proxy_tool_config(kind)
     return (
         f"{safe(tool['button'])} <b>{safe(s.get('name'))} · {safe(tool['name'])}</b>\n\n"
-        '安装/更新会检测目标服务器的协议核心/服务端，不是更新 GUKO 脚本本身。\n'
+        '已安装时只读取当前节点，不检查更新、不重装、不启动/重启，也不改变凭据。\n'
+        '仅未安装时调用原管理脚本安装；VLESS 已有模式保持不变。\n'
         '查看只读取目标服务器当前配置并返回连接信息。'
     )
 
@@ -2892,13 +2892,13 @@ def proxy_markup(s, kind):
     tool = proxy_tool_config(kind)
     if kind == 'vless':
         return InlineKeyboardMarkup([
-            [InlineKeyboardButton('安装/更新 纯 VLESS', callback_data=f'vlessmode:plain:{sid}')],
-            [InlineKeyboardButton('安装/更新 Vision + Reality', callback_data=f'vlessmode:reality:{sid}')],
+            [InlineKeyboardButton('安装/读取 纯 VLESS', callback_data=f'vlessmode:plain:{sid}')],
+            [InlineKeyboardButton('安装/读取 Vision + Reality', callback_data=f'vlessmode:reality:{sid}')],
             [InlineKeyboardButton('查看配置', callback_data=f'proxyrun:{kind}:view:{sid}')],
             [InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')],
         ])
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"安装/更新 {tool['name']} 服务端", callback_data=f'proxyrun:{kind}:ensure:{sid}')],
+        [InlineKeyboardButton(f"安装/读取 {tool['name']} 服务端", callback_data=f'proxyrun:{kind}:ensure:{sid}')],
         [InlineKeyboardButton('查看配置', callback_data=f'proxyrun:{kind}:view:{sid}')],
         [InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')],
     ])
@@ -2984,146 +2984,19 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
     key = (server_id(s), kind)
     tool = proxy_tool_config(kind)
     try:
-        script = tool['script_url']
-        if kind == 'anytls' and action in ('install', 'ensure'):
-            # An existing binary is enough to forbid reinstall, even if its
-            # systemd unit is missing. Read failures must never rotate credentials.
-            port = os.environ.get('GUKO_ANYTLS_DEFAULT_PORT', '').strip()
-            answers = proxy_answers(kind, port, mode)
-            remote = (
-                'export TERM=xterm-256color; cd /root; '
-                'tmp=$(mktemp /root/guko-anytls.XXXXXX.sh) || exit $?; '
-                "trap 'rm -f \"$tmp\"' EXIT; "
-                f'curl -LfsS {shlex.quote(script)} -o "$tmp" || exit $?; '
-                'if [[ -x /usr/local/bin/anytls-server ]]; then '
-                '  echo "GUKO_STATUS:已安装，直接读取当前配置"; '
-                '  bash "$tmp" view; '
-                'else '
-                '  echo "GUKO_STATUS:未安装，开始安装"; '
-                f'  printf %b {shlex.quote(answers)} | bash "$tmp" install; '
-                'fi 2>&1'
-            )
-            timeout = 1800
-        elif action in ('install', 'ensure'):
-            port = os.environ.get(f"GUKO_{kind.upper()}_DEFAULT_PORT", '').strip()
-            dynamic_vless_port = kind == 'vless' and not port
-            if kind == 'vless' and not port:
-                port = '8443'
-            answers = proxy_answers(kind, port, mode)
-            service = tool['service']
-            bin_path_map = {
-                'ss': '/usr/local/bin/ss-rust',
-                'anytls': '/usr/local/bin/anytls-server',
-                'vless': '/usr/local/bin/xray',
-                'snell': '/usr/local/bin/snell-server',
-            }
-            repo_map = {
-                'ss': 'shadowsocks/shadowsocks-rust',
-                'anytls': 'anytls/anytls-go',
-                'vless': '',
-                'snell': '',
-            }
-            bin_path = bin_path_map[kind]
-            repo = repo_map[kind]
-            if kind == 'ss':
-                version_cmd = '$BIN --version 2>/dev/null | head -n1 || true'
-            elif kind == 'anytls':
-                version_cmd = 'strings $BIN 2>/dev/null | grep -Eo "v?[0-9]+\\.[0-9]+\\.[0-9]+" | sort -Vr | head -n1 || true'
-            elif kind == 'vless':
-                version_cmd = '$BIN version 2>/dev/null | head -n1 || $BIN run -version 2>/dev/null | head -n1 || true'
-            else:
-                version_cmd = '$BIN version 2>/dev/null | head -n1 || $BIN --version 2>/dev/null | head -n1 || true'
-            latest_probe = ''
-            if kind in ('ss', 'anytls'):
-                latest_probe = 'latest=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | grep -m1 "tag_name" | sed -E "s/.*\\\"tag_name\\\"[[:space:]]*:[[:space:]]*\\\"([^\\\"]+)\\\".*/\\1/" || true); '
-            elif kind == 'vless':
-                latest_probe = 'latest="official XTLS installer"; '
-            else:
-                latest_probe = 'latest="latest from manager script"; '
-            install_cmd = f'printf %b {shlex.quote(answers)} | bash "$tmp" install'
-            if kind == 'vless':
-                menu_choice = '3' if mode == 'reality' else '2'
-                safe_sed = (
-                    "perl -0pi -e 's/\\$XRAY_BIN test -config \"\\$CONFIG\"/if \\$XRAY_BIN help 2>\\/dev\\/null | grep -qE \"^[[:space:]]*test[[:space:]]\"; then \\$XRAY_BIN test -config \"\\$CONFIG\"; else \\$XRAY_BIN run -test -config \"\\$CONFIG\"; fi/' \"$tmp\"; "
-                    "perl -0pi -e 's/\\\"geoip:private\\\"/\\\"127.0.0.0\\\\\\/8\\\",\\\"10.0.0.0\\\\\\/8\\\",\\\"172.16.0.0\\\\\\/12\\\",\\\"192.168.0.0\\\\\\/16\\\",\\\"fc00::\\\\\\/7\\\"/g' \"$tmp\"; "
-                )
-                if dynamic_vless_port:
-                    install_cmd = f"{safe_sed}guko_port=8443; if ss -lnt | awk 'NR>1 {{print $4}}' | grep -Eq '(^|:)8443$'; then while :; do guko_port=$(shuf -i 20000-65000 -n 1); ss -lnt | awk 'NR>1 {{print $4}}' | grep -Eq \"(^|:)${{guko_port}}$\" || break; done; echo \"GUKO_STATUS:默认端口 8443 已占用，改用 $guko_port\"; fi; printf \"%b\" \"{menu_choice}\\n${{guko_port}}\\n\\n0\\n\" | bash \"$tmp\""
-                else:
-                    vless_answers = menu_choice + '\n' + answers + '\n0\n'
-                    install_cmd = f'{safe_sed}printf %b {shlex.quote(vless_answers)} | bash "$tmp"'
-            remote = (
-                'export TERM=xterm-256color; cd /root; '
-                f'BIN={shlex.quote(bin_path)}; SERVICE={shlex.quote(service)}; REPO={shlex.quote(repo)}; '
-                f'tmp=$(mktemp /root/guko-{kind}.XXXXXX.sh); '
-                "trap 'rm -f \"$tmp\"' EXIT; "
-                f'curl -LfsS {shlex.quote(script)} -o "$tmp"; chmod +x "$tmp"; '
-                f'{latest_probe}'
-                f'current=""; [[ -x "$BIN" ]] && current=$({version_cmd}); '
-                f'latest_num=${{latest#v}}; current_num=$(printf %s "$current" | grep -Eo "[0-9]+\\.[0-9]+\\.[0-9]+" | head -n1 || true); '
-                f'if [[ ! -x "$BIN" || ! -f "/etc/systemd/system/$SERVICE.service" ]]; then '
-                f'  echo "GUKO_STATUS:未安装，开始安装"; '
-                f'  {install_cmd}; '
-                f"elif [[ \"{kind}\" == \"vless\" && -s /usr/local/etc/xray/client.txt && -s /usr/local/etc/xray/config.json ]] && jq -e '.inbounds and (.inbounds|length>0) and any(.inbounds[]; .protocol == \"vless\")' /usr/local/etc/xray/config.json >/dev/null 2>&1; then "
-                f'  echo "GUKO_STATUS:已安装且已有配置，无需重新安装"; '
-                f'  if command -v systemctl >/dev/null 2>&1 && ! systemctl is-active --quiet "$SERVICE"; then echo "GUKO_STATUS:服务未运行，尝试启动"; systemctl start "$SERVICE" || true; fi; '
-                f'  cat /usr/local/etc/xray/client.txt; '
-                f"elif [[ \"{kind}\" == \"vless\" && -s /usr/local/etc/xray/config.json ]] && jq -e '.inbounds and (.inbounds|length>0) and all(.inbounds[]; .protocol != \"vless\")' /usr/local/etc/xray/config.json >/dev/null 2>&1; then "
-                f'  echo "GUKO_STATUS:检测到现有 Xray 配置不是 VLESS，为避免覆盖请先迁移/备份现有配置或手动安装"; exit 23; '
-                f'elif [[ "{kind}" != "ss" && "{kind}" != "anytls" ]]; then '
-                f'  echo "GUKO_STATUS:开始安装/更新协议服务端"; '
-                f'  {install_cmd}; '
-                f'elif [[ -n "$latest_num" && -n "$current_num" && "$current_num" == "$latest_num" ]]; then '
-                f'  echo "GUKO_STATUS:已安装最新版，无需更新 ($latest)"; '
-                f'  if command -v systemctl >/dev/null 2>&1 && ! systemctl is-active --quiet "$SERVICE"; then echo "GUKO_STATUS:服务未运行，尝试启动"; systemctl start "$SERVICE" || true; fi; '
-                f'  bash "$tmp" view; '
-                f'else '
-                f'  echo "GUKO_STATUS:发现程序更新：当前=${{current:-unknown}} 最新=${{latest:-unknown}}，开始更新"; '
-                f'  {install_cmd}; '
-                f'fi 2>&1'
-            )
-            timeout = 1800
-        elif action == 'view':
-            if kind == 'vless':
-                remote = (
-                    'export TERM=xterm-256color; '
-                    'if [[ -s /usr/local/etc/xray/client.txt ]]; then '
-                    '  cat /usr/local/etc/xray/client.txt; '
-                    'elif [[ -s /usr/local/etc/xray/config.json ]]; then '
-                    '  echo "服务端配置: /usr/local/etc/xray/config.json"; '
-                    '  cat /usr/local/etc/xray/config.json; '
-                    'else '
-                    '  echo "暂无配置"; '
-                    'fi 2>&1'
-                )
-            else:
-                remote = (
-                    'export TERM=xterm-256color; cd /root; '
-                    f'tmp=$(mktemp /root/guko-{kind}.XXXXXX.sh); '
-                    "trap 'rm -f \"$tmp\"' EXIT; "
-                    f'curl -LfsS {shlex.quote(script)} -o "$tmp"; chmod +x "$tmp"; '
-                    'bash "$tmp" view 2>&1'
-                )
-            timeout = 300
-        else:
-            raise RuntimeError('未知操作')
+        port = os.environ.get(f"GUKO_{kind.upper()}_DEFAULT_PORT", '').strip()
+        remote = remote_command(kind, action, tool['script_url'],
+                                proxy_answers(kind, port, mode), s.get('host'), mode, port)
+        timeout = 1800 if action in ('install', 'ensure') else 300
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=timeout, env=ssh_env_for(s))
         sections = proxy_extract_config(out, kind)
         ok = code == 0 and bool(sections)
         JOBS[jid].update({'status': 'done' if ok else 'failed', 'log': out, 'target': action})
-        if action in ('install', 'ensure'):
-            if kind == 'anytls' and 'GUKO_STATUS:已安装，直接读取当前配置' in out:
-                title = '当前配置'
-            elif 'GUKO_STATUS:未安装' in out:
-                title = '安装完成'
-            elif 'GUKO_STATUS:已安装最新版' in out:
-                title = '已安装最新版，无需更新'
-            elif 'GUKO_STATUS:发现程序更新' in out:
-                title = '程序已更新'
-            else:
-                title = '安装/更新检查完成'
-        else:
-            title = '当前配置'
+        title = '当前配置'
+        if action in ('install', 'ensure') and 'GUKO_STATUS:未安装，开始安装' in out:
+            title = '安装完成' if ok else '安装失败'
+        elif not ok:
+            title = '读取失败'
         icon = '✅' if ok else '❌'
         msg = f"{icon} {safe(s.get('name'))} {safe(tool['name'])} {title}"
         if not ok:
@@ -5005,7 +4878,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
         tool = proxy_tool_config(kind)
-        task = f"{safe(tool['name'])} {'安装/更新检查' if action in ('install', 'ensure') else '查看配置'}"
+        task = f"{safe(tool['name'])} {'安装/读取检查' if action in ('install', 'ensure') else '查看配置'}"
         jid = launch_job(s, kind, run_proxy_tool_task, context.bot, q.message.chat_id, s, kind, action, target=action)
         await bot_task_started_notice(context.bot, q.message.chat_id, s, task, jid is not None)
 
@@ -5019,8 +4892,8 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         tool = proxy_tool_config('vless')
         label = 'Vision + Reality' if mode == 'reality' else '纯 VLESS'
-        task = f"{safe(tool['name'])} {label} 安装/更新"
-        jid = launch_job(s, f'vless-{mode}', run_proxy_tool_task, context.bot, q.message.chat_id, s, 'vless', 'ensure', mode, target=mode)
+        task = f"{safe(tool['name'])} {label} 安装/读取"
+        jid = launch_job(s, 'vless', run_proxy_tool_task, context.bot, q.message.chat_id, s, 'vless', 'ensure', mode, target=mode)
         await bot_task_started_notice(context.bot, q.message.chat_id, s, task, jid is not None)
     elif data.startswith('tqask:'):
         sid = data.split(':', 1)[1]

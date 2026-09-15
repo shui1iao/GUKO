@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
-ARG GUKO_VERSION=0.6.0
+ARG GUKO_VERSION=0.6.1
 ARG GUKO_REVISION=unknown
 ENV GUKO_VERSION=${GUKO_VERSION}
 LABEL org.opencontainers.image.version=${GUKO_VERSION} \
@@ -18,7 +18,7 @@ RUN npm install -g playwright@1.59.1
 ENV NODE_PATH=/usr/lib/node_modules PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 COPY auth.py guko.py jiaoops.py /app/
 RUN mkdir -p /data/keys /data/media /data/tmp
-COPY telegram-bot/bot.py telegram-bot/render_checkplace.py telegram-bot/render_ansi.js /app/
+COPY telegram-bot/bot.py proxy_nodes.py telegram-bot/render_checkplace.py telegram-bot/render_ansi.js /app/
 COPY telegram-bot/resources/checkplace-terminal/ /app/resources/checkplace-terminal/
 # xyBarNQ is an operator-supplied private display font, not distributed here.
 ENV CHECKPLACE_TERMINAL_FONT=/data/fonts/xyBarNQ.ttf

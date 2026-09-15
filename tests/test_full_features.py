@@ -238,7 +238,7 @@ class FullFeatureSurfaceTest(unittest.TestCase):
                     ):
                         await bot.run_proxy_tool_task(capture, 1, server, jid, kind, action)
                     remote = run.await_args.args[0][-1]
-                    if kind != "vless" or action != "view":
+                    if action != "view":
                         self.assertIn("trap 'rm -f \"$tmp\"' EXIT", remote)
                     checked = subprocess.run(
                         ["/bin/bash", "-n"],
