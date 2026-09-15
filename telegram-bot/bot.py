@@ -31,7 +31,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.5.9').strip() or '0.5.9'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.0').strip() or '0.6.0'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -2985,7 +2985,26 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
     tool = proxy_tool_config(kind)
     try:
         script = tool['script_url']
-        if action in ('install', 'ensure'):
+        if kind == 'anytls' and action in ('install', 'ensure'):
+            # An existing binary is enough to forbid reinstall, even if its
+            # systemd unit is missing. Read failures must never rotate credentials.
+            port = os.environ.get('GUKO_ANYTLS_DEFAULT_PORT', '').strip()
+            answers = proxy_answers(kind, port, mode)
+            remote = (
+                'export TERM=xterm-256color; cd /root; '
+                'tmp=$(mktemp /root/guko-anytls.XXXXXX.sh) || exit $?; '
+                "trap 'rm -f \"$tmp\"' EXIT; "
+                f'curl -LfsS {shlex.quote(script)} -o "$tmp" || exit $?; '
+                'if [[ -x /usr/local/bin/anytls-server ]]; then '
+                '  echo "GUKO_STATUS:已安装，直接读取当前配置"; '
+                '  bash "$tmp" view; '
+                'else '
+                '  echo "GUKO_STATUS:未安装，开始安装"; '
+                f'  printf %b {shlex.quote(answers)} | bash "$tmp" install; '
+                'fi 2>&1'
+            )
+            timeout = 1800
+        elif action in ('install', 'ensure'):
             port = os.environ.get(f"GUKO_{kind.upper()}_DEFAULT_PORT", '').strip()
             dynamic_vless_port = kind == 'vless' and not port
             if kind == 'vless' and not port:
@@ -3093,7 +3112,9 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
         ok = code == 0 and bool(sections)
         JOBS[jid].update({'status': 'done' if ok else 'failed', 'log': out, 'target': action})
         if action in ('install', 'ensure'):
-            if 'GUKO_STATUS:未安装' in out:
+            if kind == 'anytls' and 'GUKO_STATUS:已安装，直接读取当前配置' in out:
+                title = '当前配置'
+            elif 'GUKO_STATUS:未安装' in out:
                 title = '安装完成'
             elif 'GUKO_STATUS:已安装最新版' in out:
                 title = '已安装最新版，无需更新'

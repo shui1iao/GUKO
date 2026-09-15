@@ -1,8 +1,11 @@
 FROM python:3.13-slim
 WORKDIR /app
-ARG GUKO_VERSION=0.5.9
+ARG GUKO_VERSION=0.6.0
+ARG GUKO_REVISION=unknown
 ENV GUKO_VERSION=${GUKO_VERSION}
-LABEL org.opencontainers.image.version=${GUKO_VERSION}
+LABEL org.opencontainers.image.version=${GUKO_VERSION} \
+      org.opencontainers.image.revision=${GUKO_REVISION} \
+      org.opencontainers.image.source="https://github.com/shui1iao/GUKO"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openssh-client sshpass ca-certificates fonts-dejavu-core fonts-noto-cjk fonts-noto-core curl gnupg librsvg2-bin chromium \

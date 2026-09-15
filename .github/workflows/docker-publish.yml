@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   packages: write
 
 env:
@@ -19,21 +20,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify exact main CI before release publication
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(git rev-parse HEAD)
+          MAIN=$(gh api "repos/${{ github.repository }}/git/ref/heads/main" --jq .object.sha)
+          test "$SHA" = "$MAIN"
+          gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=$SHA&branch=main&event=push" \
+            --jq '.workflow_runs | any(.status == "completed" and .conclusion == "success")' | grep -qx true
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
       - name: Login to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-      - name: Build image
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image tags
+        id: tags
         run: |
           IMAGE=ghcr.io/${{ github.repository_owner }}/guko
-          TAGS="-t $IMAGE:${{ github.sha }}"
+          echo "tags<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$IMAGE:${{ github.sha }}" >> "$GITHUB_OUTPUT"
           if [ "${{ github.ref_type }}" = "tag" ]; then
-            TAGS="$TAGS -t $IMAGE:${{ github.ref_name }} -t $IMAGE:latest"
+            echo "$IMAGE:${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "$IMAGE:latest" >> "$GITHUB_OUTPUT"
           fi
-          docker build -f telegram-bot/Dockerfile $TAGS .
-      - name: Push image
-        run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/guko
-          docker push "$IMAGE:${{ github.sha }}"
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            docker push "$IMAGE:${{ github.ref_name }}"
-            docker push "$IMAGE:latest"
-          fi
+          echo EOF >> "$GITHUB_OUTPUT"
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: telegram-bot/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: GUKO_REVISION=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
