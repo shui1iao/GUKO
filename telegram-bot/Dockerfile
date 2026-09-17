@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
-ARG GUKO_VERSION=0.6.1
+ARG GUKO_VERSION=0.6.2
 ARG GUKO_REVISION=unknown
 ENV GUKO_VERSION=${GUKO_VERSION}
 LABEL org.opencontainers.image.version=${GUKO_VERSION} \

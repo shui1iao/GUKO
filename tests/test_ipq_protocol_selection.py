@@ -57,8 +57,8 @@ class IpqProtocolMenuTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(hasattr(bot, 'ipquality_remote_command'), 'Missing testable IP command builder')
         for mode, ending in [('4', '-y -4'), ('46', '-y')]:
             cmd = bot.ipquality_remote_command(mode)
-            self.assertTrue(cmd.endswith('bash <(guko_ipquality_script) ' + ending))
-            self.assertIn('export -f guko_ipquality_script', cmd)
+            self.assertTrue(cmd.endswith('bash "$script" ' + ending))
+            self.assertIn('https://IP.Check.Place -o "$script"', cmd)
             self.assertEqual(subprocess.run(['bash','-n','-c',cmd], capture_output=True).returncode, 0)
             self.assertTrue(bot.script_command_text('ipq', ip_mode=mode).endswith(ending))
         with self.assertRaises(ValueError):
