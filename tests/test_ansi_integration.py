@@ -272,6 +272,17 @@ class RendererProcessTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(seen)
         self.assertFalse(seen[0].exists())
 
+    async def test_stream_renderer_passes_original_control_bytes(self):
+        raw = ' ** Checking Results Under IPv4\n\r Netflix:\t\x1b[33mOriginals Only\x1b[0m\n'
+        async def runner(args, timeout):
+            self.assertEqual(args[-2:], ['--kind', 'stream'])
+            self.assertEqual(Path(args[2]).read_bytes(), raw.encode())
+            Path(args[3]).write_bytes(b'\x89PNG\r\n\x1a\nDATA')
+            return 0, ''
+        with tempfile.TemporaryDirectory() as td, patch.object(bot, 'run_ansi_subprocess', side_effect=runner) as run:
+            await bot.render_ansi_png(raw, Path(td) / 'out.png', kind='stream')
+            run.assert_awaited_once()
+
     async def test_renderer_rejects_empty_oversize_and_unknown_kind(self):
         with patch.object(bot, 'run_subprocess', AsyncMock()) as run:
             for raw, kind in [('', 'ip'), ('x' * (2 * 1024 * 1024 + 1), 'ip'), ('raw', '../bad')]:

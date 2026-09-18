@@ -5,6 +5,13 @@
 - Full NQ sends only its combined link and never reads/renders component logs. Partial/single selections use `hardware`, `ip`, `net`, `backroute` with their corresponding official logs. Missing logs/rendering failure keeps available report links and explicitly reports PNG failure; no SVG fallback or JSON re-upload recovery is invoked. Legacy SVG helper and cached history remain unchanged.
 - `render_ansi_png` invokes `node /app/render_ansi.js input.log output.png --kind KIND` (adjacent source fallback). It inherits `CHECKPLACE_TERMINAL_FONT`; no font download. Input limit 2MiB, semaphore 1, temporary input 0600 and automatic cleanup, timeout 120 seconds, output PNG signature check. The dedicated process runner owns a new session and kills/reaps the process group on completion/timeout/cancellation so Node failure cannot leave Chromium behind.
 
+## Native streaming terminal
+
+- `stream_terminal_report` only slices the original lmc999 report from its IPv4/IPv6 protocol header through `Testing Done!` (when present), excluding menu/install/SSH preamble and statistics/advertisements. ISP, section dividers, every service/detail, SGR, tabs, CR and genuine blank lines remain untouched. Partial reports without completion are retained, not completed synthetically.
+- Streaming uses `await render_ansi_png(report, output, kind='stream')`, PNG persistence and the server name in the photo caption. `parse_stream_results` validates results only; no Pillow card, translated verdicts or synthesized counts are rendered. Text fallback is escaped upstream text.
+- The offline xterm stream branch uses DejaVuSansMono and conventional ANSI colors on a dark background. It ignores the Check.Place private font and skips label padding and title centering; the four existing report kinds retain their approved rendering. Shared offline CSP, resource integrity, process cleanup and image limits remain enforced.
+- `test_regionrestriction_stream.py`, `test_ansi_integration.py` and `telegram-bot/tests/test_render_ansi_stream.js` cover byte-preserving slicing/handoff, terminal tab/CR behavior, 49 real fixture results, font/theme isolation, caption, partial/error paths and no silent crop. Run `node --test telegram-bot/tests/test_render_ansi*.js` with the existing private font/audit environment for all four golden regressions as well.
+
 ## Tests
 
 ```sh

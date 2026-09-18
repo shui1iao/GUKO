@@ -391,7 +391,7 @@ Bot 内还可以导出脱敏配置：
 
 IP质量与 NodeQuality 均默认选择「仅 IPv4」。添加服务器（含批量导入）时检测一次 IPv6 并保存地址、可用状态、原因和检测时间；菜单、切换和开始按钮只读取已存状态，不重复 SSH 探测。已记录可用时可选「IPv4 + IPv6」，已记录不可用时隐藏双栈并显示原因。实际测试在同一次 SSH 执行中更新 IP 信息；确认 IPv6 后来被禁用或已无全局地址时，清除失效地址并在结果中明确提示“没有可用 IPv6，已更新服务器 IP 状态”。即使选 IPv4，实际测试也能更新后来恢复的 IPv6；SSH／探测命令失败、超时或无效响应不会误删已知地址。IP质量双栈保留两份独立报告，含无公开链接的 IPv6 Lite；超时保留已有结果并标记未完成。
 
-GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。流媒体入口在目标服务器上执行固定版本的 [UnlockScope v0.1.1](https://github.com/shui1iao/UnlockScope)，优先消费 `--json` 输出；结果会继续保留 Telegram 摘要、图片、历史记录和结果文件。TCPQuality 按实际用途提供“三网质量 / 回程线路 / 国际互联 / 三网测速 / 完整检测”五个入口：三网质量和回程线路可按服务器配置选择 IPv4 或 IPv6；国际互联按上游能力使用 IPv4；三网测速和完整检测会先显示流量提示并要求确认，避免误触。完整检测运行三网 IPv4 / IPv6、国际互联和三网测速，不包含教育网检测。带报告的结果会上传至 `tcpquality.ibsgss.uk`，回程线路则直接返回文本结果。相关按钮可以通过环境变量关闭。
+GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。流媒体入口在目标服务器上执行 [lmc999/RegionRestrictionCheck](https://github.com/lmc999/RegionRestrictionCheck) 官方 `main/check.sh`，不修改脚本、不过滤上游服务目录。通过 `-M 4/6 -R <地区编号> -E en` 非交互运行，优先 IPv4；全球加服务器地区（台湾 1、香港 2、日本 3、北美 4、南美 5、欧洲 6、大洋洲 7、韩国 8、非洲 11，未知地区 0 仅全球）。每次 HTTPS 限时、限大小下载到任务临时文件，检查非空及 Bash 语法，再用 Bash 执行并清理。IPv4 能力使用本机路由判断，SSH/依赖错误不会误判为无 IPv4。目标服务器需有 Bash、curl、ip（iproute2）、CA 信任库及基础命令；上游自身可能安装其检测依赖并请求外部数据和广告，GUKO 不改写其行为。结果保留 Telegram 摘要、图片、历史记录和原始日志，图片保留服务状态和 Region/City/CDN 等原始详情；地区信息不代表解锁。只有实际服务行与上游输出上下文才算有效结果：退出 0 无有效结果仍失败，非 0 的部分结果标记未完成；媒体发送错误独立记录，不覆盖远程执行状态。TCPQuality 按实际用途提供“三网质量 / 回程线路 / 国际互联 / 三网测速 / 完整检测”五个入口：三网质量和回程线路可按服务器配置选择 IPv4 或 IPv6；国际互联按上游能力使用 IPv4；三网测速和完整检测会先显示流量提示并要求确认，避免误触。完整检测运行三网 IPv4 / IPv6、国际互联和三网测速，不包含教育网检测。带报告的结果会上传至 `tcpquality.ibsgss.uk`，回程线路则直接返回文本结果。相关按钮可以通过环境变量关闭。
 
 ---
 
@@ -424,7 +424,7 @@ make check
 - 仓库不包含任何 Bot Token、真实用户 ID、服务器密码或私钥。
 - `.env`、`servers.json`、`keys/`、`media/`、`tmp/` 已加入 `.gitignore`，不要提交真实配置。
 - 默认白名单模式，未配置允许用户时会拒绝启动。
-- 使用 IPPure、bgp.tools、NodeQuality、TCPQuality、UnlockScope 流媒体检测等功能时，会访问对应第三方服务；UnlockScope 只使用公开 HTTP 探针，不登录、不提交表单；TCPQuality 的报告模式会把检测结果上传至 `tcpquality.ibsgss.uk` 生成公开报告，纯回程识别不上传报告。
+- 使用 IPPure、bgp.tools、NodeQuality、TCPQuality、RegionRestrictionCheck 流媒体检测等功能时，会访问对应第三方服务；流媒体检测使用上游脚本及其外部数据源，GUKO 不提供账号凭据；TCPQuality 的报告模式会把检测结果上传至 `tcpquality.ibsgss.uk` 生成公开报告，纯回程识别不上传报告。
 - 删除服务器只会删除 Bot 本地配置，不会删除或重装远端机器。
 
 ## License

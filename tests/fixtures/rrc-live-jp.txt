@@ -1,0 +1,94 @@
+[H[2J[3J[35mSupporting OS: Ubuntu 16+, Debian 10+, RHEL 7+, Arch Linux, Alpine Linux, FreeBSD, MacOS 10.13+, Android (Termux), iOS (iSH), Windows (MinGW/Cygwin), OpenWRT 23+ etc.[0m
+
+ [Stream Platform & Game Region Restriction Test]
+
+[32mGithub Repository:[0m [33m https://github.com/lmc999/RegionRestrictionCheck [0m
+[32mTelegram Discussion Group:[0m [33m https://t.me/gameaccelerate [0m
+
+ ** Test Starts At: Thu Sep 17 16:53:06 UTC 2026
+ ** Version: 1.0.1
+
+[H[2J[3J [Stream Platform & Game Region Restriction Test]
+
+[32mGithub Repository:[0m [33m https://github.com/lmc999/RegionRestrictionCheck [0m
+[32mTelegram Discussion Group:[0m [33m https://t.me/gameaccelerate [0m
+
+ ** Test Starts At: Thu Sep 17 16:53:06 UTC 2026
+ ** Version: 1.0.1
+
+
+ [36m** Checking Results Under IPv4[0m
+--------------------------------
+ [36m** Your Network Provider: Leaseweb Japan (142.91.*.*)[0m 
+
+
+============[ Multination ]============
+ Dazn:					[31mFailed (Error: )[0m
+ Disney+:				[31mNo (IP Banned By Disney+ 1)[0m
+ Netflix:				[33mOriginals Only[0m
+ YouTube Premium:			[32mYes (Region: JP)[0m
+ Amazon Prime Video:			[32mYes (Region: JP)[0m
+ TVBAnywhere+:				[32mYes[0m
+ Spotify Registration:			[31mNo[0m
+ OneTrust Region:			[32mJP [Tokyo][0m
+ iQyi Oversea Region:			[32mJP[0m
+ Bing Region:				[33mJP (Risky)[0m
+ Apple Region:				[32mJP[0m
+ YouTube CDN:				[32mTokyo[0m
+ Netflix Preferred CDN:			[31mFailed (CDN IP Not Found)[0m
+ ChatGPT:				[32mYes[0m
+ Google Gemini:				[32mYes (Region: JPN)[0m
+ Claude:				[32mYes[0m
+ Wikipedia Editability:			[32mYes[0m
+ Google Play Store:			[32mJapan [0m
+ Google Search CAPTCHA Free:		[32mYes[0m
+ Steam Currency:			[32mJPY[0m
+[33m ---Forum---[0m
+ Reddit:				[31mNo[0m
+[33m ---Game---[0m
+ SD Gundam G Generation Eternal:	[31mNo[0m
+=======================================
+===============[ Japan ]===============
+ DMM:					[31mFailed (Network Connection)[0m
+ DMM TV:				[31mNo[0m
+ Abema.TV:				[31mNo[0m
+ Niconico:				[31mFailed (Error: PAGE ERROR)[0m
+ Telasa:				[31mNo[0m
+ U-NEXT:				[31mFailed (Error: )[0m
+ Hulu Japan:				[31mFailed (Network Connection)[0m
+ TVer:					[31mFailed (Error: PAGE ERROR)[0m
+ Lemino:				[31mNo[0m
+ AnimeFesta:				[31mNo[0m
+ WOWOW:					[31mFailed (Error: PAGE ERROR 1)[0m
+ VideoMarket:				[32mYes[0m
+ D Anime Store:				[32mYes[0m
+ FOD(Fuji TV):				[32mYes[0m
+ Radiko:				[32mYes (City: TOKYO)[0m
+ Karaoke@DAM:				[32mYes[0m
+ J:com On Demand:			[31mNo[0m
+ WATCHA:				[32mYes[0m
+ Rakuten TV JP:				[31mNo[0m
+[33m ---Game---[0m
+ Kancolle Japan:			[31mFailed (Network Connection)[0m
+ Pretty Derby Japan:			[31mFailed (Network Connection)[0m
+ Konosuba Fantastic Days:		[31mFailed (Network Connection)[0m
+ Princess Connect Re:Dive Japan:	[32mYes[0m
+ Project Sekai: Colorful Stage:		[31mNo[0m
+[33m ---Music---[0m
+ Mora:					[32mYes[0m
+ music.jp:				[32mYes[0m
+[33m ---Forum---[0m
+ EroGameSpace:				[31mFailed (Network Connection)[0m
+=======================================
+[32mTesting Done! Thanks for Using This Script![0m
+
+[33mNumber of Script Runs for Today: 1996; Total Number of Script Runs: 16681397[0m
+
+[36m【Advertisement】[0m
+================================================
+[92mA DNS Service to Help Unblocking Instagram Music and Various Streaming Services[0m
+
+[37mCost low as USD 1.0/month [0m
+[93mPlease join chanel https://t.me/dns167 for more info![0m
+
+================================================

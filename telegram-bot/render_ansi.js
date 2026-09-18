@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-/** Offline Check.Place ANSI display. Never load a report URL or execute log text. */
+/** Offline ANSI display. Never load a report URL or execute log text. */
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -8,18 +8,24 @@ const RESOURCES = path.join(__dirname, 'resources', 'checkplace-terminal');
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_COLS = 400;
 const MAX_ROWS = 500;
-const KINDS = new Set(['ip', 'hardware', 'net', 'backroute']);
+const KINDS = new Set(['ip', 'hardware', 'net', 'backroute', 'stream']);
+// Conventional xterm ANSI palette, independent of Check.Place's display theme.
+const themeStream = Object.freeze({foreground: '#e5e5e5', background: '#1d1d1e',
+  black: '#000000', red: '#cd0000', green: '#00cd00', yellow: '#cdcd00',
+  blue: '#0000ee', magenta: '#cd00cd', cyan: '#00cdcd', white: '#e5e5e5',
+  brightBlack: '#7f7f7f', brightRed: '#ff0000', brightGreen: '#00ff00', brightYellow: '#ffff00',
+  brightBlue: '#5c5cff', brightMagenta: '#ff00ff', brightCyan: '#00ffff', brightWhite: '#ffffff'});
 const themeAdventureTime = Object.freeze(require('./resources/checkplace-terminal/theme-adventure-time.json'));
 const sha256 = data => crypto.createHash('sha256').update(data).digest('hex');
 
 function parseArgs(args) {
   if (args.length !== 4 || args[2] !== '--kind' || !KINDS.has(args[3])) {
-    throw new Error('Usage: node render_ansi.js INPUT.log OUTPUT.png --kind ip|hardware|net|backroute');
+    throw new Error('Usage: node render_ansi.js INPUT.log OUTPUT.png --kind ip|hardware|net|backroute|stream');
   }
   return {input: args[0], output: args[1], kind: args[3]};
 }
 
-function readInput(input) {
+function readInput(input, preserveWhitespace = false) {
   // Read a bounded regular file through one descriptor, not stat + unbounded read.
   const fd = fs.openSync(input, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
   try {
@@ -34,8 +40,8 @@ function readInput(input) {
     try {text = new TextDecoder('utf-8', {fatal: true}).decode(bytes.subarray(0, size));}
     catch {throw new Error('ANSI input must be valid UTF-8');}
     // Official approved renderer trims the outside of the complete report only.
-    text = text.trim();
-    if (!text) throw new Error('ANSI input is empty');
+    if (!preserveWhitespace) text = text.trim();
+    if (!text.trim()) throw new Error('ANSI input is empty');
     return text;
   } finally {fs.closeSync(fd);}
 }
@@ -47,14 +53,14 @@ function assertTelegramPhoto(width, height, bytes) {
   }
 }
 
-function buildDocument(fontBase64, nonce) {
+function buildDocument(fontBase64, nonce, kind = 'ip') {
   // Only caller-supplied local font bytes and generated nonce are interpolated.
   // Logs NEVER appear in this HTML. Inline styles are necessary for xterm's DOM renderer.
   if (!/^[A-Za-z0-9+/=]+$/.test(fontBase64) || !/^[A-Za-z0-9]+$/.test(nonce)) throw new Error('Invalid local document data');
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; font-src data:; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'">
 <style>
-@font-face{font-family:xyBarMono;src:url(data:font/ttf;base64,${fontBase64})}
+@font-face{font-family:${kind === 'stream' ? 'streamMono' : 'xyBarMono'};src:url(data:font/ttf;base64,${fontBase64})}
 *{margin:0;padding:0}
 html,body{margin:0!important;padding:0!important;background:rgb(29,29,30)!important}
 body{display:flex;flex-direction:column}
@@ -78,12 +84,14 @@ function loadResources() {
 async function renderAnsi({input, output, kind}) {
   if (!KINDS.has(kind)) throw new Error('Unsupported report kind');
   if (path.resolve(input) === path.resolve(output)) throw new Error('Input and output paths must differ');
-  const raw = readInput(input);
+  const stream = kind === 'stream';
+  const raw = readInput(input, stream);
   const resources = loadResources();
-  const fontPath = process.env.CHECKPLACE_TERMINAL_FONT || '/data/fonts/xyBarNQ.ttf';
+  const fontPath = stream ? '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
+    : process.env.CHECKPLACE_TERMINAL_FONT || '/data/fonts/xyBarNQ.ttf';
   let font;
-  try {font = fs.readFileSync(fontPath);} catch (error) {throw new Error(`Private terminal font unavailable: ${fontPath} (${error.code})`);}
-  if (!font.length || font.length > 8 * 1024 * 1024) throw new Error('Private terminal font is empty or exceeds 8 MiB');
+  try {font = fs.readFileSync(fontPath);} catch (error) {throw new Error(`Terminal font unavailable: ${fontPath} (${error.code})`);}
+  if (!font.length || font.length > 8 * 1024 * 1024) throw new Error('Terminal font is empty or exceeds 8 MiB');
   const {chromium} = require('playwright');
   let browser, context, page;
   let networkRequests = 0;
@@ -97,23 +105,23 @@ async function renderAnsi({input, output, kind}) {
     page = await context.newPage();
     page.setDefaultTimeout(15000);
     const nonce = crypto.randomBytes(24).toString('hex');
-    await page.setContent(buildDocument(font.toString('base64'), nonce));
+    await page.setContent(buildDocument(font.toString('base64'), nonce, kind));
     await page.addStyleTag({content: resources.css});
     // Set nonce on a DOM-created script; Playwright addScriptTag has no nonce option.
     await page.evaluate(({runtime, nonce}) => {
       const script = document.createElement('script'); script.nonce = nonce; script.textContent = runtime;
       document.head.appendChild(script);
     }, {runtime: resources.runtime, nonce});
-    await page.evaluate(async () => {
-      const loaded = await document.fonts.load('14px xyBarMono');
+    await page.evaluate(async stream => {
+      const loaded = await document.fonts.load(stream ? '14px streamMono' : '14px xyBarMono');
       await document.fonts.ready;
-      if (!loaded.length || loaded.some(font => font.status !== 'loaded')) throw new Error('Private terminal font failed to load');
-    });
-    const metrics = await page.evaluate(async ({raw, theme, maxCols, maxRows}) => {
+      if (!loaded.length || loaded.some(font => font.status !== 'loaded')) throw new Error('Terminal font failed to load');
+    }, stream);
+    const metrics = await page.evaluate(async ({raw, theme, maxCols, maxRows, stream}) => {
       const frame = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const root = document.getElementById('terminal');
       const options = {theme: {...theme, background: '#1d1d1e', cursor: '#1d1d1e'},
-        fontFamily: 'Consolas, "xyBarMono", Courier New, monospace', fontSize: 14,
+        fontFamily: stream ? '"streamMono", monospace' : 'Consolas, "xyBarMono", Courier New, monospace', fontSize: 14,
         rows: maxRows, cols: maxCols, convertEol: true, scrollback: 1,
         disableStdin: true, cursorBlink: false, allowTransparency: true};
       let term;
@@ -158,7 +166,7 @@ async function renderAnsi({input, output, kind}) {
         return {columns, rows, screenWidth: dims.width, screenHeight: dims.height,
           contentsPreserved: true, text: actual.join('\n')};
       } catch (error) {term?.dispose(); throw error;}
-    }, {raw, theme: themeAdventureTime, maxCols: MAX_COLS, maxRows: MAX_ROWS});
+    }, {raw, theme: stream ? themeStream : themeAdventureTime, maxCols: MAX_COLS, maxRows: MAX_ROWS, stream});
     // Do not allow screenshot scrolling to trigger xterm repaint and erase label classes.
     await page.setViewportSize({width: Math.max(1800, Math.ceil(metrics.screenWidth + 40)),
       height: Math.ceil(metrics.screenHeight + 80)});
@@ -168,19 +176,21 @@ async function renderAnsi({input, output, kind}) {
       return [r.x, r.y, r.width, r.height, getComputedStyle(span).backgroundColor, span.textContent];
     });
     const before = await page.evaluate(geometry);
-    await page.addStyleTag({content: '.xterm-rows > div > span{padding-top:1px!important;box-sizing:border-box!important}.xterm-rows > div > span.colored-label{padding-top:3px!important}'});
-    await page.evaluate(kind => {
-      const excluded = kind === 'ip' ? /[|]/u : /[|\u2500-\u259f\u2800-\u28ff]/u;
-      for (const span of document.querySelectorAll('.xterm-rows > div > span')) {
-        const bg = getComputedStyle(span).backgroundColor;
-        if (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent' && bg !== 'rgb(29, 29, 30)' && !excluded.test(span.textContent)) span.classList.add('colored-label');
-      }
-    }, kind);
+    if (!stream) {
+      await page.addStyleTag({content: '.xterm-rows > div > span{padding-top:1px!important;box-sizing:border-box!important}.xterm-rows > div > span.colored-label{padding-top:3px!important}'});
+      await page.evaluate(kind => {
+        const excluded = kind === 'ip' ? /[|]/u : /[|\u2500-\u259f\u2800-\u28ff]/u;
+        for (const span of document.querySelectorAll('.xterm-rows > div > span')) {
+          const bg = getComputedStyle(span).backgroundColor;
+          if (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent' && bg !== 'rgb(29, 29, 30)' && !excluded.test(span.textContent)) span.classList.add('colored-label');
+        }
+      }, kind);
+    }
     if (JSON.stringify(before) !== JSON.stringify(await page.evaluate(geometry))) throw new Error('Background or cell geometry changed');
     // Source headers are centered with spaces for the original terminal width.
     // Safe columns and long route rows widen the PNG. Move only header rows,
     // using the rendered text bounds (including CJK), never rewrite ANSI cells.
-    const headerRows = await page.evaluate(kind => {
+    const headerRows = stream ? [] : await page.evaluate(kind => {
       const rows = [...document.querySelectorAll('.xterm-rows > div')];
       const lines = rows.map(row => row.textContent.trim());
       const titles = {ip: /^(?:IP质量体检报告|IP QUALITY CHECK REPORT)\s*[:：]/u,
@@ -242,8 +252,9 @@ async function renderAnsi({input, output, kind}) {
     const spans = await page.evaluate(() => [...document.querySelectorAll('.xterm-rows > div > span')].map(span => ({
       text: span.textContent, padding: getComputedStyle(span).paddingTop, boxSizing: getComputedStyle(span).boxSizing,
       colored: span.classList.contains('colored-label'), background: getComputedStyle(span).backgroundColor,
+      foreground: getComputedStyle(span).color,
     })));
-    for (const span of spans) {
+    for (const span of stream ? [] : spans) {
       const excluded = kind === 'ip' ? /[|]/u : /[|\u2500-\u259f\u2800-\u28ff]/u;
       const colored = !['rgba(0, 0, 0, 0)', 'transparent', 'rgb(29, 29, 30)'].includes(span.background) && !excluded.test(span.text);
       if (span.padding !== (colored ? '3px' : '1px')) throw new Error('Screenshot repainted terminal label centering');

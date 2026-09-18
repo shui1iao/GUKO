@@ -20,7 +20,6 @@ from proxy_nodes import remote_command
 import socket
 from pathlib import Path
 from typing import Iterable
-from collections import OrderedDict
 from urllib.parse import urlparse
 import urllib.error
 from PIL import Image, ImageDraw, ImageFont
@@ -32,7 +31,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.2').strip() or '0.6.2'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.3').strip() or '0.6.3'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -54,7 +53,7 @@ ADMIN_USERS = {x.strip() for x in os.environ.get('ADMIN_USERS', '').split(',') i
 ALLOW_INSECURE_STARTUP = os.environ.get('ALLOW_INSECURE_STARTUP', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 SCRIPT_SOURCES = {
     'nexttrace': ('NextTrace', 'https://github.com/nxtrace/NTrace-core'),
-    'stream': ('UnlockScope', 'https://github.com/shui1iao/UnlockScope'),
+    'stream': ('RegionRestrictionCheck', 'https://github.com/lmc999/RegionRestrictionCheck'),
     'ipq': ('Check.Place', 'https://github.com/xykt/NetQuality'),
     'nq': ('NodeQuality / Check.Place', 'https://github.com/xykt/NodeQuality'),
     'tcpq': ('TcpQuality', 'https://github.com/ibsgss/TcpQuality'),
@@ -63,11 +62,9 @@ SCRIPT_SOURCES = {
     'vless': ('Xray-VLESS-Manager', 'https://github.com/shui1iao/Xray-VLESS-Manager'),
     'snell': ('Snell-Manager', 'https://github.com/shui1iao/Snell-Manager'),
 }
-UNLOCKSCOPE_VERSION = 'v0.1.2'
-UNLOCKSCOPE_INSTALL_URL = 'https://unlock.shuijiao.de'
-UNLOCKSCOPE_INSTALL_FALLBACK = (
-    f'https://raw.githubusercontent.com/shui1iao/UnlockScope/{UNLOCKSCOPE_VERSION}/install.sh'
-)
+REGIONRESTRICTION_URL = 'https://raw.githubusercontent.com/lmc999/RegionRestrictionCheck/main/check.sh'
+REGIONRESTRICTION_REGIONS = {'tw': 1, 'hk': 2, 'jp': 3, 'na': 4, 'sa': 5, 'eu': 6,
+                             'oc': 7, 'kr': 8, 'sea': 9, 'af': 11}
 TCPQUALITY_COMMIT = '676789de0df20cc6ade95680c79969b637e3f8fa'
 TCPQUALITY_SHA256 = {
     'runTcpQuality.sh': 'acb8b306725ed496549a01b878a9d1313482dd38c98f294d0492055b202e12d3',
@@ -739,13 +736,11 @@ def script_command_text(kind, **kwargs):
             f'nexttrace {target}'
         )
     if kind == 'stream':
-        ip_mode = kwargs.get('ip_mode') or 'auto'
-        args = f'--scope auto --json --no-color --ip {ip_mode}'
-        return (
-            '脚本命令：\n'
-            f'UNLOCKSCOPE_VERSION={UNLOCKSCOPE_VERSION} bash <(curl -Ls {UNLOCKSCOPE_INSTALL_URL})\n'
-            f'unlockscope {args}'
-        )
+        mode = str(kwargs.get('ip_mode') or '4')
+        if mode not in {'4', '6'}:
+            raise ValueError(f'unsupported RegionRestrictionCheck IP mode: {mode}')
+        region = REGIONRESTRICTION_REGIONS.get(kwargs.get('region_id') or '', 0)
+        return f'脚本命令：\nbash <(curl -{mode} -fsSL {REGIONRESTRICTION_URL}) -M {mode} -R {region} -E en'
     if kind == 'ipq':
         suffix = ' -4' if kwargs.get('ip_mode', '4') == '4' else ''
         return '脚本命令：\nbash <(curl -Ls https://IP.Check.Place) -y' + suffix
@@ -1372,6 +1367,7 @@ STREAM_REGION_BY_COUNTRY = {
     'mo': ('hk', '全球 + 香港'),
     'jp': ('jp', '全球 + 日本'),
     'kr': ('kr', '全球 + 韩国'),
+    **{code: ('sea', '全球 + 东南亚') for code in ('sg', 'my', 'th', 'id', 'ph', 'vn', 'kh', 'la', 'mm', 'bn', 'tl')},
     **{code: ('na', '全球 + 北美') for code in ('us', 'ca', 'mx', 'gl', 'bm')},
     **{code: ('sa', '全球 + 南美') for code in ('br', 'ar', 'cl', 'co', 'pe', 've', 'uy', 'py', 'bo', 'ec', 'gy', 'sr')},
     **{code: ('oc', '全球 + 大洋洲') for code in ('au', 'nz', 'fj', 'pg', 'ws', 'to', 'vu', 'nc', 'pf')},
@@ -1394,7 +1390,7 @@ def stream_menu_text(s):
         f'🎬 准备在 <b>{safe(s.get("name"))}</b> 跑流媒体检测：\n\n'
         f'地区选项：<b>{safe(label)}</b>\n'
         f'协议策略：<b>{safe(proto)}</b>\n\n'
-        f'会在目标机器本机执行 UnlockScope {UNLOCKSCOPE_VERSION}，优先读取 --json 结果并整理成摘要。'
+        '会在目标机器执行 lmc999/RegionRestrictionCheck 官方脚本，检测全球及所选地区，保留上游状态与地区详情。'
     )
 
 
@@ -1873,6 +1869,9 @@ def history_append(jid, job):
         'media_paths': job.get('media_paths') or ([] if not job.get('media_path') else [job.get('media_path')]),
         'log_tail': trim_log(strip_ansi(job.get('log') or ''), 3500),
     }
+    if job.get('kind') == 'stream':
+        item.update({key: job.get(key) for key in
+                     ('exit_code', 'proto', 'render_error', 'artifact_error', 'raw_path')})
     hist = [
         x for x in load_history()
         if not (
@@ -2666,7 +2665,7 @@ async def run_ansi_subprocess(args, timeout=120, *, separate_stderr=False, env=N
 
 async def render_ansi_png(raw_log, out_png, kind='ip'):
     """Render original terminal bytes locally; never fall back to SVG."""
-    if kind not in {item[1] for item in NQ_ANSI_REPORTS}:
+    if kind not in {item[1] for item in NQ_ANSI_REPORTS} | {'stream'}:
         raise ValueError('未知 ANSI 报告类型')
     payload = raw_log.encode('utf-8') if isinstance(raw_log, str) else bytes(raw_log)
     if not payload or len(payload) > ANSI_MAX_BYTES:
@@ -3451,169 +3450,101 @@ async def run_gb5_task(bot, chat_id, s, jid):
     finally:
         finish_job(jid, key)
 
-STREAM_STATES = {'available', 'unavailable', 'region_only', 'failed', 'unknown'}
-STREAM_CATEGORY_LABELS = {
-    'streaming': 'Streaming',
-    'ai': 'AI',
-    'social': 'Social',
-    'knowledge': 'Knowledge & Community',
-    'games': 'Games / Stores',
-    'sports': 'Sports',
-}
-STREAM_COMMON_DISPLAY_IDS = frozenset({
-    # Global
-    'netflix', 'disney-plus', 'youtube-premium', 'prime-video', 'spotify',
-    'max', 'crunchyroll', 'apple-tv-plus', 'pluto-tv', 'tubi', 'discovery-plus',
-    # North America
-    'hulu', 'paramount-plus', 'peacock', 'youtube-tv', 'cbc-gem-na', 'crave-na',
-    # Hong Kong
-    'viu-hk', 'now-tv-hk', 'mytv-super-hk', 'tvb-hk', 'hbo-go-asia-hk',
-    # Taiwan
-    'kkbox-tw', 'bahamut-tw', 'kktv-tw', 'hami-video-tw', 'myvideo-tw', '4gtv-tw',
-    # Japan
-    'abema-jp', 'u-next-jp', 'dmm-tv-jp', 'tver-jp', 'wowow-jp', 'nhk-plus-jp', 'radiko-jp',
-    # Korea
-    'wavve-kr', 'watcha-kr', 'tving-kr', 'coupang-play-kr', 'kbs-kr',
-    # Europe
-    'bbc-iplayer-eu', 'itvx-eu', 'channel4-eu', 'zdf-eu', 'ard-eu',
-    'canal-plus-eu', 'raiplay-eu', 'skyshowtime-eu',
-    # South America / Africa / Oceania
-    'globoplay-sa', 'vix-sa', 'showmax-af', 'dstv-af',
-    'stan-oc', '9now-oc', '7plus-oc', 'abc-iview-oc', 'tvnz-oc',
-})
-
-
-def stream_display_results(results, region_id=''):
-    """Keep reports concise and show the runtime detector country."""
-    visible = []
-    for result in results:
-        if result.get('category') == 'streaming' and result.get('id') not in STREAM_COMMON_DISPLAY_IDS:
-            continue
-        result = dict(result)
-        country = str(result.get('country') or '').strip().lower()
-        if len(country) != 2 or not country.isalpha():
-            country = ''
-        result['region'] = country
-        visible.append(result)
-    return visible
-
-
-def stream_runtime_evidence(results):
-    """Return the shared egress country/source, never a service verdict."""
-    if not results:
-        return '', ''
-    countries = {str(result.get('country') or '').strip().upper() for result in results}
-    countries.discard('')
-    if len(countries) == 1 and all(str(result.get('country') or '').strip() for result in results):
-        sources = {str(result.get('country_source') or '').strip() for result in results}
-        sources.discard('')
-        return next(iter(countries)), (next(iter(sources)) if len(sources) == 1 else '')
-    egress_regions = {str(result.get('_egress_region') or '').strip().lower() for result in results}
-    egress_regions.discard('')
-    if len(egress_regions) == 1 and next(iter(egress_regions)) in {'hk', 'tw', 'jp', 'kr'}:
-        return next(iter(egress_regions)).upper(), ''
-    return '', ''
-
-
-def stream_json_results(text):
-    """Decode UnlockScope's stable JSON array; never infer results from text."""
-    try:
-        payload = json.loads(str(text or '').strip())
-    except (TypeError, ValueError):
-        return None
-    if not isinstance(payload, list):
-        return None
-    required = ('id', 'service', 'category', 'regions', 'state', 'duration_ms', 'checked_at')
-    for item in payload:
-        if not isinstance(item, dict) or any(key not in item for key in required):
-            return None
-        if not all(isinstance(item[key], str) and item[key].strip() for key in ('id', 'service', 'category', 'state', 'checked_at')):
-            return None
-        if not isinstance(item['regions'], list) or not all(isinstance(x, str) for x in item['regions']):
-            return None
-        if not isinstance(item['duration_ms'], int) or isinstance(item['duration_ms'], bool) or item['duration_ms'] < 0:
-            return None
-        if item['state'] not in STREAM_STATES:
-            return None
-        if any(key in item and not isinstance(item[key], str) for key in ('country', 'country_source', 'detected_country', 'region', 'note')):
-            return None
-    return payload
-
-
 def parse_stream_results(text):
-    """Return UnlockScope JSON results, or an empty list for invalid output."""
-    return stream_json_results(text) or []
+    """Read official English terminal sections; retain every service/detail row.
+
+    Section + network context and at least one actual verdict are required.
+    Region/CDN/currency observations are information, never unlock verdicts.
+    """
+    clean = strip_ansi(str(text or '')).replace('\r', '\n')
+    clean = re.split(r'^\s*Testing Done!', clean, maxsplit=1, flags=re.M)[0]
+    if re.search(r'<(?:!doctype\s+html|html|body)\b', clean, re.I):
+        return []
+    section = subsection = ''
+    network = False
+    rows = []
+    for raw in clean.splitlines():
+        line = raw.strip()
+        if line.startswith('Testing Done!'):
+            break  # Upstream advertisements are outside the report.
+        if re.fullmatch(r'\*\* Checking Results Under IPv[46]', line):
+            network = True
+            section = subsection = ''
+            continue
+        heading = re.fullmatch(r'=+\[\s*([^\]]+?)\s*\]=+', line)
+        if heading and network:
+            section, subsection = heading[1], ''
+            continue
+        if re.fullmatch(r'=+', line):
+            section = subsection = ''
+            continue
+        if not section:
+            continue
+        subheading = re.fullmatch(r'---(.+?)---', line)
+        if subheading:
+            subsection = subheading[1]
+            continue
+        # Upstream aligns with tabs. Split the delimiter, not colons in names
+        # such as J:com or Project Sekai: Colorful Stage.
+        row = re.fullmatch(r'(.+?):(?:\t+| {2,})(.+)', line)
+        if not row:
+            row = re.fullmatch(r'([^:]+):\s+(.+)', line)
+        if not row:
+            continue
+        service, detail = row[1].strip(), row[2].strip()
+        if service.lower() in {'error', 'curl', 'bash', 'version', 'warning'}:
+            continue
+        informational = bool(re.search(r'\b(?:Region|CDN|Currency)\b', service, re.I)) or service == 'Google Play Store'
+        state = 'unknown'
+        if informational:
+            state = 'info'
+        elif re.match(r'Yes\b', detail):
+            state = 'available'
+        elif re.match(r'No\b', detail):
+            state = 'unavailable'
+        elif re.match(r'Failed\b', detail):
+            state = 'failed'
+        elif detail.startswith('Originals Only'):
+            state = 'originals_only'
+        elif detail.startswith(('IPv6 Is Not Currently Supported', 'Unsupported IPv6')):
+            state = 'unsupported'
+        elif detail.startswith(('Oversea Only', 'Overseas Only')):
+            state = 'restricted'
+        region = re.search(r'\bRegion:\s*([^\)]+)', detail)
+        rows.append({'service': service, 'category': section + (' / ' + subsection if subsection else ''),
+                     'state': state, 'region': region[1].strip() if region else '', 'detail': detail})
+    return rows if any(r['state'] not in {'info', 'unknown'} for r in rows) else []
 
 
-def stream_status_icon(status, extra=''):
-    return {
-        'available': '✅',
-        'unavailable': '❌',
-        'region_only': '🟡',
-        'failed': '⚠️',
-        'unknown': '⚠️',
-    }.get(str(status or '').lower(), '⚠️')
+def stream_terminal_report(raw):
+    """Slice upstream report boundaries; never rebuild ANSI, tabs or CR rows."""
+    start = None
+    for line in re.finditer(r'[^\n]*(?:\n|$)', raw):
+        plain = strip_ansi(line[0]).strip()
+        if start is None:
+            if re.fullmatch(r'\*\* Checking Results Under IPv[46]', plain):
+                start = line.start()
+            continue
+        if plain.startswith('Testing Done!'):
+            return raw[start:line.end()]
+        if plain.startswith(('Number of Script Runs', '【Advertisement】', '[Advertisement]',
+                             'Connection to ', 'Shared connection to ')):
+            return raw[start:line.start()]
+    if start is None:
+        raise ValueError('没有找到 RegionRestrictionCheck 报告头')
+    return raw[start:]
 
 
 def format_stream_summary(s, out, proto, region_label, region_id):
-    results = stream_display_results(parse_stream_results(out))
-    groups = OrderedDict()
-    for result in results:
-        groups.setdefault(result['category'], []).append(result)
-    total = len(results)
-    available = sum(1 for r in results if r['state'] == 'available')
-    unavailable = sum(1 for r in results if r['state'] == 'unavailable')
-    other = max(0, total - available - unavailable)
-    detected_regions = sorted({str(r['region']).upper() for r in results if r.get('region')})
-    head = [
-        f'🎬 <b>{safe(s.get("name"))} 流媒体检测完成</b>',
-        f'工具：<b>UnlockScope {UNLOCKSCOPE_VERSION}</b> · 协议：<b>{safe(proto)}</b> · 地区：<b>{safe(region_label)}</b>',
-        f'检测时间：<code>{safe(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))}</code>',
-    ]
-    if detected_regions:
-        head.append('探测地区：' + safe(', '.join(detected_regions)))
-    else:
-        head.append('探测地区：未知')
-    if total:
-        head.append(f'结果：可用 {available} / 不可用 {unavailable} / 其他 {other}')
-    parts = ['\n'.join(head)]
-    if not results:
-        parts.append('没有拿到有效的 UnlockScope JSON，末尾输出：\n<pre>' + safe(trim_log(strip_ansi(out), 2600)) + '</pre>')
-        return '\n\n'.join(parts)
-    for category, items in groups.items():
-        lines = [f'<b>{safe(STREAM_CATEGORY_LABELS.get(category, category))}</b>']
-        for result in items[:80]:
-            state = stream_status_label(result['state'], result.get('region'))
-            note = (' · ' + result['note']) if result.get('note') else ''
-            lines.append(f'{safe(result["service"])}：{stream_status_icon(result["state"])} <code>{safe(state)}</code>{safe(note)}')
-        parts.append('\n'.join(lines))
-    text = '\n\n'.join(parts)
-    return text[:3900] + ('\n\n…结果较长，已截断。' if len(text) > 3900 else '')
-
-
-def stream_status_color(status, extra=''):
-    icon = stream_status_icon(status, extra)
-    if icon == '✅':
-        return (22, 163, 74)
-    if icon == '❌':
-        return (220, 38, 38)
-    if icon == '🟡':
-        return (202, 138, 4)
-    return (124, 58, 237)
-
-
-def stream_status_label(status, extra=''):
-    normalized = str(status or '').lower()
-    labels = {
-        'available': '可用',
-        'unavailable': '不可用',
-        'region_only': '仅地区可用',
-        'failed': '检测失败',
-        'unknown': '未知',
-    }
-    value = labels.get(normalized, str(status or '未知'))
-    extra = str(extra or '').strip().upper()
-    return f'{value}（{extra}）' if extra and normalized != 'unavailable' else value
+    # Text-only delivery fallback, not a second interpretation of verdicts.
+    head = (f'🎬 <b>{safe(s.get("name"))} 流媒体检测结果</b>\n'
+            f'工具：<b>RegionRestrictionCheck</b> · 协议：<b>{safe(proto)}</b>\n'
+            f'检测范围：<b>{safe(region_label)}</b>')
+    try:
+        body = stream_terminal_report(out)
+    except ValueError:
+        body = out
+    return head + '\n<pre>' + safe(trim_log(strip_ansi(body), 2800)) + '</pre>'
 
 
 def load_font(candidates, size):
@@ -3625,168 +3556,41 @@ def load_font(candidates, size):
     return ImageFont.load_default()
 
 
-def stream_result_image(s, out, proto, region_label, region_id, out_png):
-    results = stream_display_results(parse_stream_results(out))
-    if not results:
-        return None
-    groups = OrderedDict()
-    for result in results:
-        groups.setdefault(result['category'], []).append(result)
-    total = len(results)
-    available = sum(1 for result in results if result['state'] == 'available')
-    unavailable = sum(1 for result in results if result['state'] == 'unavailable')
-    other = max(0, total - available - unavailable)
-    font_cjk = [
-        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
-        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-    ]
-    font_cjk_bold = [
-        '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
-        '/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc',
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-    ]
-    mono_fonts = [
-        '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-    ]
-
-    W = 1120
-    pad = 50
-    row_h = 32
-    title_h = 158
-    section_h = 42
-    footer_h = 78
-    max_rows = sum(len(v) for v in groups.values())
-    H = title_h + footer_h + len(groups) * section_h + max_rows * row_h + 24
-    H = max(500, H + 82)
-
-    bg = (247, 249, 252)
-    card = (255, 255, 255)
-    line = (226, 232, 240)
-    line_soft = (241, 245, 249)
-    dark = (30, 41, 59)
-    muted = (100, 116, 139)
-    blue = (37, 99, 235)
-
-    im = Image.new('RGB', (W, H), bg)
-    d = ImageDraw.Draw(im)
-    title_font = load_font(font_cjk_bold, 36)
-    meta_font = load_font(font_cjk, 21)
-    mono_font = load_font(mono_fonts, 23)
-    mono_small = load_font(mono_fonts, 20)
-    # Section labels contain Chinese; a Latin-only mono font renders them as tofu boxes.
-    section_font = load_font(font_cjk_bold, 24)
-    status_font = load_font(font_cjk_bold, 23)
-    small_font = load_font(font_cjk, 20)
-
-    d.rounded_rectangle([26, 22, W-26, H-24], radius=24, fill=card, outline=line, width=2)
-
-    server_name = str(s.get('name') or s.get('host') or 'Server')
-    d.text((pad, 44), f'{server_name} 流媒体解锁测试', fill=dark, font=title_font)
-    d.text((pad, 96), f'{proto} · {region_label} · {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', fill=muted, font=meta_font)
-    d.text((W-pad, 96), f'可用 {available}   不可用 {unavailable}   其他 {other}', fill=blue, font=meta_font, anchor='ra')
-    d.line([pad, title_h-18, W-pad, title_h-18], fill=line, width=2)
-
-    y = title_h + 4
-    table_left = pad
-    table_right = W - pad
-    # Right-align the visible glyph bounds, not the font advance width. Full-width
-    # closing parentheses have a larger right side bearing than short labels such
-    # as “未知”, which otherwise makes the short labels look pushed past the edge.
-    name_col_width = 500
-    status_right = table_right - 12
-
-    def fit_text(value, font, max_width):
-        value = str(value or '-')
-        if d.textlength(value, font=font) <= max_width:
-            return value
-        ell = '…'
-        while value and d.textlength(value + ell, font=font) > max_width:
-            value = value[:-1]
-        return value + ell
-
-    def centered_rule(label):
-        text = f'[ {label} ]'
-        tw = d.textlength(text, font=section_font)
-        dash_w = d.textlength('=', font=section_font)
-        left_count = max(2, int((table_right - table_left - tw) / 2 / dash_w))
-        right_count = left_count
-        return '=' * left_count + text + '=' * right_count
-
-    for category, items in groups.items():
-        section = STREAM_CATEGORY_LABELS.get(category, category)
-        rule = fit_text(centered_rule(str(section or '-')), section_font, table_right - table_left)
-        d.text(((W - d.textlength(rule, font=section_font)) / 2, y), rule, fill=blue, font=section_font)
-        y += section_h
-        for result in items:
-            name = fit_text((str(result.get('service') or '-').rstrip(':') + ':'), mono_font, name_col_width)
-            status = fit_text(stream_status_label(result.get('state'), result.get('region')), status_font, 470)
-            color = stream_status_color(result.get('state'), result.get('region'))
-            d.text((table_left, y), name, fill=dark, font=mono_font)
-            status_ink_bbox = status_font.getmask(status).getbbox()
-            status_ink_right = status_ink_bbox[2] if status_ink_bbox else int(d.textlength(status, font=status_font))
-            d.text((status_right - status_ink_right, y), status, fill=color, font=status_font)
-            y += row_h
-        end_rule = '=' * max(8, int((table_right - table_left) / max(d.textlength('=', font=mono_small), 1)))
-        d.text((table_left, y), fit_text(end_rule, mono_small, table_right - table_left), fill=line, font=mono_small)
-        y += 16
-
-    out_png = Path(out_png)
-    out_png.parent.mkdir(parents=True, exist_ok=True)
-    im.save(out_png, quality=95)
-    return out_png
-
-
 async def remote_has_ipv4(s):
-    remote = "curl -4fsS --max-time 8 https://api.ipify.org >/dev/null"
-    code, _out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=15, env=ssh_env_for(s))
-    return code == 0
+    remote = (
+        'command -v ip >/dev/null 2>&1 || { printf "GUKO: missing dependency ip\\n" >&2; exit 127; }; '
+        'if route=$(LC_ALL=C ip -4 route get 1.1.1.1 2>&1); then '
+        'printf "GUKO_IPV4=present\\n"; '
+        'else case "$route" in *"Network is unreachable"*) printf "GUKO_IPV4=absent\\n";; '
+        '*) printf "%s\\n" "$route" >&2; exit 1;; esac; fi'
+    )
+    code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=15, env=ssh_env_for(s))
+    markers = [line.strip() for line in out.splitlines() if line.strip().startswith('GUKO_IPV4=')]
+    marker = markers[0] if len(markers) == 1 else ''
+    if code != 0 or marker not in {'GUKO_IPV4=present', 'GUKO_IPV4=absent'}:
+        raise RuntimeError(f'IPv4 能力探测失败（退出码 {code}）：{trim_log(strip_ansi(out), 500)}')
+    return marker == 'GUKO_IPV4=present'
 
 
-def unlockscope_remote_command(ip_mode='auto', region_id=''):
-    ip_mode = str(ip_mode or 'auto').strip().lower()
-    if ip_mode not in {'auto', '4', '6'}:
-        raise ValueError(f'unsupported UnlockScope IP mode: {ip_mode}')
-    args = f'--scope auto --json --no-color --ip {ip_mode} --timeout 8s --total-timeout 120s --concurrency 12'
-    installer_url = shlex.quote(UNLOCKSCOPE_INSTALL_URL)
-    installer_fallback = shlex.quote(UNLOCKSCOPE_INSTALL_FALLBACK)
-    version = shlex.quote(UNLOCKSCOPE_VERSION)
-    curl_family = '-4 ' if ip_mode == '4' else '-6 ' if ip_mode == '6' else ''
-    cache_name = shlex.quote(f'unlockscope-{UNLOCKSCOPE_VERSION}')
+def regionrestriction_remote_command(ip_mode='4', region_id=''):
+    """Execute the unmodified official script in a per-task temporary file."""
+    ip_mode = str(ip_mode)
+    if ip_mode not in {'4', '6'}:
+        raise ValueError(f'unsupported RegionRestrictionCheck IP mode: {ip_mode}')
+    region = REGIONRESTRICTION_REGIONS.get(region_id, 0)
     return (
         'set -eu; umask 077; export TERM=xterm-256color; '
-        f'install_dir="${{XDG_CACHE_HOME:-$HOME/.cache}}/guko/{cache_name}"; '
-        'mkdir -p "$install_dir"; chmod 700 "$install_dir"; unlockscope_bin="$install_dir/unlockscope"; '
-        f'if [ ! -x "$unlockscope_bin" ] || [ "$("$unlockscope_bin" --version 2>/dev/null || true)" != {version} ]; then '
-        '  workdir="$(mktemp -d "${TMPDIR:-/tmp}/guko-unlockscope-install.XXXXXX")"; '
-        '  cleanup(){ rm -rf "$workdir"; }; trap cleanup EXIT INT TERM; '
-        '  installer="$workdir/install.sh"; '
-        f'  curl {curl_family}-LfsS --max-time 60 {installer_url} -o "$installer" >/dev/null 2>&1 || '
-        f'  curl {curl_family}-LfsS --max-time 60 {installer_fallback} -o "$installer" >/dev/null 2>&1; '
-        '  chmod 700 "$installer"; '
-        f'  if ! UNLOCKSCOPE_VERSION={version} PREFIX="$workdir/bin" bash "$installer" '
-        '>"$workdir/install.log" 2>&1; then cat "$workdir/install.log" >&2; exit 1; fi; '
-        '  install -m 0755 "$workdir/bin/unlockscope" "$unlockscope_bin"; '
-        '  cleanup; trap - EXIT INT TERM; '
-        'fi; '
-        f'test "$("$unlockscope_bin" --version 2>/dev/null)" = {version}; '
-        'country_a="$(curl ' + curl_family + '-fsS --max-time 8 https://ipinfo.io/country 2>/dev/null | tr -d "\\r\\n" | tr "[:lower:]" "[:upper:]" || true)"; '
-        'country_b="$(curl ' + curl_family + '-fsS --max-time 8 "https://ipwho.is/?fields=country_code" 2>/dev/null | sed -n \'s/.*"country_code"[[:space:]]*:[[:space:]]*"\\([A-Za-z][A-Za-z]\\)".*/\\1/p\' | tr "[:lower:]" "[:upper:]" || true)"; '
-        'case "$country_a" in [A-Z][A-Z]) ;; *) country_a="";; esac; '
-        'case "$country_b" in [A-Z][A-Z]) ;; *) country_b="";; esac; '
-        'country=""; region_args=""; '
-        'if [ -n "$country_a" ] && [ "$country_a" = "$country_b" ]; then country="$country_a"; region_args=" --region ${country_a,,}"; fi; '
-        'output_file="$(mktemp "${TMPDIR:-/tmp}/guko-unlockscope-output.XXXXXX")"; '
-        'cleanup_output(){ rm -f "$output_file"; }; trap cleanup_output EXIT INT TERM; '
-        'if "$unlockscope_bin" ' + args + ' $region_args >"$output_file" 2>&1; then code=0; else code=$?; fi; '
-        'if grep -q '"'"'"country"'"'"' "$output_file"; then cat "$output_file"; '
-        'elif [ -n "$country" ] && [ "$code" -eq 0 ]; then '
-        '  sed "s/^  {$/  {\\n    \\"country\\": \\"$country\\",\\n    \\"country_source\\": \\"ipinfo.io + ipwho.is (一致)\\",/" "$output_file"; '
-        'else cat "$output_file"; fi; '
-        'exit "$code"'
+        'for cmd in bash curl mktemp rm wc; do '
+        'command -v "$cmd" >/dev/null 2>&1 || { printf "GUKO: missing dependency %s\\n" "$cmd" >&2; exit 127; }; done; '
+        'script="$(mktemp "${TMPDIR:-/tmp}/guko-rrc.XXXXXX")"; '
+        'trap \'rm -f -- "$script"\' 0; trap \'exit 130\' INT; trap \'exit 143\' TERM; '
+        f'curl -{ip_mode} -fLsS --proto =https --proto-redir =https '
+        '--connect-timeout 10 --max-time 60 --max-filesize 2097152 '
+        f'{shlex.quote(REGIONRESTRICTION_URL)} -o "$script"; '
+        'test -s "$script"; test "$(wc -c < "$script")" -le 2097152; '
+        'bash -n "$script"; '
+        f'bash "$script" -M {ip_mode} -R {region} -E en </dev/null'
     )
-
 
 
 def ansi_to_spans(text):
@@ -4030,44 +3834,73 @@ async def run_nexttrace_task(bot, chat_id, s, jid, target='1.1.1.1'):
 
 async def run_stream_task(bot, chat_id, s, jid):
     key = (server_id(s), 'stream')
+    # Remote outcome must survive rendering/storage/Telegram failures.
     try:
-        region_id, region_label = stream_region_for_server(s)
-        use_v4 = await remote_has_ipv4(s)
-        ip_mode = '4' if use_v4 else '6'
-        proto_text = 'IPv4' if use_v4 else 'IPv6（无 IPv4，自动切换）'
-        remote = unlockscope_remote_command(ip_mode, region_id)
-        code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=1800, env=ssh_env_for(s))
-        valid_results = stream_json_results(out)
-        valid_json = bool(valid_results)
-        JOBS[jid].update({
-            'status': 'done' if code == 0 and valid_json else 'failed',
-            'log': out,
-            'proto': proto_text,
-            'region': region_label,
-        })
-        out_dir = Path('/tmp/guko-results')
-        out_dir.mkdir(parents=True, exist_ok=True)
-        png = out_dir / f"stream-{server_id(s)}-{int(time.time())}.jpg"
         try:
-            img = stream_result_image(s, out, proto_text, region_label, region_id, png)
-        except Exception:
-            img = None
+            region_id, region_label = stream_region_for_server(s)
+            use_v4 = await remote_has_ipv4(s)
+            ip_mode = '4' if use_v4 else '6'
+            proto_text = 'IPv4' if use_v4 else 'IPv6（无 IPv4，自动切换）'
+            remote = regionrestriction_remote_command(ip_mode, region_id)
+            code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=1800, env=ssh_env_for(s))
+            valid_results = parse_stream_results(out)
+            JOBS[jid].update({
+                'status': 'done' if code == 0 and valid_results else 'failed',
+                'log': out, 'proto': proto_text, 'region': region_label, 'exit_code': code,
+            })
+        except Exception as e:
+            JOBS[jid].update({'status': 'failed', 'log': repr(e)})
+            try:
+                await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} 流媒体检测失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
+            except Exception as delivery:
+                JOBS[jid]['delivery_error'] = repr(delivery)
+            return
+
+        img = None
+        if valid_results:
+            try:
+                with tempfile.TemporaryDirectory(prefix='guko-stream-') as tmp:
+                    rendered = Path(tmp) / 'result.png'
+                    await render_ansi_png(stream_terminal_report(out), rendered, kind='stream')
+                    try:
+                        saved = persist_result_file(s, 'stream', rendered, '.png')
+                        JOBS[jid]['media_path'] = saved
+                        img = Path(saved)
+                    except Exception as e:
+                        JOBS[jid]['artifact_error'] = repr(e)
+            except Exception as e:
+                JOBS[jid]['render_error'] = repr(e)
+
+        try:
+            root = kind_result_dir(s, 'stream')
+            root.mkdir(parents=True, exist_ok=True)
+            raw_path = root / 'latest.txt'
+            raw_path.write_text(out, encoding='utf-8')
+            JOBS[jid]['raw_path'] = str(raw_path)
+        except Exception as e:
+            JOBS[jid]['artifact_error'] = repr(e)
+
+        # A failed photo falls back to text; record the real send error, not a
+        # fictional remote or conversion failure. Full raw output stays in log.
         if img:
-            saved = persist_result_file(s, 'stream', img, '.jpg')
-            JOBS[jid].update({'media_path': saved})
-            with img.open('rb') as f:
-                await bot.send_photo(chat_id, photo=f)
-            await bot.send_message(chat_id, script_command_text('stream', ip_mode=ip_mode, region_id=region_id))
-            if code != 0:
-                await bot.send_message(chat_id, '提示：UnlockScope 退出码不为 0，图片是已抓到的部分结果。')
-        else:
-            msg = format_stream_summary(s, out, proto_text, region_label, region_id)
-            if code != 0:
-                msg = '⚠️ UnlockScope 退出码不为 0，但下面是已抓到的输出：\n\n' + msg
-            await bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-    except Exception as e:
-        JOBS[jid].update({'status': 'failed', 'log': repr(e)})
-        await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} 流媒体检测失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
+            try:
+                with img.open('rb') as photo:
+                    await bot.send_photo(chat_id, photo=photo,
+                                         caption=f'🎬 <b>{safe(s.get("name"))} 流媒体检测结果</b>',
+                                         parse_mode=ParseMode.HTML)
+            except Exception as e:
+                JOBS[jid]['delivery_error'] = repr(e)
+                img = None
+        try:
+            if img:
+                await bot.send_message(chat_id, script_command_text('stream', ip_mode=ip_mode, region_id=region_id))
+            else:
+                await bot.send_message(chat_id, format_stream_summary(s, out, proto_text, region_label, region_id), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+            if code != 0 and valid_results:
+                await bot.send_message(chat_id, f'⚠️ RegionRestrictionCheck 未完成（退出码 {code}），以上为已取得的部分结果。')
+        except Exception as e:
+            previous = JOBS[jid].get('delivery_error', '')
+            JOBS[jid]['delivery_error'] = (previous + '; ' if previous else '') + repr(e)
     finally:
         finish_job(jid, key)
 

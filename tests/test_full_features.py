@@ -301,7 +301,7 @@ class FullFeatureSurfaceTest(unittest.TestCase):
             "gb": "eu",
             "au": "oc",
             "kr": "kr",
-            "sg": "",
+            "sg": "sea",
             "in": "",
             "za": "af",
         }
