@@ -9,7 +9,7 @@ SS / AnyTLS / Snell / VLESS 的 `ensure`、`install`、`view` 共用只读检查
 | Snell | 只读 INI + 本地 `-v` | 只读 | 返回现有参数，明确版本未知 | 失败且不变 | 原 Snell install |
 | VLESS | plain 从配置输出；Reality/TLS 保留匹配摘要 | 只读 | 只读 | 失败且不变 | 原 Xray 2/3 菜单 |
 
-已有节点不做 HTTP 请求、安装、启动或重启，不改变凭据文件。Snell 本地 `-v` 仅用于客户端所需的主版本，不是更新检查；版本不可用时不猜测节点。连接地址使用 GUKO 清单 host。Python3 是必要前提，缺少时安全失败，不自动安装依赖。
+已有节点不做 HTTP 请求、安装、启动或重启，不改变凭据文件。Snell 本地 `-v` 仅用于客户端所需的主版本，不是更新检查；版本不可用时不猜测节点。连接地址使用 GUKO 清单 host。目标机只用 POSIX shell 与 coreutils（`stat`/`od`）采集固定路径的有界快照，配置解析在 GUKO 内完成，不要求目标机安装 Python，也不会自动安装依赖。每个文件最多 256 KiB；损坏、截断、超限或不匹配的快照安全失败，不把原始配置或编码数据写入错误消息。SSH 的 stderr 与成功快照分离，首次连接提示不会破坏配置解析。
 
 VLESS 保护非 VLESS Xray；旧 `/etc/xray/vless-basic.json` 只读而不迁移。Reality/TLS 摘要缺失或明显不匹配时失败，不生成猜测参数；两种模式入口共享任务锁。新安装保留原有兼容补丁和端口逻辑。
 

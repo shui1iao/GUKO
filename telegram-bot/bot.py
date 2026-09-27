@@ -16,7 +16,10 @@ from datetime import datetime
 import urllib.request
 import shutil
 import shlex
-from proxy_nodes import remote_command
+from proxy_nodes import (
+    remote_command, SNAPSHOT_EXIT, SNAPSHOT_HEADER, READ_ERROR, ProxyReadError,
+    parse_snapshot, render_snapshot, snell_version_command,
+)
 import socket
 from pathlib import Path
 from typing import Iterable
@@ -2338,9 +2341,10 @@ async def run_until_report(args, timeout=900, env=None, *, wait_for_exit=False):
         await proc.wait()
 
 
-async def run_subprocess(args, timeout, *, send_enter_after=None, env=None):
+async def run_subprocess(args, timeout, *, send_enter_after=None, env=None, stdout_only_codes=()):
     proc = await asyncio.create_subprocess_exec(
-        *args, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, env=env
+        *args, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE if stdout_only_codes else asyncio.subprocess.STDOUT, env=env
     )
     async def nudge_enter():
         if send_enter_after is None:
@@ -2354,16 +2358,18 @@ async def run_subprocess(args, timeout, *, send_enter_after=None, env=None):
                 pass
     nudger = asyncio.create_task(nudge_enter())
     try:
-        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
     except asyncio.TimeoutError:
         proc.kill()
         try:
-            out, _ = await proc.communicate()
+            out, err = await proc.communicate()
         except Exception:
-            out = b''
-        return 124, (out or b'').decode(errors='replace') + '\n命令超时'
+            out, err = b'', b''
+        return 124, ((out or b'') + (err or b'')).decode(errors='replace') + '\n命令超时'
     finally:
         nudger.cancel()
+    if proc.returncode not in stdout_only_codes:
+        out += err or b''
     return proc.returncode, out.decode(errors='replace')
 
 
@@ -2954,7 +2960,25 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
         remote = remote_command(kind, action, tool['script_url'],
                                 proxy_answers(kind, port, mode), s.get('host'), mode, port)
         timeout = 1800 if action in ('install', 'ensure') else 300
-        code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=timeout, env=ssh_env_for(s))
+        code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=timeout,
+                                         env=ssh_env_for(s), stdout_only_codes=(SNAPSHOT_EXIT,))
+        if code == SNAPSHOT_EXIT:
+            try:
+                files = parse_snapshot(kind, out)
+                # Validate before invoking even Snell's read-only local -v.
+                out = render_snapshot(kind, s.get('host'), files)
+                if kind == 'snell':
+                    version_code, version_out = await run_subprocess(
+                        ssh_args(s, snell_version_command(), tty=False), timeout=15,
+                        env=ssh_env_for(s), stdout_only_codes=(0,))
+                    out = render_snapshot(kind, s.get('host'), files,
+                                          version_out if version_code == 0 else '')
+                code = 0
+            except ProxyReadError as error:
+                code, out = 23, 'GUKO_STATUS:' + str(error)
+        elif SNAPSHOT_HEADER in out:
+            # Interrupted collection must not expose even encoded credentials.
+            code, out = 23, 'GUKO_STATUS:' + READ_ERROR
         sections = proxy_extract_config(out, kind)
         ok = code == 0 and bool(sections)
         JOBS[jid].update({'status': 'done' if ok else 'failed', 'log': out, 'target': action})

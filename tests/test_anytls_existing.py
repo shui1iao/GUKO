@@ -30,6 +30,8 @@ def load(path):
               ssh_args=lambda s, remote, tty=False: remote, ParseMode=types.SimpleNamespace(HTML='HTML'),
               finish_job=lambda *a: None, JOBS={'job': {}},
               InlineKeyboardButton=lambda text, **kw: dict(text=text, **kw), InlineKeyboardMarkup=lambda rows: rows)
+    helper_imports = [n for n in tree.body if isinstance(n, ast.ImportFrom) and n.module == 'proxy_nodes']
+    exec(compile(ast.Module(body=helper_imports, type_ignores=[]), str(path), 'exec'), ns)
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), 'exec'), ns)
     return ns
 

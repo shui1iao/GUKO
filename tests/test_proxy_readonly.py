@@ -1,4 +1,4 @@
-"""Real generated Bash, fake host paths, audited tools; never SSH or network."""
+"""Real generated POSIX shell, fake host paths, audited tools; no SSH/network."""
 import asyncio
 import json
 import os
@@ -17,7 +17,7 @@ CONFIGS = {'ss': '/etc/ss-rust/config.json', 'anytls': '/etc/systemd/system/anyt
 UUID = '12345678-1234-4234-8234-123456789abc'
 
 
-def host(kind, state='installed', action='ensure', mode=None, download_fail=False, existing_mode='none', default_port='15443'):
+def host(kind, state='installed', action='ensure', mode=None, download_fail=False, existing_mode='none', default_port='15443', no_python=False):
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         def path(p):
@@ -34,7 +34,7 @@ def host(kind, state='installed', action='ensure', mode=None, download_fail=Fals
                 if candidate.is_dir(): candidate.rmdir()
         if state != 'absent':
             if state != 'no_binary':
-                binary.write_text('#!/bin/bash\necho binary >> "$AUDIT"\necho snell-server v6.0.0\n')
+                binary.write_text('#!/bin/sh\nif [ "$*" = -v ]; then echo binary >> "$AUDIT"; else echo "forbidden-binary:$*" >> "$AUDIT"; fi\necho snell-server v6.0.0\n')
                 binary.chmod(0o755)
             unit.write_text('[Service]\n')
             data = {'ss': json.dumps({'server_port': 443, 'password': 'fixture-secret', 'method': 'aes-128-gcm'}),
@@ -64,6 +64,25 @@ def host(kind, state='installed', action='ensure', mode=None, download_fail=Fals
             elif state == 'legacy':
                 path('/etc/xray/vless-basic.json').write_bytes(config.read_bytes()); config.unlink()
                 path('/usr/local/etc/xray/client.txt').unlink()
+            elif state == 'at_limit':
+                config.write_text(data + ' ' * (262144 - len(data.encode())))
+            elif state == 'oversized':
+                config.write_text(data + ' ' * 262145)
+            elif state == 'fifo':
+                config.unlink(); os.mkfifo(config)
+            elif state == 'empty':
+                config.write_text('')
+            elif state == 'client_unreadable':
+                path('/usr/local/etc/xray/client.txt').chmod(0)
+            elif state == 'client_invalid_utf8':
+                path('/usr/local/etc/xray/client.txt').write_bytes(b'\xff')
+            elif state == 'client_oversized':
+                path('/usr/local/etc/xray/client.txt').write_bytes(b'x' * 262145)
+            elif state == 'directory_only':
+                path('/etc/' + ('ss-rust' if kind == 'ss' else 'xray' if kind == 'vless' else kind) + '/placeholder')
+                config.unlink()
+                binary.unlink()
+                if unit.exists(): unit.unlink()
             elif state == 'symlink':
                 config.unlink(); config.symlink_to('/nonexistent-fixture')
         watched = [p for p in root.rglob('*') if p.is_file() and 'placeholder' not in p.name]
@@ -89,11 +108,13 @@ exit 99
             'ss': '#!/bin/bash\nexit 0\n',
             'strings': '#!/bin/bash\necho strings >> "$AUDIT"\n',
         }
+        if no_python:
+            wrappers['python3'] = '#!/bin/sh\necho python3 >> "$AUDIT"\necho "python3: not found" >&2\nexit 127\n'
         for name, content in wrappers.items():
             f = path('/fakebin/' + name); f.write_text(content); f.chmod(0o755)
         def runner(command):
             command = re.sub(r'/usr/local/(?:bin|etc)(?=/|[\"\'])|/(?:usr/)?lib/systemd/system|/etc(?=/|[\"\'])|/root(?=[/;\s])', lambda m: td + m[0], command)
-            result = subprocess.run(['bash', '-c', command], capture_output=True, text=True, timeout=10,
+            result = subprocess.run(['sh', '-c', command], capture_output=True, text=True, timeout=10,
                                     env=dict(os.environ, PATH=str(root/'fakebin')+':'+os.environ['PATH'],
                                              AUDIT=str(audit), MANAGER=str(manager), ANSWERS=str(root/'answers'),
                                              DOWNLOAD_FAIL=str(int(download_fail))))
