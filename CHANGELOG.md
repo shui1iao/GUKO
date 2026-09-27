@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.4] - 2026-09-27
+
+### Fixed
+- 修复极简系统未安装 Python3 时，SS-Rust、AnyTLS、Snell、VLESS 的「查看配置」与「安装/读取」报退出码 127 的问题；目标机仅采集有界只读快照，配置解析在 GUKO 内完成。
+- 成功快照与 SSH stderr 分离，首次连接的 known-host 提示不再干扰配置读取；异常或截断快照不会泄露原始或编码后的配置内容。
+- 保持已有节点只读、不重装、不更新、不启动或重启服务；配置异常仍拒绝安装，只有完全未安装时才调用原安装脚本。
+- 保留 Snell 本地主版本识别与 VLESS 原有模式；纯 VLESS 不再受无关客户端摘要损坏或超限影响，TLS/Reality 仍严格检查所需摘要。
+
+### Validation
+- 新增无 Python 主机、只读副作用审计、传输边界、SSH stderr 与 VLESS 可选摘要回归测试。
+- Python 全量回归 228 项（2 项跳过）；Node 回归 23 项（4 项私有图片基线跳过），无失败。实际无 Python 主机上的 SS/AnyTLS 两个入口均已验证，配置与服务进程保持不变。
+
+### Upgrade notes
+- 无需在受管服务器安装 Python，无数据迁移或凭据变更；更新 GUKO 镜像即可。
+
 ## [0.6.3] - 2026-09-18
 
 - 流媒体检测改用 lmc999/RegionRestrictionCheck，移除 UnlockScope 安装与解析依赖，使用上游全球及所选地区检测。
