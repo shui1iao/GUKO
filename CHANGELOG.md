@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.5] - 2026-10-02
+
+### Fixed
+- 修复 GUKO 所在主机有 IPv6 路由但 IPv6 出站不通时，IPPure 图一直等待 45 秒后报 `.iptable-container` 超时、任何服务器都无法出图的问题。
+- IPPure 页面在展示查询结果前会先检测访问者本机 IPv6，该请求在上述环境下会一直挂起；现在直接放弃这一请求，被查询 IP 的定位与风险数据请求保持不变。
+
+### Validation
+- 新增 IPPure 请求拦截回归测试：本机 IPv6 检测被放弃，查询 IP 所需的页面与数据请求不被拦截；撤掉修复时测试失败。
+- 在 IPv6 出站不通的生产主机上实测，两台服务器 IPPure 图均在 10 秒内正常导出。
+
+### Upgrade notes
+- 无数据迁移或配置变更；更新 GUKO 镜像即可。若部署将 `IPPURE_DOWNLOAD` 指向数据目录（如 `/data/tools/download_ippure.js`），需用新镜像内的 `/app/tools/download_ippure.js` 覆盖该副本，否则仍会运行旧脚本。
+
 ## [0.6.4] - 2026-09-27
 
 ### Fixed
