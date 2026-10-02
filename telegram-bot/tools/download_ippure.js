@@ -42,6 +42,10 @@ function arg(name, fallback = '') {
   await page.route('**/*', route => {
     const url = route.request().url();
     if (
+      // IPPure first probes the visitor's own IPv6 before rendering the queried card.
+      // On a host with an IPv6 route but no working IPv6 egress this request hangs and
+      // the card never appears; the visitor IPv6 is irrelevant to the queried IP.
+      url.startsWith('https://ipv6.icanhazip.com/') ||
       url.includes('/cdn-cgi/rum') ||
       url.includes('/cdn-cgi/speculation') ||
       url.includes('cloudflareinsights.com') ||
