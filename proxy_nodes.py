@@ -242,7 +242,11 @@ def remote_command(kind, action, script, answers, host, mode=None, port=''):
             install = 'guko_port=8443; if ss -lnt | awk \'NR>1 {print $4}\' | grep -Eq \'(^|:)8443$\'; then while :; do guko_port=$(shuf -i 20000-65000 -n 1); ss -lnt | awk \'NR>1 {print $4}\' | grep -Eq "(^|:)${guko_port}$" || break; done; echo "GUKO_STATUS:默认端口 8443 已占用，改用 $guko_port"; fi; printf %b "' + choice + '\\n${guko_port}\\n\\n0\\n" | bash "$tmp"'
     if kind == 'vless':
         install = XRAY_COMPAT + install
-    return (command + 'cd /root || exit $?;\n'
+    # Only a confirmed-absent node reaches here. Merge installer stderr (curl
+    # progress, prompts, systemd notices) remotely so it keeps its real order
+    # instead of trailing the rendered config; snapshots stay stdout-only.
+    return (command + 'exec 2>&1;\n'
+            'cd /root || exit $?;\n'
             'tmp=$(mktemp /root/guko-' + kind + '.XXXXXX.sh) || exit $?;\n'
             'trap \'rm -f "$tmp"\' EXIT;\n'
             'curl -LfsS ' + shlex.quote(script) + ' -o "$tmp" || exit $?;\n'

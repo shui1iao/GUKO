@@ -34,7 +34,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.5').strip() or '0.6.5'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.6').strip() or '0.6.6'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -2365,11 +2365,13 @@ async def run_subprocess(args, timeout, *, send_enter_after=None, env=None, stdo
             out, err = await proc.communicate()
         except Exception:
             out, err = b'', b''
-        return 124, ((out or b'') + (err or b'')).decode(errors='replace') + '\n命令超时'
+        return 124, ((err or b'') + (out or b'')).decode(errors='replace') + '\n命令超时'
     finally:
         nudger.cancel()
     if proc.returncode not in stdout_only_codes:
-        out += err or b''
+        # Separated stderr is mostly local SSH notices emitted before any
+        # remote output; never let it trail the result.
+        out = (err or b'') + out
     return proc.returncode, out.decode(errors='replace')
 
 
