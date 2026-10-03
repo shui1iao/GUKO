@@ -24,6 +24,7 @@ MAX_FILE_BYTES = 262144
 # od adds spaces and a newline to each row, not just two hex digits per byte.
 MAX_SNAPSHOT_BYTES = 2 * (MAX_FILE_BYTES * 4 + 256)
 READ_ERROR = '配置缺失、损坏或不可读取；已拒绝安装/修改，请手动检查'
+RULE = '-' * 42
 
 
 class ProxyReadError(ValueError):
@@ -164,8 +165,13 @@ def render_snapshot(kind, host, files, version_output=''):
         if kind == 'ss':
             data = json.loads(read('config'))
             p, password, method = port(data['server_port']), secret(data['password']), secret(data['method'])
-            auth = quote(method + ':' + password, safe='') if method.startswith('2022-') else base64.urlsafe_b64encode((method + ':' + password).encode()).decode().rstrip('=')
-            output = 'SS 当前配置\nss://' + auth + '@' + address + ':' + str(p) + '#VPS'
+            auth = method + ':' + quote(password, safe='') if method.startswith('2022-') else base64.urlsafe_b64encode((method + ':' + password).encode()).decode().rstrip('=')
+            # Same layout as SS-Rust-Manager's view, built from the file only.
+            output = '\n'.join((
+                RULE, 'ss-rust 当前配置', '地址: ' + host, '端口: ' + str(p), '密码: ' + password,
+                '加密: ' + method, RULE, 'Surge:',
+                'VPS = ss, ' + address + ', ' + str(p) + ', encrypt-method=' + method + ', password=' + password + ', udp-relay=true',
+                'URI:', 'ss://' + auth + '@' + address + ':' + str(p) + '#VPS', RULE))
         elif kind == 'anytls':
             lines = [line.split('=',1)[1] for line in read('config').splitlines() if line.startswith('ExecStart=')]
             if len(lines) != 1:
@@ -175,7 +181,15 @@ def render_snapshot(kind, host, files, version_output=''):
                 fail()
             p = port(args[args.index('-l')+1].rsplit(':',1)[1])
             password = secret(args[args.index('-p')+1])
-            output = 'AnyTLS 当前配置\nanytls://' + quote(password, safe='') + '@' + address + ':' + str(p) + '?security=tls&type=tcp&allowInsecure=1&insecure=1#VPS'
+            mihomo = json.dumps({'name': 'VPS', 'server': host, 'port': p, 'password': password,
+                                 'skip-cert-verify': True, 'type': 'anytls'}, ensure_ascii=False, separators=(',', ':'))
+            # Same layout as AnyTLS-Manager's view, built from the unit only.
+            output = '\n'.join((
+                RULE, 'anytls 当前配置', '地址: ' + host, '端口: ' + str(p), '密码: ' + password, RULE, 'Surge:',
+                'VPS = anytls, ' + address + ', ' + str(p) + ', password=' + json.dumps(password, ensure_ascii=False) + ', skip-cert-verify=true, udp-relay=true',
+                'Mihomo:', '  - ' + mihomo,
+                'URI:', 'anytls://' + quote(password, safe='/') + '@' + address + ':' + str(p) + '?security=tls&type=tcp&allowInsecure=1&insecure=1#VPS',
+                RULE))
         elif kind == 'snell':
             parser = configparser.ConfigParser(interpolation=None, strict=True)
             parser.read_string(read('config'))
