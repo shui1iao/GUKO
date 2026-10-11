@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.8] - 2026-10-11
+
+### Changed
+- SS-Rust、AnyTLS、Xray、Snell 的安装脚本短链改为 `ss/anytls/xray/snell.siaoz.si`，旧的 `*.shuijiao.de` 即将停用。
+
+### Upgrade notes
+- 无数据迁移或配置变更；更新 GUKO 镜像即可。
+
 ## [0.6.7] - 2026-10-04
 
 ### Fixed

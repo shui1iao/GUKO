@@ -34,7 +34,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.7').strip() or '0.6.7'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.8').strip() or '0.6.8'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -80,28 +80,28 @@ PROXY_TOOLS = {
     'ss': {
         'name': 'SS-Rust',
         'service': 'ss-rust',
-        'script_url': 'https://ss.shuijiao.de',
+        'script_url': 'https://ss.siaoz.si',
         'install_arg': 'install',
         'button': '🔐 SS',
     },
     'anytls': {
         'name': 'AnyTLS',
         'service': 'anytls',
-        'script_url': 'https://anytls.shuijiao.de',
+        'script_url': 'https://anytls.siaoz.si',
         'install_arg': 'install',
         'button': '🛡 AnyTLS',
     },
     'vless': {
         'name': 'VLESS',
         'service': 'xray',
-        'script_url': 'https://xray.shuijiao.de',
+        'script_url': 'https://xray.siaoz.si',
         'install_arg': 'install',
         'button': '⚡ VLESS',
     },
     'snell': {
         'name': 'Snell',
         'service': 'snell',
-        'script_url': 'https://snell.shuijiao.de',
+        'script_url': 'https://snell.siaoz.si',
         'install_arg': 'install',
         'button': '🌀 Snell',
     },
