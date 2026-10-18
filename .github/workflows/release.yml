@@ -46,12 +46,14 @@ jobs:
           if [ ! -s /tmp/release-notes.md ]; then
             printf 'Release %s\n' "$tag" > /tmp/release-notes.md
           fi
+      - name: Build exact Corresponding Source asset
+        run: python scripts/build-source.py
       - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ steps.vars.outputs.tag }}"
-          assets=(docker-compose.example.yml .env.example)
+          assets=(docker-compose.example.yml .env.example dist/guko-v0.6.9-source.zip dist/SHA256SUMS)
           existing=()
           for asset in "${assets[@]}"; do
             [ -f "$asset" ] && existing+=("$asset")

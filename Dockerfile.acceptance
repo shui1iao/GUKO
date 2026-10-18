@@ -1,0 +1,12 @@
+# Offline local acceptance only, using the exact already-installed dependency image.
+# Not a public base reference; the public multiarch recipe is telegram-bot/Dockerfile.
+FROM guko-local:stream-supplement-20261018
+ENV GUKO_VERSION=0.6.9
+LABEL local.guko.candidate="v0.6.9-unified" org.opencontainers.image.version="0.6.9" \
+      local.guko.stream-supplement="retired" \
+      org.opencontainers.image.licenses="MIT AND AGPL-3.0-only" \
+      org.opencontainers.image.description="GUKO v0.6.9 unified stream candidate (unpublished)"
+COPY telegram-bot/bot.py stream_unified.py unified_catalogue.json /app/
+COPY stream-unified/ /app/stream-unified/
+COPY LICENSE LICENSES NOTICE-STREAM.md /app/licenses/
+RUN rm -rf /app/stream_supplement.py /app/stream-supplement

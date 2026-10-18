@@ -11,3 +11,7 @@ backups/
 __pycache__/
 *.pyc
 *.bak*
+
+# Offline-only binaries and release bundles never enter a public build context.
+tests/native-fixture
+dist/

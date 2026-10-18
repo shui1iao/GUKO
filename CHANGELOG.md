@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.9] - 2026-10-18
+
+- Replace new stream jobs with one fixed Service Unlock v0.5.4 measurement and one single-frame PNG; automatically select global + actual exit region, falling back to global with a reason.
+- Keep original35/extra134 catalogue, default-family policy, current Spotify conservative Unknown/scoped-proxy-No semantics; no registration attempts or font changes.
+- Strictly validate JSON/ANSI identities, ordered scope, auto metadata, single-frame rows, statuses/regions/colors and complete exit1 reports. Reuse owned SSH upload/checksum/cancellation cleanup.
+- Preserve old RRC+supplement two-image history; renderer/storage/delivery failures remain separate from probe results. Non-stream features, node formats and auth policies are preserved.
+- Bundle fixed dual-architecture CLI assets, complete CLI Corresponding Source/vendor/licenses and AGPL integration notices; attach exact GUKO source archive to releases.
+
 ## [0.6.8] - 2026-10-11
 
 ### Changed

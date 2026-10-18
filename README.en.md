@@ -1,7 +1,9 @@
+> **v0.6.9 unified stream report:** one fixed Service Unlock v0.5.4 run, automatic actual-exit-country selection (inventory does not override it), one internally sectioned rounded frame and one PNG from the same JSON/ANSI measurement. Failed/unmapped country falls back to global. New jobs no longer execute RRC or the legacy17 supplement. Existing two-image history stays readable; fonts are unchanged. Unknown is not a refusal or a playback/login/registration guarantee.
+
 # GUKO
 
 [![Docker Image](https://img.shields.io/badge/ghcr.io-guko-blue?logo=docker)](https://github.com/shui1iao/GUKO/pkgs/container/guko)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT + AGPL](https://img.shields.io/badge/License-MIT%20%2B%20AGPL-blue.svg)](NOTICE-STREAM.md)
 
 [中文](README.md) | **English**
 
@@ -394,7 +396,7 @@ You can also export sanitized config from the Bot:
 
 IPQuality and NodeQuality default to IPv4 only. Add/import detects IPv6 once and persists the address, availability, reason, and timestamp. Menus, selection, and start callbacks read saved state without SSH probes. Saved availability enables dual-stack; saved unavailability hides it with a reason. Actual tests refresh capability within the same SSH invocation. If IPv6 is confirmed disabled or no global address remains, the stale address is cleared and the result explicitly reports missing IPv6 and the updated server state. IPv4 tests can rediscover restored IPv6; SSH/probe command failures, timeouts, and invalid responses never erase known addresses. IPQuality retains both independent reports, including URL-less IPv6 Lite, and preserves partial results on timeout.
 
-GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. The streaming entry runs the unmodified official [lmc999/RegionRestrictionCheck](https://github.com/lmc999/RegionRestrictionCheck) `main/check.sh`, without a local service allowlist. It uses non-interactive `-M 4/6 -R <region> -E en`, preferring IPv4, for global plus the server region (TW 1, HK 2, JP 3, NA 4, SA 5, EU 6, Oceania 7, KR 8, Africa 11; unknown 0 is global only). The launcher is downloaded over HTTPS to a unique temporary file with time and size limits, checked for nonempty content and Bash syntax, explicitly run with Bash, then removed. IPv4 capability is checked using the local route table; SSH/dependency errors do not imply IPv4 absence. Targets need Bash, curl, ip (iproute2), trusted CA certificates and basic commands; upstream may install probe dependencies and fetch external data and advertisements, without GUKO modifications. Summaries, images, history and raw logs are retained, including original service status and Region/City/CDN details; geography is not an unlock verdict. Valid results require actual service rows within upstream output context. Exit zero without results fails; nonzero partial output is marked incomplete. Delivery errors do not overwrite remote execution status. TCPQuality is organized into five task-focused entries: carrier quality, return path, international connectivity, carrier speed test, and complete test. Carrier quality and return-path checks support IPv4 or IPv6 when configured; international connectivity uses IPv4 as supported upstream. Speed-test and complete-test entries show a traffic warning and require confirmation to prevent accidental runs. The complete test runs carrier IPv4/IPv6, international connectivity, and carrier speed tests; CERNET checks are excluded. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while return-path mode sends text directly. Related buttons can be disabled with environment variables.
+GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. The streaming entry uploads and SHA256-verifies the fixed Service Unlock v0.5.4 standalone binary through existing SSH authentication, then runs it once with default actual-exit-country auto selection. Failure/unmapped country selects global with a reason. Its single-frame PNG and JSON are from one measurement; no legacy RRC/supplement tasks or remote runtime installation. Native35 remain system-selected; only extra probes use their resolved family. Complete exit1/Unknown reports are valid, with renderer/storage/delivery errors separate from probe results. Legacy two-image history is retained. TCPQuality is organized into five task-focused entries: carrier quality, return path, international connectivity, carrier speed test, and complete test. Carrier quality and return-path checks support IPv4 or IPv6 when configured; international connectivity uses IPv4 as supported upstream. Speed-test and complete-test entries show a traffic warning and require confirmation to prevent accidental runs. The complete test runs carrier IPv4/IPv6, international connectivity, and carrier speed tests; CERNET checks are excluded. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while return-path mode sends text directly. Related buttons can be disabled with environment variables.
 
 ---
 
@@ -425,11 +427,17 @@ make check
 - The repository does not contain any Bot Token, real user ID, server password, or private key.
 - `.env`, `servers.json`, `keys/`, `media/`, and `tmp/` are ignored by Git. Do not commit real configuration.
 - Whitelist mode is enabled by default. The Bot refuses to start when allowed users are not configured.
-- IPPure, bgp.tools, NodeQuality, TCPQuality, RegionRestrictionCheck streaming checks, and similar features will access corresponding third-party services. Streaming uses the upstream script and its external data sources; GUKO does not supply account credentials. TCPQuality report-producing modes upload results to `tcpquality.ibsgss.uk` to generate a public report; route-only mode does not upload a report.
+- IPPure, bgp.tools, NodeQuality, TCPQuality, Service Unlock streaming checks, and similar features will access corresponding third-party services. Streaming uses fixed anonymous probes and at most two HTTPS country sources for auto scheduling; no account credentials or old upstream script execution. TCPQuality report-producing modes upload results to `tcpquality.ibsgss.uk` to generate a public report; route-only mode does not upload a report.
 - Deleting a server only removes local Bot configuration. It does not delete or reinstall the remote machine.
 
 ## License
 
-MIT
+Original portions: MIT. Unified integration modifications: AGPL-3.0-only; the combined image is not MIT-only. See NOTICE-STREAM.md.
 
 ---
+
+## Stream integration distribution
+
+The existing `telegram-bot/Dockerfile` and Docker publish workflow support linux/amd64 and linux/arm64 without dependency/font upgrades. Fixed v0.5.4 CLI binaries are selected by target uname, uploaded using existing SSH auth and SHA256 verified; no remote runtime installation or script download. Only the extra probes use the selected4/6 family; native35 remain system-selected.
+
+`python scripts/build-source.py` creates the exact GUKO source release (integration/build recipes and fixed CLI binaries + complete CLI source/vendor ZIP). Keep this source asset with the matching image revision. Original GUKO MIT notices remain; unified integration modifications are AGPL-3.0-only, and the combined image is not MIT-only. See NOTICE-STREAM.md and LICENSES/AGPL-3.0.txt. CLI source is pinned to https://github.com/shui1iao/service-unlock/tree/v0.5.4 and carried inside /app/stream-unified/source; each binary supports --license without network requests. No inventory/credentials/private font are included in Corresponding Source.

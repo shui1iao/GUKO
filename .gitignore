@@ -12,3 +12,7 @@ __pycache__/
 
 docker-compose.yml
 history.json
+
+# Generated offline test executable / release source bundles
+tests/native-fixture
+dist/

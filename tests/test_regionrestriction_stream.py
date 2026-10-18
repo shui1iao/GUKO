@@ -42,12 +42,12 @@ Testing Done! Thanks for Using This Script!
 '''
 
 class RegionRestrictionStreamTest(unittest.TestCase):
-    def test_display_command_is_short_and_matches_execution_options(self):
-        for mode in ('4', '6'):
+    def test_display_command_is_current_native_and_never_inventory_override(self):
+        for mode in ('auto', '4', '6'):
             text = bot.script_command_text('stream', ip_mode=mode, region_id='sea')
-            self.assertEqual(text, '脚本命令：\nbash <(curl -' + mode + ' -fsSL ' + bot.REGIONRESTRICTION_URL + ') -M ' + mode + ' -R 9 -E en')
-            self.assertNotIn('mktemp', text)
-            self.assertIn('mktemp', bot.regionrestriction_remote_command(mode, 'sea'))
+            self.assertIn('service-unlock --machine --extra-family ' + mode, text)
+            self.assertNotIn('--region', text)
+            self.assertNotIn('curl', text)
 
     def test_southeast_asia_selects_official_region_nine(self):
         for country in ('sg', 'my', 'th', 'id', 'ph', 'vn', 'kh', 'la', 'mm', 'bn', 'tl'):
@@ -144,14 +144,6 @@ class RegionRestrictionStreamTest(unittest.TestCase):
         for key in ['exit_code', 'proto', 'render_error', 'artifact_error', 'raw_path']:
             self.assertEqual(item.get(key), job[key])
 
-    def test_user_recipe_matches_safe_runner(self):
-        self.assertTrue(hasattr(bot, 'regionrestriction_remote_command'))
-        recipe = bot.script_command_text('stream', ip_mode='6', region_id='eu')
-        self.assertIn('-M 6 -R 6 -E en', recipe)
-        self.assertIn(bot.REGIONRESTRICTION_URL, recipe)
-        self.assertNotIn('mktemp', recipe)
-        self.assertEqual(subprocess.run(['bash', '-n'], input=recipe.split('\n', 1)[1], text=True, capture_output=True).returncode, 0)
-
     def test_region_country_collision_preserved(self):
         self.assertEqual(bot.stream_region_for_server({'country':'na'})[0], 'af')
         self.assertEqual(bot.stream_region_for_server({'country':'us'})[0], 'na')
@@ -214,71 +206,8 @@ class StreamTaskTest(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(RuntimeError):
                     await bot.remote_has_ipv4(server)
 
-    async def run_task(self, output=FIXTURE, code=0, photo_error=False, render_error=False, v4=True, message_error=False):
-        jid = 'rrc-fixture-job'
-        bot.JOBS[jid] = {'status':'running'}
-        sender = type('Sender', (), {})()
-        sender.send_photo = AsyncMock(side_effect=RuntimeError('photo unavailable') if photo_error else None)
-        sender.send_message = AsyncMock(side_effect=RuntimeError('message unavailable') if message_error else None)
-        async def render_report(raw, output_path, *, kind):
-            self.assertEqual(kind, 'stream')
-            self.assertEqual(raw, bot.stream_terminal_report(output))
-            Image.new('RGB', (100, 100)).save(output_path, format='PNG')
-        with tempfile.TemporaryDirectory() as tmp, patch.object(bot, 'remote_has_ipv4', AsyncMock(return_value=v4)), patch.object(bot, 'run_subprocess', AsyncMock(return_value=(code, output))) as run, patch.object(bot, 'RESULTS_DIR', Path(tmp)), patch.object(bot, 'finish_job'), patch.object(bot, 'render_ansi_png', AsyncMock(side_effect=RuntimeError('render failed') if render_error else render_report)) as render:
-            await bot.run_stream_task(sender, 1, {'id':'rrc-server', 'host':'192.0.2.1', 'name':'fixture', 'country':'jp'}, jid)
-            job = dict(bot.JOBS[jid])
-            if job.get('media_path'):
-                self.assertTrue(Path(job['media_path']).is_file())
-            if bot.parse_stream_results(output):
-                self.assertEqual(render.await_count, 1)
-            else:
-                render.assert_not_awaited()
-            if job.get('media_path'):
-                self.assertEqual(Path(job['media_path']).suffix, '.png')
-                with Image.open(job['media_path']) as image:
-                    self.assertEqual(image.format, 'PNG')
-            self.assertIn('raw_path', job)
-            self.assertEqual(Path(job['raw_path']).read_text(), output)
-            return job, sender, run
-
-    async def test_exit_zero_without_results_fails(self):
-        for output in ['hello', '<html>502 Bad Gateway</html>', HEADER + 'Geo Region: US']:
-            job, sender, _ = await self.run_task(output)
-            self.assertEqual(job['status'], 'failed')
-            self.assertNotIn('完成', ''.join(str(c) for c in sender.send_message.call_args_list))
-
-    async def test_success_persists_image_and_ipv4_first(self):
-        job, sender, run = await self.run_task()
-        self.assertEqual(job['status'], 'done')
-        self.assertIn('media_path', job)
-        self.assertEqual(sender.send_photo.await_count, 1)
-        self.assertIn('fixture', sender.send_photo.call_args.kwargs.get('caption', ''))
-        self.assertIn('-M 4 -R 3 -E en', str(run.call_args))
-
-    async def test_ipv6_fallback_and_partial_failure(self):
-        job, sender, run = await self.run_task(code=7, v4=False)
-        self.assertEqual(job['status'], 'failed')
-        self.assertIn('-M 6 -R 3 -E en', str(run.call_args))
-        self.assertIn('未完成', ''.join(str(c) for c in sender.send_message.call_args_list))
-
-    async def test_photo_failure_does_not_rewrite_remote_success(self):
-        job, _, _ = await self.run_task(photo_error=True)
-        self.assertEqual(job['status'], 'done')
-        self.assertIn('photo unavailable', job['delivery_error'])
-        self.assertEqual(job['log'], FIXTURE)
-
-    async def test_message_failure_preserves_both_success_and_failure(self):
-        for code in [0, 7]:
-            job, _, _ = await self.run_task(code=code, message_error=True)
-            self.assertEqual(job['status'], 'done' if code == 0 else 'failed')
-            self.assertIn('message unavailable', job['delivery_error'])
-            self.assertEqual(job['log'], FIXTURE)
-
-    async def test_render_failure_is_not_delivery_or_remote_failure(self):
-        job, _, _ = await self.run_task(render_error=True)
-        self.assertEqual(job['status'], 'done')
-        self.assertIn('render failed', job['render_error'])
-        self.assertNotIn('delivery_error', job)
+# New-task execution/image/error/transport contracts live in test_stream_unified.py.
+# Legacy RRC parsing/history/command helper regressions above remain intentional.
 
 if __name__ == '__main__':
     unittest.main()

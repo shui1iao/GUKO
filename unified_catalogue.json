@@ -1,0 +1,4243 @@
+{
+  "native": [
+    {
+      "array": "results",
+      "id": "chatgpt_web",
+      "name": "ChatGPT (web)",
+      "action": "keep unchanged",
+      "source": "internal/access/checks.go:18-29"
+    },
+    {
+      "array": "results",
+      "id": "youtube_premium_access",
+      "name": "YouTube Premium",
+      "action": "keep unchanged",
+      "source": "internal/access/checks.go:18-29"
+    },
+    {
+      "array": "results",
+      "id": "netflix_access",
+      "name": "Netflix",
+      "action": "keep unchanged",
+      "source": "internal/access/checks.go:18-29"
+    },
+    {
+      "array": "results",
+      "id": "claude_access",
+      "name": "Claude",
+      "action": "keep unchanged",
+      "source": "internal/access/checks.go:18-29"
+    },
+    {
+      "array": "results",
+      "id": "tiktok_access",
+      "name": "TikTok",
+      "action": "keep unchanged",
+      "source": "internal/access/checks.go:18-29"
+    },
+    {
+      "array": "results",
+      "id": "gemini_access",
+      "name": "Gemini",
+      "action": "keep unchanged",
+      "source": "internal/access/checks.go:18-29"
+    },
+    {
+      "array": "services",
+      "id": "google",
+      "name": "Google",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "google_captcha",
+      "name": "Google Search captcha",
+      "kind": "blocked",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "youtube",
+      "name": "YouTube",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "youtube_premium",
+      "name": "YouTube Premium",
+      "kind": "availability",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "youtube_music",
+      "name": "YouTube Music",
+      "kind": "availability",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "twitch",
+      "name": "Twitch",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "chatgpt",
+      "name": "ChatGPT",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "netflix",
+      "name": "Netflix",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "spotify",
+      "name": "Spotify",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "spotify_signup",
+      "name": "Spotify signup",
+      "kind": "availability",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "deezer",
+      "name": "Deezer",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "reddit",
+      "name": "Reddit",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "reddit_guest",
+      "name": "Reddit guest access",
+      "kind": "availability",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "prime",
+      "name": "Amazon Prime Video",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "apple",
+      "name": "Apple",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "steam",
+      "name": "Steam",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "playstation",
+      "name": "PlayStation",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "tiktok",
+      "name": "TikTok",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "ookla",
+      "name": "Ookla Speedtest",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "jetbrains",
+      "name": "JetBrains",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "services",
+      "id": "bing",
+      "name": "Microsoft (Bing)",
+      "kind": "country",
+      "action": "keep unchanged",
+      "source": "internal/geo/services.go:46-69"
+    },
+    {
+      "array": "ai_endpoints",
+      "id": "openai",
+      "name": "OpenAI",
+      "action": "keep unchanged",
+      "source": "internal/ai/endpoints.go:36-85"
+    },
+    {
+      "array": "ai_endpoints",
+      "id": "anthropic",
+      "name": "Anthropic",
+      "action": "keep unchanged",
+      "source": "internal/ai/endpoints.go:36-85"
+    },
+    {
+      "array": "ai_endpoints",
+      "id": "gemini",
+      "name": "Google Gemini",
+      "action": "keep unchanged",
+      "source": "internal/ai/endpoints.go:36-85"
+    },
+    {
+      "array": "ai_endpoints",
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "action": "keep unchanged",
+      "source": "internal/ai/endpoints.go:36-85"
+    },
+    {
+      "array": "ai_endpoints",
+      "id": "qwen_intl",
+      "name": "Qwen (Singapore)",
+      "action": "keep unchanged",
+      "source": "internal/ai/endpoints.go:36-85"
+    },
+    {
+      "array": "ai_endpoints",
+      "id": "qwen_cn",
+      "name": "Qwen (Beijing)",
+      "action": "keep unchanged",
+      "source": "internal/ai/endpoints.go:36-85"
+    },
+    {
+      "array": "ai_endpoints",
+      "id": "moonshot",
+      "name": "Kimi / Moonshot",
+      "action": "keep unchanged",
+      "source": "internal/ai/endpoints.go:36-85"
+    },
+    {
+      "array": "ai_endpoints",
+      "id": "zhipu",
+      "name": "Zhipu GLM",
+      "action": "keep unchanged",
+      "source": "internal/ai/endpoints.go:36-85"
+    }
+  ],
+  "extra": [
+    {
+      "function": "MediaUnlockTest_BahamutAnime",
+      "display_name": "Bahamut Anime",
+      "groups": [
+        "tw",
+        "hk"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 542,
+      "source_endline": 580,
+      "source_sha256": "88385b8ccb08f0a84552b2c667f53abe0b1d4b65ed72051908f537916a821923",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://ani.gamer.com.tw/ajax/getdeviceid.php",
+        "https://ani.gamer.com.tw/ajax/token.php",
+        "https://ani.gamer.com.tw/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_BilibiliHKMCTW",
+      "display_name": "BiliBili Hongkong/Macau/Taiwan",
+      "groups": [
+        "hk"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 606,
+      "source_endline": 626,
+      "source_sha256": "7b83d2ddfdb2d28d7b82e2d42f7938e24c57e3976d9d424fd50a0a90d3566216",
+      "helper_dependencies": [
+        "gen_uuid",
+        "md5sum"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.bilibili.com/pgc/player/web/playurl"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_BilibiliTW",
+      "display_name": "Bilibili Taiwan Only",
+      "groups": [
+        "tw"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 629,
+      "source_endline": 649,
+      "source_sha256": "43ef4c3a9d531934926a84bd29b33a7ed9880dda2703266a9a411f4b04b42b07",
+      "helper_dependencies": [
+        "gen_uuid",
+        "md5sum"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.bilibili.com/pgc/player/web/playurl"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_AbemaTV",
+      "display_name": "Abema.TV",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 651,
+      "source_endline": 673,
+      "source_sha256": "cb0a52e6bfa8c98cfadccb9169d2efb93bebe66221fadd00f2b4d63e684eba4c",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.abema.io/v1/ip/check"
+      ],
+      "special_handling": "Oversea Only -> Limited; Region only validated country code",
+      "safety_exception": null
+    },
+    {
+      "function": "GameTest_PCRJP",
+      "display_name": "Princess Connect Re:Dive Japan",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 675,
+      "source_endline": 689,
+      "source_sha256": "229d1dfef1f4c8d8a831cad8f3b3fe274c9825ddeeef441f55ad434ef8479cc7",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api-priconne-redive.cygames.jp/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "GameTest_UMAJP",
+      "display_name": "Pretty Derby Japan",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 691,
+      "source_endline": 700,
+      "source_sha256": "8e40d66c870c80b5ab8e63ce2b31518fa16482d2a3a5596c8108b4e09a0af392",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://api-umamusume.cygames.jp/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "GameTest_SDGGGE",
+      "display_name": "SD Gundam G Generation Eternal",
+      "groups": [
+        "global"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-check",
+      "existing_native_ids": "",
+      "decision_note": "SD Gundam API HTTP verdict; base64 request is data, not executed code",
+      "source_file": "check.sh",
+      "source_line": 702,
+      "source_endline": 711,
+      "source_sha256": "052224290721c0742442351b221d2b3d69dbdcaa7f073c95f06685613a94aebc",
+      "helper_dependencies": [
+        "base64"
+      ],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://api.gl.eternal.channel.or.jp/api/pvt/consent/view",
+        "https://clientdata.gl.eternal.channel.or.jp/prd-gl/catalogs/hr0phpfWDVahMJGQIk2OSd6hy35YpQZVKYAo6lKeld-9scMGJw2KTnBDGbS04Gw-i25avFTH55K-yU9TCX2OkQ.json",
+        "https://clientdata.gl.eternal.channel.or.jp/prd-gl/language_catalogs/hk/F-HORjFKHLai8nLXUdPyQRqzexZNPKIn2O36Hgd2Bxm2RysBNS0-PQHQwfHXEOONog0w5yULtewBaVk-Ndf6nQ.json"
+      ],
+      "special_handling": "",
+      "safety_exception": "Upstream request binds an explicit user_id to opaque x-token and encrypted consent payload; cannot establish anonymous-client provenance without real credentials; not copied or invoked"
+    },
+    {
+      "function": "GameTest_Kancolle",
+      "display_name": "Kancolle Japan",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 713,
+      "source_endline": 732,
+      "source_sha256": "96ef99d496cbba50757cdbb8e6412a17352c523d3851f092eb14825f16bfc970",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "http://203.104.209.7/kcscontents/twitter/maintenance_info.html"
+      ],
+      "special_handling": "literal HTTP target (not HTTPS); source first checks IPv6 unsupported; do not silently upgrade URL",
+      "safety_exception": "Source plain HTTP target; no evidenced equivalent HTTPS endpoint"
+    },
+    {
+      "function": "MediaUnlockTest_Lemino",
+      "display_name": "Lemino",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 734,
+      "source_endline": 743,
+      "source_sha256": "bbeca83f5c1db8b210dab6a3e1af799936e0e24296e97db1f06c61389537a01b",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://if.lemino.docomo.ne.jp/v1/user/delivery/watch/ready",
+        "https://lemino.docomo.ne.jp",
+        "https://lemino.docomo.ne.jp/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_AnimeFesta",
+      "display_name": "AnimeFesta",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 745,
+      "source_endline": 754,
+      "source_sha256": "2bb5a62c1ff0332f201196832caac4cad6acf30a8c3d5262c16490440eafa15e",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://api-animefesta.iowl.jp/v1/titles/1560",
+        "https://animefesta.iowl.jp",
+        "https://animefesta.iowl.jp/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_mora",
+      "display_name": "Mora",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 756,
+      "source_endline": 771,
+      "source_sha256": "0c22f0e32aa2be99829e77aad3ad1d761f5d88b3ea8a54190158fe8de23d2ded",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://mora.jp/buy"
+      ],
+      "special_handling": "upstream maps HTTP500 to No; conflicts with modern 5xx Unknown; requires documented conservative guard correction",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_BBCiPLAYER",
+      "display_name": "BBC iPLAYER",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 773,
+      "source_endline": 802,
+      "source_sha256": "1dbbbc6ec504c6f9a59df223df98631e76f776940ad3c5a5dcb28fa0030091d7",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://open.live.bbc.co.uk/mediaselector/6/select/version/2.0/mediaset/pc/vpid/bbc_one_london/format/json/jsfunc/JS_callbacks0"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_DisneyPlus",
+      "display_name": "Disney+",
+      "groups": [
+        "global"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-check",
+      "existing_native_ids": "",
+      "decision_note": "device/token/GraphQL supported-location; public MEDIA_COOKIE data; Available Soon is Limited, not Yes",
+      "source_file": "check.sh",
+      "source_line": 832,
+      "source_endline": 900,
+      "source_sha256": "2dfb0b53fa6e218da101291c7a3dff269b72d7c281303c269503248bd019725c",
+      "helper_dependencies": [
+        "MEDIA_COOKIE"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://disney.api.edge.bamgrid.com/devices",
+        "https://disney.api.edge.bamgrid.com/token",
+        "https://disney.api.edge.bamgrid.com/graph/v1/device/graphql",
+        "https://disneyplus.com"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Dazn",
+      "display_name": "Dazn",
+      "groups": [
+        "global"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-check",
+      "existing_native_ids": "",
+      "decision_note": "DAZN isAllowed/GeolocatedCountry; IP Banned by Dazn special No",
+      "source_file": "check.sh",
+      "source_line": 902,
+      "source_endline": 927,
+      "source_sha256": "7a921c195a395b08351dfa442e7ba117e079b75075c2e945f7dcc2643df8e57d",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://startup.core.indazn.com/misl/v5/Startup",
+        "https://www.dazn.com",
+        "https://www.dazn.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_HuluJP",
+      "display_name": "Hulu Japan",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 930,
+      "source_endline": 961,
+      "source_sha256": "dcb48d59c76d0ef80bd02c8ea762d7852f7fcaff6f15ec81e4a4b9319fd54bec",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://id.hulu.jp/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_MyTVSuper",
+      "display_name": "MyTVSuper",
+      "groups": [
+        "hk"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 963,
+      "source_endline": 985,
+      "source_sha256": "b8e66c599834ddb106c677900c5af6bbc2c7163aebf8b68ea250a9be7905c7d3",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.mytvsuper.com/api/auth/getSession/self/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_NowE",
+      "display_name": "Now E",
+      "groups": [
+        "hk"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 987,
+      "source_endline": 1017,
+      "source_sha256": "a46bde3c9a264368a80144a8517b7b7fea523ad390db490da959c807dba08ca2",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://webtvapi.nowe.com/16/1/getVodURL",
+        "https://www.nowe.com",
+        "https://www.nowe.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_ViuTV",
+      "display_name": "Viu.TV",
+      "groups": [
+        "hk"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1019,
+      "source_endline": 1037,
+      "source_sha256": "a03326f9c82bcce459d078309818357b853977ae4846c84f0aac1da82dbb02c2",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.viu.now.com/p8/3/getLiveURL"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_unext",
+      "display_name": "U-NEXT",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1039,
+      "source_endline": 1053,
+      "source_sha256": "6523fa64a5ee269a82b62cb8fdd65cd066ab0783a44627c349ba35a082dda79a",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://cc.unext.jp"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_wowow",
+      "display_name": "WOWOW",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1055,
+      "source_endline": 1130,
+      "source_sha256": "d04bac85f52de68a2abcc2ef4ba559d4e45102816fcaa781c599f9b54fcd278d",
+      "helper_dependencies": [
+        "md5sum"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.wowow.co.jp/drama/original/json/lineup.json",
+        "https://www.wowow.co.jp/drama/original/",
+        "https://www.wowow.co.jp/drama/original/hakubo/",
+        "https://wod.wowow.co.jp/content/.*",
+        "https://wod.wowow.co.jp/watch/\\K\\d{0,}[^",
+        "https://mapi.wowow.co.jp/api/v1/playback/auth",
+        "https://wod.wowow.co.jp",
+        "https://wod.wowow.co.jp/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_TVer",
+      "display_name": "TVer",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1132,
+      "source_endline": 1200,
+      "source_sha256": "4e0d9e2884a1b7a90b9fb4b37fbfe23ab03bdbabd3b087f73aa2afbf490ff660",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://platform-api.tver.jp/v2/api/platform_users/browser/create",
+        "https://s.tver.jp",
+        "https://s.tver.jp/",
+        "https://platform-api.tver.jp/service/api/v1/callHome",
+        "https://tver.jp",
+        "https://tver.jp/",
+        "https://statics.tver.jp/content/episode/{dynamic}.json",
+        "https://players.brightcove.net/{dynamic}/{dynamic}_default/index.min.js",
+        "https://edge.api.brightcove.com/playback/v1/accounts/{dynamic}/videos/{dynamic}",
+        "https://edge.api.brightcove.com/playback/v1/accounts/{dynamic}/videos/ref%3A{dynamic}"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_HamiVideo",
+      "display_name": "Hami Video",
+      "groups": [
+        "tw"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1202,
+      "source_endline": 1220,
+      "source_sha256": "da02685b043723892de1f1ff579eca52cc187c1b81b31448ea1bde58a64ed418",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://hamivideo.hinet.net/api/play.do"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_4GTV",
+      "display_name": "4GTV.TV",
+      "groups": [
+        "tw"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1222,
+      "source_endline": 1240,
+      "source_sha256": "2cf01e594ceff3c23f94edff20fa3417f4aae82f2fae5c670b97e76beae07b2f",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api2.4gtv.tv/Web/IsTaiwanArea",
+        "https://www.4gtv.tv",
+        "https://www.4gtv.tv/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_SlingTV",
+      "display_name": "Sling TV",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1242,
+      "source_endline": 1264,
+      "source_sha256": "84298a68aa4d9936b5a92bcc9faac14d60d9223cf4766e531d6081a58bf171ee",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.sling.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_PlutoTV",
+      "display_name": "Pluto TV",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1266,
+      "source_endline": 1293,
+      "source_sha256": "3068815754e04c97de9cc0bf7506d74fac8eec433e09d5debc5d016fbe14dd75",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://pluto.tv/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_HBOMax",
+      "display_name": "HBO Max",
+      "groups": [
+        "tw",
+        "hk",
+        "na",
+        "sa",
+        "eu",
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1295,
+      "source_endline": 1318,
+      "source_sha256": "d71fe89c0acc806d6016647159cd012a3dff69a742935c04b55e7fa4b1a05bf9",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.max.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Showmax",
+      "display_name": "Showmax",
+      "groups": [
+        "af"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1320,
+      "source_endline": 1336,
+      "source_sha256": "439d9025913e60fd20e392c6eea31b3e6b4551078259ba0d730fa5595d0bd916",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.showmax.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Channel4",
+      "display_name": "Channel 4",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1338,
+      "source_endline": 1352,
+      "source_sha256": "dc27e26df8d25ea33feacd5db2e9b4af4be67b3a6a9297a2ecadfb0dea84116a",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.channel4.com/simulcast/channels/C4"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_ITVHUB",
+      "display_name": "ITV Hub",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1354,
+      "source_endline": 1383,
+      "source_sha256": "3fccd1a94201f05f859a47384b997b07804005caf1d1fc72df214828a1c6b4cf",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://magni.itv.com/playlist/itvonline/ITV/10_4782_0001.001",
+        "https://www.itv.com",
+        "https://www.itv.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_DSTV",
+      "display_name": "DSTV",
+      "groups": [
+        "af"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1385,
+      "source_endline": 1399,
+      "source_sha256": "313bdbab6ae2e831dd784bb445ba7b7cea4cf00a5caa6589714c9e5180325d9c",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://authentication.dstv.com/favicon.ico"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_HuluUS",
+      "display_name": "Hulu",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1428,
+      "source_endline": 1442,
+      "source_sha256": "05d5089eb396e99b611c18c2e70d3edd9b5deb4bc3ca2e6f1d3fcc402d0cabb3",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://auth.hulu.com/v4/web/password/authenticate",
+        "https://www.hulu.com",
+        "https://www.hulu.com/welcome"
+      ],
+      "special_handling": "upstream contains hard-coded login-form account/password/token constants; no local/user secret involved, but reuse needs authorization/validity decision",
+      "safety_exception": "Source hard-coded account/password login form; no credentials introduced"
+    },
+    {
+      "function": "MediaUnlockTest_encoreTVB",
+      "display_name": "encoreTVB",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1444,
+      "source_endline": 1462,
+      "source_sha256": "80fd010c1b8c14c83e22218711e4865e5e6ff0f901d44b53f32e81a5d8271f26",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://edge.api.brightcove.com/playback/v1/accounts/5324042807001/videos/6005570109001",
+        "https://www.encoretvb.com"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Molotov",
+      "display_name": "Molotov",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1464,
+      "source_endline": 1479,
+      "source_sha256": "f2fe7fb6fe2fdb8cc8011f324d15c4eeaf30fcb75cb40d50e5e1ef54a4747dce",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://fapi.molotov.tv/v1/open-europe/is-france"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_LineTVTW",
+      "display_name": "LineTV.TW",
+      "groups": [
+        "tw"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1481,
+      "source_endline": 1515,
+      "source_sha256": "1850527f031d3978bfb346c5b56ce255c4f0b1b1cc4b476c79fe1d3413ef9fb7",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.linetv.tw/",
+        "https://www.linetv.tw/api/part/11829/eps/1/part"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_ViuCom",
+      "display_name": "Viu.com",
+      "groups": [
+        "hk",
+        "sea",
+        "af"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1517,
+      "source_endline": 1546,
+      "source_sha256": "63ee208f9073bd0406018f109096567479e078960337223d50a08f316fa17703",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.viu.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Niconico",
+      "display_name": "Niconico",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1548,
+      "source_endline": 1601,
+      "source_sha256": "8d565f32ff1fe7c28cc0ea6dc0f293e946679ab10224344a611ea422709d8999",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.nicovideo.jp/watch/so23017073",
+        "https://live.nicovideo.jp/",
+        "https://live.nicovideo.jp/watch/{dynamic}"
+      ],
+      "special_handling": "LiveID and official-live-unavailable detail are not Region; preserve raw result",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_ParamountPlus",
+      "display_name": "Paramount+",
+      "groups": [
+        "na",
+        "sa",
+        "eu",
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1603,
+      "source_endline": 1627,
+      "source_sha256": "396b64a4ab504e34f2783a9c3ec3c2c06c84e51656abc7ac726ae1a65fcdede3",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.paramountplus.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_KKTV",
+      "display_name": "KKTV",
+      "groups": [
+        "tw"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1629,
+      "source_endline": 1648,
+      "source_sha256": "98698f2bc2c06b8515b9d6f31ad06889eef5e70598e89d9877dd52dd54f47409",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.kktv.me/v3/ipcheck"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_PeacockTV",
+      "display_name": "Peacock TV",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1650,
+      "source_endline": 1671,
+      "source_sha256": "beb00bd5538e4945b47556891ad8ce66ce9e637a653a32ef21a2a78aa8cf56c7",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.peacocktv.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_FOD",
+      "display_name": "FOD(Fuji TV)",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1673,
+      "source_endline": 1692,
+      "source_sha256": "7a9123e9b08c598bffb2a340757bd3d9019870279a7ee7aec4a9bea3f71e579d",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://geocontrol1.stream.ne.jp/fod-geo/check.xml"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_BritBox",
+      "display_name": "BritBox",
+      "groups": [
+        "na",
+        "eu",
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1815,
+      "source_endline": 1836,
+      "source_sha256": "6c03dadeb06f2387f6ddfaa2e7d5d6b02663c4d47febbe844d61029c6d1756c9",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.britbox.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_PrimeVideo",
+      "display_name": "Amazon Prime Video",
+      "groups": [
+        "global"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "same-platform-new-capability",
+      "existing_native_ids": "prime",
+      "decision_note": "Prime Video availability/isServiceRestricted distinct from existing prime KindCountry; native row must remain country-only",
+      "source_file": "check.sh",
+      "source_line": 1838,
+      "source_endline": 1867,
+      "source_sha256": "cb0fc489e02d0082a2ed5fe1b809abbba94773f275a2f66eaa86687911764c6a",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.primevideo.com"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Radiko",
+      "display_name": "Radiko",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1869,
+      "source_endline": 1899,
+      "source_sha256": "400ae938e91d3319ab8dde69a2486c753bc71c83cae6eb9c15494a26642c4d14",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://radiko.jp/area"
+      ],
+      "special_handling": "City:TOKYO is not ISO country; leave Region empty unless independently returned",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_DMM",
+      "display_name": "DMM",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1901,
+      "source_endline": 1931,
+      "source_sha256": "852e74bd8f2b615107c0d8d18627c5e092ee94d821439367ce000911fc912e55",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://bitcoin.dmm.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_DMMTV",
+      "display_name": "DMM TV",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1933,
+      "source_endline": 1962,
+      "source_sha256": "92a796098291b42925c869351f17540b1914875b723a3d25e890d3b6ee7d3e7d",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.beacon.dmm.com/v1/streaming/start"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Catchplay",
+      "display_name": "CatchPlay+",
+      "groups": [
+        "tw"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1964,
+      "source_endline": 1986,
+      "source_sha256": "d45c76c8fe2aa578ad5f52fd91c1fabd37df9c456b1db8f045311b04437aebb8",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://sunapi.catchplay.com/geo"
+      ],
+      "special_handling": "final unexpected-error branch prints wrong label Now E; bind output to invoked ID, not printed brand",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_HotStar",
+      "display_name": "HotStar",
+      "groups": [
+        "na",
+        "eu",
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 1988,
+      "source_endline": 2024,
+      "source_sha256": "9ba3cbc769bcd99fa282f742a45fd2e96b8243afccc73c0e67febb7e021f5f13",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.hotstar.com"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_LiTV",
+      "display_name": "LiTV",
+      "groups": [
+        "tw"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2026,
+      "source_endline": 2053,
+      "source_sha256": "68ec1037253aff6105e528b1da9750c26b4ceb917de271d1bf28e13afe21f37b",
+      "helper_dependencies": [
+        "gen_uuid"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.litv.tv/api/get-urls-no-auth",
+        "https://www.litv.tv",
+        "https://www.litv.tv/drama/watch/VOD00328856"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_FuboTV",
+      "display_name": "Fubo TV",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2055,
+      "source_endline": 2086,
+      "source_sha256": "1dfe951e56300e8f85f0532afff66a9f20c63642bac5c5445f773853e6d30ae3",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.fubo.tv/v3/location",
+        "https://www.fubo.tv",
+        "https://www.fubo.tv/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Fox",
+      "display_name": "FOX",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2088,
+      "source_endline": 2097,
+      "source_sha256": "ca5dafb464ac328d08cdea54d6004f40faab2dc62baebc405768f69219e3bc42",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://x-live-fox-stgec.uplynk.com/ausw/slices/8d1/d8e6eec26bf544f084bad49a7fa2eac5/8d1de292bcc943a6b886d029e6c0dc87/G00000000.ts"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Joyn",
+      "display_name": "Joyn",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2099,
+      "source_endline": 2135,
+      "source_sha256": "ac7c42c915b7a585ccad779f02dadc50efe386d34c4c402662f2b3b225e88e24",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://auth.joyn.de/auth/anonymous",
+        "https://api.joyn.de/content/entitlement-token"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_SpotvNow",
+      "display_name": "SPOTV NOW",
+      "groups": [
+        "kr"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2137,
+      "source_endline": 2156,
+      "source_sha256": "8a6817d10a008020b184852a3290ebe4fbf1325358e44b320139641ac02c68db",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://edge.api.brightcove.com/playback/v1/accounts/5764318566001/videos/6349973203112",
+        "https://www.spotvnow.co.kr",
+        "https://www.spotvnow.co.kr/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_SKY_DE",
+      "display_name": "SKY DE",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2158,
+      "source_endline": 2177,
+      "source_sha256": "b1c27e2ac13f6e9b8db93719ece408426ff157dc20b0c429e61ff8bcfbc033af",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://edge.api.brightcove.com/playback/v1/accounts/1050888051001/videos/6247131490001",
+        "https://www.sky.de"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_ZDF",
+      "display_name": "ZDF",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2179,
+      "source_endline": 2193,
+      "source_sha256": "5e783fff52709e0a0e2f39b588252bef0ad0186f3897761bb400179ae5e785e8",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://ssl.zdf.de/geo/de/geo.txt/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_EPIX",
+      "display_name": "MGM+",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2222,
+      "source_endline": 2265,
+      "source_sha256": "56dab34804e3ab6c0e8e245646793c6d8f95893a3d5d62ca83b2e793d00c49d9",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.epix.com/v2/sessions",
+        "https://www.mgmplus.com",
+        "https://www.mgmplus.com/",
+        "https://api.epix.com/graphql"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_NLZIET",
+      "display_name": "NLZIET",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2267,
+      "source_endline": 2296,
+      "source_sha256": "23eac5f21d5f18396a3ff03a2b429037336392faa1c81c8de0e2920ca2fe292a",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.nlziet.nl/v7/stream/handshake/Widevine/Dash/VOD/rzIL9rb-TkSn-ek_wBmvaw",
+        "https://app.nlziet.nl",
+        "https://app.nlziet.nl/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_videoland",
+      "display_name": "videoland",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2298,
+      "source_endline": 2312,
+      "source_sha256": "367ae0d15c0aca344f72863eebe3da40e13ea2b9dc9f52f3a5e0be46fc401d9c",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://api.videoland.com/subscribe/videoland-account/graphql",
+        "https://www.videoland.com",
+        "https://www.videoland.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_NPO_Start_Plus",
+      "display_name": "NPO Start Plus",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2314,
+      "source_endline": 2330,
+      "source_sha256": "057ad8ee3ec0fb7458aa4f5b1d4d92b627ff368d71796d63769912eeba78b61b",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.npo.nl/start/api/domain/player-token",
+        "https://www.npo.nl/start/live",
+        "https://prod.npoplayer.nl/stream-link",
+        "https://npo.nl",
+        "https://npo.nl/",
+        "https://npo.nl/start/live"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_RakutenTV",
+      "display_name": "Rakuten TV",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2332,
+      "source_endline": 2366,
+      "source_sha256": "06ed11a5894371ee0a82395eb607d8f1aa0e8925e1d5fe9bf2fd36d9cbf103f2",
+      "helper_dependencies": [
+        "gen_uuid"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://gizmo.rakuten.tv/v3/me/start",
+        "https://www.rakuten.tv",
+        "https://www.rakuten.tv/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_MoviStarPlus",
+      "display_name": "Movistar+",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2368,
+      "source_endline": 2382,
+      "source_sha256": "3b7353d4183b740c2a5ee01719cdcf7d70340f96e8559dc1d0100864ea518370",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://contratar.movistarplus.es/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Starz",
+      "display_name": "Starz",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2384,
+      "source_endline": 2423,
+      "source_sha256": "adf6017deafd45597196f26af8bfcd754de1c8c66e85ac73bb060370c401fee5",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.starz.com/sapi/header/v1/starz/us/09b397fc9eb64d5080687fc8a218775b",
+        "https://www.starz.com/us/en/",
+        "https://auth.starz.com/api/v4/User/geolocation"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_CanalPlus",
+      "display_name": "Canal+",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2425,
+      "source_endline": 2450,
+      "source_sha256": "d00b78548fcee8497cdfeb6f58dca1d5da8a09d63e798728460dd0c4e093e424",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://boutique-tunnel.canalplus.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Sky_CH",
+      "display_name": "SKY CH",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2452,
+      "source_endline": 2478,
+      "source_sha256": "ca36c4b393c94227ee6bb3a5472466d1eb7b72b11aad262cb86be824fa6e644d",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://sky.ch/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_CBCGem",
+      "display_name": "CBC Gem",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2480,
+      "source_endline": 2504,
+      "source_sha256": "b2e3a19a8cf74273b107c5315ec0757c87a2f69ebd9c908754b6a879e85c4d9b",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.cbc.ca/g/stats/js/cbc-stats-top.js"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_AcornTV",
+      "display_name": "Acorn TV",
+      "groups": [
+        "na",
+        "eu",
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2506,
+      "source_endline": 2535,
+      "source_sha256": "1c664294e679764ef30294af791cf1fbe7ac0abf81784ff60af5e2bb8f3d2197",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://acorn.tv/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Crave",
+      "display_name": "Crave",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2537,
+      "source_endline": 2566,
+      "source_sha256": "58697cb14f928d7b2fdff33c86b7fc7c9ec26bb244ff63530f1a0b182034e11e",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://capi.9c9media.com/destinations/crave_atexace/platforms/desktop/playback/contents/2917721/contentPackages/6642701/manifest.mpd",
+        "https://www.crave.ca",
+        "https://www.crave.ca/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Amediateka",
+      "display_name": "Amediateka",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2568,
+      "source_endline": 2597,
+      "source_sha256": "608055aa58f1d01ae3491f74d434c19a861646c85b69151da4b023417898d416",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.amediateka.ru/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_MegogoTV",
+      "display_name": "Megogo TV",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2599,
+      "source_endline": 2618,
+      "source_sha256": "4704ae43422f3765fcae83742eef9a0da6fe54c510ab135dbbe115045d66b7b7",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://megogo.net/en"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_RaiPlay",
+      "display_name": "Rai Play",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2620,
+      "source_endline": 2649,
+      "source_sha256": "4edfedc2b5b7f8026fe90aa921113dd746ac45588b603520db098f44e40c0eb9",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://mediapolisvod.rai.it/relinker/relinkerServlet.htm"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_TVBAnywhere",
+      "display_name": "TVBAnywhere+",
+      "groups": [
+        "global"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-check",
+      "existing_native_ids": "",
+      "decision_note": "TVBAnywhere+ distinct from local MyTVSuper/Viu/TVB-related regional probes",
+      "source_file": "check.sh",
+      "source_line": 2651,
+      "source_endline": 2674,
+      "source_sha256": "912b66760df3d410bed581235800c023ad847202fd7818f78d1261913caa294c",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://uapisfm.tvbanywhere.com.sg/geoip/check/platform/android"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "GameTest_ProjectSekai",
+      "display_name": "Project Sekai: Colorful Stage",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2676,
+      "source_endline": 2690,
+      "source_sha256": "96dd19cb4306918e3a63cefbc554543620c87c7d5e660dc6515d2fc0120ae114",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://game-version.sekai.colorfulpalette.org/1.8.1/3ed70b6a-8352-4532-b819-108837926ff5"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "GameTest_KonosubaFD",
+      "display_name": "Konosuba Fantastic Days",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2692,
+      "source_endline": 2706,
+      "source_sha256": "a8d175ea7587e89dbd479904037de7056c0aed795299b87c7ac98b48a933969c",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.konosubafd.jp/api/masterlist"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_NBATV",
+      "display_name": "NBA TV",
+      "groups": [
+        "na",
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2708,
+      "source_endline": 2723,
+      "source_sha256": "5d4f789d380b01d698a2377893d219b3ffbfd40d93c1091ed328010e50815729",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.nba.com/watch/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Directv",
+      "display_name": "Directv Stream",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2725,
+      "source_endline": 2734,
+      "source_sha256": "7e0e7dc8b910ddb1287b2c0e28a41ee9474ca562210feb601159033a6d03e923",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://stream.directv.com/watchnow"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_SkyGo",
+      "display_name": "Sky Go",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2811,
+      "source_endline": 2836,
+      "source_sha256": "5791e8616cda3a5f53695592969f1cd6ffa331753b7a50a7e8fb8e2e4066f7bc",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://skyid.sky.com/authorise/skygo"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_DirecTVGO",
+      "display_name": "DirecTV Go",
+      "groups": [
+        "sa"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2838,
+      "source_endline": 2869,
+      "source_sha256": "23681175534c9821fc5a72a9c285d9232f0ed1e685fe844ec4c8edcb106c9314",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.directvgo.com/registrarse"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_DAM",
+      "display_name": "Karaoke@DAM",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2871,
+      "source_endline": 2885,
+      "source_sha256": "955ead2910ed0cf888a039f0b92d77b6cbd291b84e76762c5a35fa3dbd86e737",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "http://cds1.clubdam.com/vhls-cds1/site/xbox/sample_1.mp4.m3u8"
+      ],
+      "special_handling": "HTTP HLS playlist target; do not initiate stream/media download beyond existing request",
+      "safety_exception": "Source plain HTTP media playlist target; no evidenced equivalent HTTPS endpoint"
+    },
+    {
+      "function": "MediaUnlockTest_DiscoveryPlus",
+      "display_name": "Discovery+",
+      "groups": [
+        "na",
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2887,
+      "source_endline": 2953,
+      "source_sha256": "79fe2ff58c0dbf7e503a7d8baec5012b817edf2baf819b9ed4069c91d2e19b9a",
+      "helper_dependencies": [
+        "gen_uuid",
+        "md5sum"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://global-prod.disco-api.com/bootstrapInfo",
+        "https://www.discoveryplus.com",
+        "https://www.discoveryplus.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_ESPNPlus",
+      "display_name": "ESPN+",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 2955,
+      "source_endline": 2999,
+      "source_sha256": "f9ec235831d8983954724c93d060563a0f2e0c70d5652c63881a9ce553577459",
+      "helper_dependencies": [
+        "MEDIA_COOKIE"
+      ],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://espn.api.edge.bamgrid.com/token",
+        "https://espn.api.edge.bamgrid.com/graph/v1/device/graphql"
+      ],
+      "special_handling": "strip sponsored annotation from service label; keep source attribution outside data",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Binge",
+      "display_name": "Binge",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3037,
+      "source_endline": 3046,
+      "source_sha256": "088f66925d1e8aada590b4746feba4e705ab2b883d7d0c0d9a16483ff149e7fa",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://auth.streamotion.com.au"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Docplay",
+      "display_name": "Docplay",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3048,
+      "source_endline": 3078,
+      "source_sha256": "7d6812ee70d075276e7bc3ca4b539620b486e596d0b6803faba8521709c5e967",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.docplay.com/subscribe"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_OptusSports",
+      "display_name": "Optus Sports",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3080,
+      "source_endline": 3089,
+      "source_sha256": "77fa3de6020eda749fa3ab24a7e92d482b95d74272a5dbc3f0178f89354b1c70",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://sport.optus.com.au/api/userauth/validate/web/username/restriction.check@gmail.com"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_KayoSports",
+      "display_name": "Kayo Sports",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3091,
+      "source_endline": 3100,
+      "source_sha256": "11c6cee995c7ec313c2a2438c552745155bd5cfc0ac53a2363e25c34256b184f",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://billingapi.streamotion.com.au/v2/offers/kayo/",
+        "https://kayosports.com.au",
+        "https://kayosports.com.au/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_NeonTV",
+      "display_name": "Neon TV",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3102,
+      "source_endline": 3135,
+      "source_sha256": "b2a72183f4788e0cb95f9c794a5e5d860de752d36295f9157dde1c4fd4c520b6",
+      "helper_dependencies": [
+        "MEDIA_COOKIE"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.neontv.co.nz/api/client/gql"
+      ],
+      "special_handling": "",
+      "safety_exception": "Fixed upstream cookie template performs UpdateAccount with account email/password and bearer identity; not copied or invoked"
+    },
+    {
+      "function": "MediaUnlockTest_SkyGONZ",
+      "display_name": "SkyGo NZ",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3137,
+      "source_endline": 3151,
+      "source_sha256": "6bec5d70fe26a1f3e94ca137ba5c6364ada6d38512fa33953d55a786ebbc5e9d",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://login.sky.co.nz/authorize"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_ThreeNow",
+      "display_name": "ThreeNow",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3153,
+      "source_endline": 3167,
+      "source_sha256": "04af9f5157f56451113701a6951e8068a00be8b5bd4cebbe0988b8ccb1996724",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://bravo-livestream.fullscreen.nz/index.m3u8"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_MaoriTV",
+      "display_name": "Maori TV",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3169,
+      "source_endline": 3229,
+      "source_sha256": "f82ffeed353f0cf0ad2cdb3ab543807e539ae48f3d29d4396caad9b5aa0b4d7b",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.maoriplus.co.nz/live-tv/whakaata-maori",
+        "https://www.maoriplus.co.nz{dynamic}",
+        "https://www.maoriplus.co.nz",
+        "https://{dynamic}",
+        "https://www.maoriplus.co.nz/",
+        "https://api.one.accedo.tv/content/entries",
+        "https://edge.api.brightcove.com/playback/v1/accounts/{dynamic}/videos/{dynamic}"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_SBSonDemand",
+      "display_name": "SBS on Demand",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3231,
+      "source_endline": 3255,
+      "source_sha256": "fdb1f3d4f756244efd2760c7b8bbf156ae841bfe6817926a7ba6c757e887587b",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.sbs.com.au/api/v3/network"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_ABCiView",
+      "display_name": "ABC iView",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3257,
+      "source_endline": 3288,
+      "source_sha256": "81485c1a1b15fa7b17f31da29a0574ec5c4b5781adc88b098e27efbd26075069",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.iview.abc.net.au/v2/show/abc-kids-live-stream/video/LS1604H001S00"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Channel9",
+      "display_name": "Channel 9",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3290,
+      "source_endline": 3314,
+      "source_sha256": "41c937a89b03a235042ca39ce12eb55935f83c33cd990aa2ad2ae8f9fafe7b57",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://login.nine.com.au"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Telasa",
+      "display_name": "Telasa",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3316,
+      "source_endline": 3340,
+      "source_sha256": "6d9dd6623182c3c3a8e445036814cde28083397ebc0520f7a5390dad27d1e551",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://api-videopass-anon.kddi-video.com/v1/playback/system_status"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_SetantaSports",
+      "display_name": "Setanta Sports",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3342,
+      "source_endline": 3370,
+      "source_sha256": "398f5f9cbe9d32ec04d21578279dd754881e0c605221cca5163ab2531b050cf7",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://dce-frontoffice.imggaming.com/api/v2/consent-prompt"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Channel5",
+      "display_name": "Channel 5",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3461,
+      "source_endline": 3482,
+      "source_sha256": "6bee70c7fa2556145e8e4be8db95b425cf2cd8ac6e9584584196673578b61ccc",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://cassie.channel5.com/api/v2/live_media/my5desktopng/C5.json"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_MyVideo",
+      "display_name": "MyVideo",
+      "groups": [
+        "tw"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3484,
+      "source_endline": 3515,
+      "source_sha256": "127f09b94ca99f6b53ab70123e0b4869223ececb5a17fc094a56e74524f4f032",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.myvideo.net.tw/login.do"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_7plus",
+      "display_name": "7plus",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3517,
+      "source_endline": 3537,
+      "source_sha256": "86418f35d7608db39fbe42c474c1887fd74362a7897a4e36784567a764edf911",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://7plus-sevennetwork.akamaized.net/media/v1/dash/live/cenc/5303576322001/68dca38b-85d7-4dae-b1c5-c88acc58d51c/f4ea4711-514e-4cad-824f-e0c87db0a614/225ec0a0-ef18-4b7c-8fd6-8dcdd16cf03a/1x/segment0.m4f"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Channel10",
+      "display_name": "Channel 10",
+      "groups": [
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3539,
+      "source_endline": 3567,
+      "source_sha256": "07cb508e164081b23cb800f48814ca89ca6a2af335b4c4ccd2ba2f0ecccac4ae",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://e410fasadvz.global.ssl.fastly.net/geo"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_VideoMarket",
+      "display_name": "VideoMarket",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3604,
+      "source_endline": 3634,
+      "source_sha256": "97a9507d9dee9484d573ea2d02cdf4b73bbf45154992aceecff6aaa6ac4d1b28",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.videomarket.jp/graphql",
+        "https://www.videomarket.jp",
+        "https://www.videomarket.jp/player/292072/A292072001999H01"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_musicjp",
+      "display_name": "music.jp",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3647,
+      "source_endline": 3677,
+      "source_sha256": "fb582324899752210c5e3ca0f287f5abe52ee616e6193e7a440c060946f2e3fe",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://overseaauth.music-book.jp/globalIpcheck.js"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Popcornflix",
+      "display_name": "Popcornflix",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3716,
+      "source_endline": 3733,
+      "source_sha256": "47496a0862702509dc1ee37a5f0f2e6703e87cf4a05df53425c243500445bc59",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://popcornflix-prod.cloud.seachange.com/cms/popcornflix/clientconfiguration/versions/2"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_TubiTV",
+      "display_name": "Tubi TV",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3735,
+      "source_endline": 3760,
+      "source_sha256": "68f91f313448f5fcdcd7dbaf94df6c7fa7f7d8894a94dbcdccd63b3ad2616c1b",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://tubitv.com/home"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Philo",
+      "display_name": "Philo",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3762,
+      "source_endline": 3785,
+      "source_sha256": "f81c91c787fffc4f4f620c87474706f8cc7d97fe11e0be1037f74a418f48f909",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://content-us-east-2-fastly-b.www.philo.com/geo"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_FXNOW",
+      "display_name": "FXNOW",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3787,
+      "source_endline": 3817,
+      "source_sha256": "2f506c15c7d2792c258123b94740254d9d3e2da5386805f206af02ce3bb29d47",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://fxnow.fxnetworks.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Crunchyroll",
+      "display_name": "Crunchyroll",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3819,
+      "source_endline": 3837,
+      "source_sha256": "51709b11330d1de2ef320a5212046c50b2b102aa147e4ebaa933008feaaf81ef",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://c.evidon.com/geo/country.js"
+      ],
+      "special_handling": "",
+      "safety_exception": "Source probes only c.evidon.com generic third-party GeoIP, not Crunchyroll service access; forbidden by no new GeoIP/no fabricated access policy"
+    },
+    {
+      "function": "MediaUnlockTest_CWTV",
+      "display_name": "CW TV",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3839,
+      "source_endline": 3848,
+      "source_sha256": "096809d744b49b325e83e815f88b67dd5fe275bc2b796043bfad41d75cdfe5a3",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.cwtv.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Shudder",
+      "display_name": "Shudder",
+      "groups": [
+        "na",
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3850,
+      "source_endline": 3875,
+      "source_sha256": "48f867e3b2a87cec46bf77b34dbf9c739896071bd7c1fd0a2cf44234534ef26a",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.shudder.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_TLCGO",
+      "display_name": "TLC GO",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3877,
+      "source_endline": 3917,
+      "source_sha256": "27f75d3a214debdaa5a6d2e519069139a8070695e42c1bea697d2e3c7a34f0fd",
+      "helper_dependencies": [
+        "gen_uuid"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://us1-prod-direct.tlc.com/token",
+        "https://go.tlc.com",
+        "https://go.tlc.com/",
+        "https://us1-prod-direct.tlc.com/cms/routes/home"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Wavve",
+      "display_name": "Wavve",
+      "groups": [
+        "kr"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3939,
+      "source_endline": 3956,
+      "source_sha256": "8f7be0761de80643b60148b872dcdd647c8a43ac2f9d9876a12634b14ef673c3",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://apis.wavve.com/fz/streaming"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Tving",
+      "display_name": "Tving",
+      "groups": [
+        "kr"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3958,
+      "source_endline": 3988,
+      "source_sha256": "781f8789edeeebad31c2e8f279611a6112eccea22c50cb3fabbbfd60a811cb4f",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.tving.com/v2a/media/stream/info"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_CoupangPlay",
+      "display_name": "Coupang Play",
+      "groups": [
+        "kr"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 3990,
+      "source_endline": 4021,
+      "source_sha256": "77407b2aafa2fef8c3465fa2f2d275239de62f9367c27c249262142e0712bd6e",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.coupangplay.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_NaverTV",
+      "display_name": "Naver TV",
+      "groups": [
+        "kr"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4023,
+      "source_endline": 4051,
+      "source_sha256": "85d2f0685dffc26530c6deb7fd9402ede755a2c207c496484adc805862bddda0",
+      "helper_dependencies": [
+        "openssl",
+        "base64"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://apis.naver.com/",
+        "https://apis.naver.com/now_web2/now_web_api/v1/clips/31030608/play-info{dynamic}",
+        "https://tv.naver.com",
+        "https://tv.naver.com/v/31030608"
+      ],
+      "special_handling": "requires OpenSSL HMAC/base64; source UA variable case differs from global; do not set -u on unmodified functions",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Afreeca",
+      "display_name": "Afreeca TV",
+      "groups": [
+        "kr"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4053,
+      "source_endline": 4071,
+      "source_sha256": "28ec8b6f1c462287c9367c45cdd777aac146fe835515cfd835e4021b40060d36",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://vod.afreecatv.com/player/97464151",
+        "https://vod.afreecatv.com"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_KBSDomestic",
+      "display_name": "KBS Domestic",
+      "groups": [
+        "kr"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4073,
+      "source_endline": 4101,
+      "source_sha256": "85e2e1899075740744e0b534eeeb1729b5d7d9b032de3121c6a6b9daae4ab229",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://vod.kbs.co.kr/index.html"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Watcha",
+      "display_name": "WATCHA",
+      "groups": [
+        "jp",
+        "kr"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4133,
+      "source_endline": 4147,
+      "source_sha256": "5b1903c22a966da35414732137a585e83534c718890c49963e0b71ae57e4ab96",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://watcha.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_KOCOWA",
+      "display_name": "KOCOWA",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4149,
+      "source_endline": 4167,
+      "source_sha256": "4785c3df73da3cce2f17eb2a29dad780872a8a88c9940ecf854666ba372b7180",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.kocowa.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_NBCTV",
+      "display_name": "NBC TV",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4169,
+      "source_endline": 4185,
+      "source_sha256": "99aa429bfecd5225bfe7fdec4fdc34ab559d5cac0546beb8a5d727ff713fa849",
+      "helper_dependencies": [
+        "gen_uuid"
+      ],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://geolocation.digitalsvc.apps.nbcuni.com/geolocation/live/usa",
+        "https://www.nbc.com",
+        "https://www.nbc.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_Crackle",
+      "display_name": "Crackle",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4187,
+      "source_endline": 4207,
+      "source_sha256": "992ba70fe30f9cdd7c44c019c73727b278f20f03e964f5e5884749737935b320",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://prod-api.crackle.com/appconfig",
+        "https://www.crackle.com",
+        "https://www.crackle.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_AETV",
+      "display_name": "A&E TV",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4209,
+      "source_endline": 4239,
+      "source_sha256": "04da7f07714b1e994f9bc4605b34ce708dfb00d4593a33edd39b2422f4330317",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://link.theplatform.com/s/xc6n8B/UR27JDU0bu2s/",
+        "https://play.aetv.com/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_NFLPlus",
+      "display_name": "NFL+",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4241,
+      "source_endline": 4267,
+      "source_sha256": "e0aa3eb57571d30a38585b012007ef311266644a8ba4eaf64ca056bb15b07ed0",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://www.nfl.com/plus/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_SkyShowTime",
+      "display_name": "SkyShowTime",
+      "groups": [
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4269,
+      "source_endline": 4301,
+      "source_sha256": "74cf189de3ba5ca6313b106224fb14ab0b957e2a15fe852f2ebd74680fc090bf",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.skyshowtime.com/"
+      ],
+      "special_handling": "typo Faild -> Unknown; never infer No from misspelling",
+      "safety_exception": null
+    },
+    {
+      "function": "GameTest_MathsSpot",
+      "display_name": "MathsSpot Roblox",
+      "groups": [
+        "na",
+        "eu"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4303,
+      "source_endline": 4352,
+      "source_sha256": "a2d9e0d5a8e6879b79571d9e00ce4263fbfaff9d145cb0cd21f2e7954985527e",
+      "helper_dependencies": [
+        "gen_random_str"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://mathsspot.com/",
+        "https://mathsspot.com/{dynamic}/startSession"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_BGlobalSEA",
+      "display_name": "B-Global SouthEastAsia",
+      "groups": [
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4354,
+      "source_endline": 4373,
+      "source_sha256": "1dc25a0f038e419d512a527f5dd4993fb3dd5cdf4691b505979f1f2df80ffdf0",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.bilibili.tv/intl/gateway/web/playurl"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_BGlobalTH",
+      "display_name": "B-Global Thailand Only",
+      "groups": [
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4375,
+      "source_endline": 4394,
+      "source_sha256": "3a5229add88389229c57aa43ec46afdf3d5c3960a2b9db52d1738063a8136a57",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.bilibili.tv/intl/gateway/web/playurl"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_BGlobalID",
+      "display_name": "B-Global Indonesia Only",
+      "groups": [
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4396,
+      "source_endline": 4415,
+      "source_sha256": "8d9c81150ea7c999126b2e33f793c1c851ff9c0d971269bbf9dcb14ed3aa8c9c",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.bilibili.tv/intl/gateway/web/playurl"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_BGlobalVN",
+      "display_name": "B-Global Việt Nam Only",
+      "groups": [
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4417,
+      "source_endline": 4436,
+      "source_sha256": "e6ecc9e6b5a196ed2923e2dd1ca67ee2e454006c76d87ad27040ba98271211e5",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api.bilibili.tv/intl/gateway/web/playurl"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_AISPlay",
+      "display_name": "AIS Play",
+      "groups": [
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4438,
+      "source_endline": 4508,
+      "source_sha256": "792a8853409b7ec554519f003d1dac36fa8f70bc8f4c953b7df61b9d005c7d8b",
+      "helper_dependencies": [
+        "gen_uuid",
+        "md5sum"
+      ],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://web-tls.ais-vidnt.com/device/login/",
+        "https://aisplay.ais.co.th",
+        "https://aisplay.ais.co.th/",
+        "https://web-sila.ais-vidnt.com/playtemplate/",
+        "https://web-player.ais-vidnt.com",
+        "https://web-player.ais-vidnt.com/",
+        "https://redirector.ais-vidnt.com/live/ais/B0006/hls/metadata.json"
+      ],
+      "special_handling": "upstream guest login constants and multi-step stream authorization; new backend must not request extra secrets; review scope before reuse",
+      "safety_exception": "Source guest/account credentials; not reused"
+    },
+    {
+      "function": "WebTest_MetaAI",
+      "display_name": "Meta AI",
+      "groups": [
+        "na"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4581,
+      "source_endline": 4608,
+      "source_sha256": "26f89f2dd839bc5f621c548e56e4eeb82f7cef6106b46a0c9bdc71e0918c0b14",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.meta.ai/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "WebTest_Wikipedia_Editable",
+      "display_name": "Wikipedia Editability",
+      "groups": [
+        "global"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-check",
+      "existing_native_ids": "",
+      "decision_note": "editing permission observation, not general website reachability",
+      "source_file": "check.sh",
+      "source_line": 4636,
+      "source_endline": 4650,
+      "source_sha256": "2edd24119278b7b0e2c5f4198548629a4e135ac9b737b2cf2dbb28452f261822",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://zh.wikipedia.org/w/index.php"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_MeWatch",
+      "display_name": "MeWatch",
+      "groups": [
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4701,
+      "source_endline": 4731,
+      "source_sha256": "f969e6e6cd726d3344aa8576a19c708beffae90c486b499940940d6e20dcc099",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://cdn.mewatch.sg/api/items/97098/videos"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_trueID",
+      "display_name": "trueID",
+      "groups": [
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4733,
+      "source_endline": 4755,
+      "source_sha256": "d5dd5cbc68d07ea3505edf261b39303d1a412a4db227c953aff16b6b13b6fcf8",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://tv.trueid.net/th-en/live/thairathtv-hd",
+        "https://tv.trueid.net/api/stream/checkedPlay"
+      ],
+      "special_handling": "uses credentials derived from shared request constants/basic-auth; requires reviewed original-use boundary",
+      "safety_exception": "Source credentials/basic-auth stream login; not reused"
+    },
+    {
+      "function": "MediaUnlockTest_SonyLiv",
+      "display_name": "SonyLiv",
+      "groups": [
+        "tw",
+        "hk",
+        "na",
+        "eu",
+        "oc",
+        "sea"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4757,
+      "source_endline": 4791,
+      "source_sha256": "703bcd8ce343f6542b1bb0317e8ce8a87d55e799d8eb6273f398e30f6f96c1ba",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.sonyliv.com/",
+        "https://apiv2.sonyliv.com/AGL/1.4/A/ENG/WEB/ALL/USER/ULD",
+        "https://apiv2.sonyliv.com/AGL/3.8/A/ENG/WEB/{dynamic}/ALL/CONTENT/VIDEOURL/VOD/1000045427/prefetch",
+        "https://www.sonyliv.com"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "WebTest_EroGameSpace",
+      "display_name": "EroGameSpace",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4868,
+      "source_endline": 4887,
+      "source_sha256": "d544cc8b7c37f6bd77fc882c794308b7f61cf802676fdf2f3b3fbf4465576afb",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://erogamescape.org"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_DAnimeStore",
+      "display_name": "D Anime Store",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4889,
+      "source_endline": 4917,
+      "source_sha256": "d50dfbebd962bf7125190705d3f022330abb5e58aeb5b92d6af8b1d0263f4415",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://animestore.docomo.ne.jp/animestore/reg_pc"
+      ],
+      "special_handling": "empty response maps No upstream, and function adds UnsafeLegacyServerConnect config; must not silently carry over as validated block",
+      "safety_exception": "Source requires UnsafeLegacyServerConnect; TLS policy not weakened"
+    },
+    {
+      "function": "MediaUnlockTest_RakutenTVJP",
+      "display_name": "Rakuten TV JP",
+      "groups": [
+        "jp"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4919,
+      "source_endline": 4959,
+      "source_sha256": "fce61ac35595e5c29bcb3a9baec04124c4adf27e3d08edfd10f394a5126102f9",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": true,
+      "static_url_paths_without_query": [
+        "https://api-live.tv.rakuten.co.jp/v1/contents/{dynamic}/playinfo",
+        "https://live.tv.rakuten.co.jp",
+        "https://live.tv.rakuten.co.jp/",
+        "https://webapi.nba.rakuten.co.jp/api/v1/system/geofilter",
+        "https://nba.rakuten.co.jp",
+        "https://nba.rakuten.co.jp/"
+      ],
+      "special_handling": "",
+      "safety_exception": null
+    },
+    {
+      "function": "MediaUnlockTest_AMCPlus",
+      "display_name": "AMC+",
+      "groups": [
+        "na",
+        "oc"
+      ],
+      "category": "add-missing-verdict",
+      "kind": "new-regional-verdict",
+      "existing_native_ids": "",
+      "decision_note": "No functional equivalent in native37; retain exact selected function and normalize its source verdict, not platform-name guessing",
+      "source_file": "check.sh",
+      "source_line": 4961,
+      "source_endline": 4991,
+      "source_sha256": "0196ab565c20be13199b45583c580003699018763a814f8cc4fea7926fb041ea",
+      "helper_dependencies": [],
+      "ipv6_unsupported_guard": false,
+      "static_url_paths_without_query": [
+        "https://www.amcplus.com/"
+      ],
+      "special_handling": "last URL component may be country name not ISO2; validate/convert with fixed mapping or leave empty, never uppercase arbitrary word",
+      "safety_exception": null
+    }
+  ],
+  "groups": {
+    "global": [
+      "MediaUnlockTest_Dazn",
+      "MediaUnlockTest_DisneyPlus",
+      "MediaUnlockTest_PrimeVideo",
+      "MediaUnlockTest_TVBAnywhere",
+      "WebTest_Wikipedia_Editable",
+      "GameTest_SDGGGE"
+    ],
+    "tw": [
+      "MediaUnlockTest_KKTV",
+      "MediaUnlockTest_LiTV",
+      "MediaUnlockTest_MyVideo",
+      "MediaUnlockTest_4GTV",
+      "MediaUnlockTest_LineTVTW",
+      "MediaUnlockTest_HamiVideo",
+      "MediaUnlockTest_Catchplay",
+      "MediaUnlockTest_HBOMax",
+      "MediaUnlockTest_BahamutAnime",
+      "MediaUnlockTest_SonyLiv",
+      "MediaUnlockTest_BilibiliTW"
+    ],
+    "hk": [
+      "MediaUnlockTest_NowE",
+      "MediaUnlockTest_ViuCom",
+      "MediaUnlockTest_ViuTV",
+      "MediaUnlockTest_MyTVSuper",
+      "MediaUnlockTest_HBOMax",
+      "MediaUnlockTest_SonyLiv",
+      "MediaUnlockTest_BilibiliHKMCTW",
+      "MediaUnlockTest_BahamutAnime"
+    ],
+    "jp": [
+      "MediaUnlockTest_DMM",
+      "MediaUnlockTest_DMMTV",
+      "MediaUnlockTest_AbemaTV",
+      "MediaUnlockTest_Niconico",
+      "MediaUnlockTest_Telasa",
+      "MediaUnlockTest_unext",
+      "MediaUnlockTest_HuluJP",
+      "MediaUnlockTest_TVer",
+      "MediaUnlockTest_Lemino",
+      "MediaUnlockTest_AnimeFesta",
+      "MediaUnlockTest_wowow",
+      "MediaUnlockTest_VideoMarket",
+      "MediaUnlockTest_DAnimeStore",
+      "MediaUnlockTest_FOD",
+      "MediaUnlockTest_Radiko",
+      "MediaUnlockTest_DAM",
+      "MediaUnlockTest_Watcha",
+      "MediaUnlockTest_RakutenTVJP",
+      "GameTest_Kancolle",
+      "GameTest_UMAJP",
+      "GameTest_KonosubaFD",
+      "GameTest_PCRJP",
+      "GameTest_ProjectSekai",
+      "MediaUnlockTest_mora",
+      "MediaUnlockTest_musicjp",
+      "WebTest_EroGameSpace"
+    ],
+    "na": [
+      "MediaUnlockTest_ParamountPlus",
+      "MediaUnlockTest_DiscoveryPlus",
+      "MediaUnlockTest_AcornTV",
+      "MediaUnlockTest_BritBox",
+      "MediaUnlockTest_SonyLiv",
+      "MediaUnlockTest_NBATV",
+      "MediaUnlockTest_TLCGO",
+      "MediaUnlockTest_Shudder",
+      "MediaUnlockTest_FuboTV",
+      "MediaUnlockTest_TubiTV",
+      "MediaUnlockTest_PlutoTV",
+      "MediaUnlockTest_KOCOWA",
+      "MediaUnlockTest_AMCPlus",
+      "GameTest_MathsSpot",
+      "MediaUnlockTest_Fox",
+      "MediaUnlockTest_HuluUS",
+      "MediaUnlockTest_NFLPlus",
+      "MediaUnlockTest_ESPNPlus",
+      "MediaUnlockTest_EPIX",
+      "MediaUnlockTest_Starz",
+      "MediaUnlockTest_Philo",
+      "MediaUnlockTest_FXNOW",
+      "MediaUnlockTest_HBOMax",
+      "MediaUnlockTest_Crackle",
+      "MediaUnlockTest_CWTV",
+      "MediaUnlockTest_AETV",
+      "MediaUnlockTest_NBCTV",
+      "MediaUnlockTest_SlingTV",
+      "MediaUnlockTest_encoreTVB",
+      "MediaUnlockTest_PeacockTV",
+      "MediaUnlockTest_Popcornflix",
+      "MediaUnlockTest_Crunchyroll",
+      "MediaUnlockTest_Directv",
+      "WebTest_MetaAI",
+      "MediaUnlockTest_HotStar",
+      "MediaUnlockTest_CBCGem",
+      "MediaUnlockTest_Crave"
+    ],
+    "sa": [
+      "MediaUnlockTest_HBOMax",
+      "MediaUnlockTest_DirecTVGO",
+      "MediaUnlockTest_ParamountPlus"
+    ],
+    "eu": [
+      "MediaUnlockTest_ParamountPlus",
+      "MediaUnlockTest_DiscoveryPlus",
+      "MediaUnlockTest_SonyLiv",
+      "MediaUnlockTest_HBOMax",
+      "MediaUnlockTest_SkyShowTime",
+      "MediaUnlockTest_BritBox",
+      "MediaUnlockTest_RakutenTV",
+      "MediaUnlockTest_MegogoTV",
+      "MediaUnlockTest_SetantaSports",
+      "GameTest_MathsSpot",
+      "MediaUnlockTest_HotStar",
+      "MediaUnlockTest_SkyGo",
+      "MediaUnlockTest_ITVHUB",
+      "MediaUnlockTest_Channel4",
+      "MediaUnlockTest_Channel5",
+      "MediaUnlockTest_BBCiPLAYER",
+      "MediaUnlockTest_AcornTV",
+      "MediaUnlockTest_Shudder",
+      "MediaUnlockTest_CanalPlus",
+      "MediaUnlockTest_Molotov",
+      "MediaUnlockTest_Joyn",
+      "MediaUnlockTest_SKY_DE",
+      "MediaUnlockTest_ZDF",
+      "MediaUnlockTest_NLZIET",
+      "MediaUnlockTest_videoland",
+      "MediaUnlockTest_NPO_Start_Plus",
+      "MediaUnlockTest_MoviStarPlus",
+      "MediaUnlockTest_RaiPlay",
+      "MediaUnlockTest_Sky_CH",
+      "MediaUnlockTest_Amediateka"
+    ],
+    "oc": [
+      "MediaUnlockTest_NBATV",
+      "MediaUnlockTest_AcornTV",
+      "MediaUnlockTest_BritBox",
+      "MediaUnlockTest_ParamountPlus",
+      "MediaUnlockTest_AMCPlus",
+      "MediaUnlockTest_SonyLiv",
+      "MediaUnlockTest_Binge",
+      "MediaUnlockTest_Docplay",
+      "MediaUnlockTest_7plus",
+      "MediaUnlockTest_ABCiView",
+      "MediaUnlockTest_Channel9",
+      "MediaUnlockTest_Channel10",
+      "MediaUnlockTest_OptusSports",
+      "MediaUnlockTest_SBSonDemand",
+      "MediaUnlockTest_KayoSports",
+      "MediaUnlockTest_NeonTV",
+      "MediaUnlockTest_SkyGONZ",
+      "MediaUnlockTest_ThreeNow",
+      "MediaUnlockTest_MaoriTV"
+    ],
+    "kr": [
+      "MediaUnlockTest_Wavve",
+      "MediaUnlockTest_Tving",
+      "MediaUnlockTest_Watcha",
+      "MediaUnlockTest_CoupangPlay",
+      "MediaUnlockTest_SpotvNow",
+      "MediaUnlockTest_NaverTV",
+      "MediaUnlockTest_Afreeca",
+      "MediaUnlockTest_KBSDomestic"
+    ],
+    "sea": [
+      "MediaUnlockTest_ViuCom",
+      "MediaUnlockTest_HotStar",
+      "MediaUnlockTest_HBOMax",
+      "MediaUnlockTest_SonyLiv",
+      "MediaUnlockTest_BGlobalSEA",
+      "MediaUnlockTest_MeWatch",
+      "MediaUnlockTest_AISPlay",
+      "MediaUnlockTest_trueID",
+      "MediaUnlockTest_BGlobalTH",
+      "MediaUnlockTest_BGlobalID",
+      "MediaUnlockTest_BGlobalVN"
+    ],
+    "af": [
+      "MediaUnlockTest_DSTV",
+      "MediaUnlockTest_Showmax",
+      "MediaUnlockTest_ViuCom"
+    ]
+  },
+  "country_groups": {
+    "AL": "eu",
+    "AO": "af",
+    "AR": "sa",
+    "AT": "eu",
+    "AU": "oc",
+    "BA": "eu",
+    "BE": "eu",
+    "BG": "eu",
+    "BM": "na",
+    "BN": "sea",
+    "BO": "sa",
+    "BR": "sa",
+    "BW": "af",
+    "CA": "na",
+    "CH": "eu",
+    "CI": "af",
+    "CL": "sa",
+    "CO": "sa",
+    "CY": "eu",
+    "CZ": "eu",
+    "DE": "eu",
+    "DK": "eu",
+    "DZ": "af",
+    "EC": "sa",
+    "EE": "eu",
+    "EG": "af",
+    "ES": "eu",
+    "ET": "af",
+    "FI": "eu",
+    "FJ": "oc",
+    "FR": "eu",
+    "GB": "eu",
+    "GH": "af",
+    "GL": "na",
+    "GR": "eu",
+    "GY": "sa",
+    "HK": "hk",
+    "HR": "eu",
+    "HU": "eu",
+    "ID": "sea",
+    "IE": "eu",
+    "IS": "eu",
+    "IT": "eu",
+    "JP": "jp",
+    "KE": "af",
+    "KH": "sea",
+    "KR": "kr",
+    "LA": "sea",
+    "LT": "eu",
+    "LU": "eu",
+    "LV": "eu",
+    "MA": "af",
+    "MD": "eu",
+    "ME": "eu",
+    "MK": "eu",
+    "MM": "sea",
+    "MO": "hk",
+    "MT": "eu",
+    "MX": "na",
+    "MY": "sea",
+    "MZ": "af",
+    "NA": "af",
+    "NC": "oc",
+    "NG": "af",
+    "NL": "eu",
+    "NO": "eu",
+    "NZ": "oc",
+    "PE": "sa",
+    "PF": "oc",
+    "PG": "oc",
+    "PH": "sea",
+    "PL": "eu",
+    "PT": "eu",
+    "PY": "sa",
+    "RO": "eu",
+    "RS": "eu",
+    "SE": "eu",
+    "SG": "sea",
+    "SI": "eu",
+    "SK": "eu",
+    "SN": "af",
+    "SR": "sa",
+    "TH": "sea",
+    "TL": "sea",
+    "TN": "af",
+    "TO": "oc",
+    "TW": "tw",
+    "TZ": "af",
+    "UA": "eu",
+    "UG": "af",
+    "UK": "eu",
+    "US": "na",
+    "UY": "sa",
+    "VE": "sa",
+    "VN": "sea",
+    "VU": "oc",
+    "WS": "oc",
+    "ZA": "af",
+    "ZM": "af",
+    "ZW": "af"
+  },
+  "cli_version": "v0.5.4",
+  "binary_sha256": {
+    "amd64": "928792d4c39f60ac02a12533d5f51908c0eb4ec0d4dad57c3884cec43bf90535",
+    "arm64": "3df73dcd8413606a352081da673c51fe425674624e1403f7c7a235b83da04fe9"
+  },
+  "region_codes": {
+    "ABW": "AW",
+    "AC": "AC",
+    "AD": "AD",
+    "AE": "AE",
+    "AF": "AF",
+    "AFG": "AF",
+    "AG": "AG",
+    "AGO": "AO",
+    "AI": "AI",
+    "AIA": "AI",
+    "AL": "AL",
+    "ALA": "AX",
+    "ALB": "AL",
+    "AM": "AM",
+    "AND": "AD",
+    "AO": "AO",
+    "AQ": "AQ",
+    "AR": "AR",
+    "ARE": "AE",
+    "ARG": "AR",
+    "ARM": "AM",
+    "AS": "AS",
+    "ASC": "AC",
+    "ASM": "AS",
+    "AT": "AT",
+    "ATA": "AQ",
+    "ATF": "TF",
+    "ATG": "AG",
+    "ATN": "NQ",
+    "AU": "AU",
+    "AUS": "AU",
+    "AUT": "AT",
+    "AW": "AW",
+    "AX": "AX",
+    "AZ": "AZ",
+    "AZE": "AZ",
+    "BA": "BA",
+    "BB": "BB",
+    "BD": "BD",
+    "BDI": "BI",
+    "BE": "BE",
+    "BEL": "BE",
+    "BEN": "BJ",
+    "BES": "BQ",
+    "BF": "BF",
+    "BFA": "BF",
+    "BG": "BG",
+    "BGD": "BD",
+    "BGR": "BG",
+    "BH": "BH",
+    "BHR": "BH",
+    "BHS": "BS",
+    "BI": "BI",
+    "BIH": "BA",
+    "BJ": "BJ",
+    "BL": "BL",
+    "BLM": "BL",
+    "BLR": "BY",
+    "BLZ": "BZ",
+    "BM": "BM",
+    "BMU": "BM",
+    "BN": "BN",
+    "BO": "BO",
+    "BOL": "BO",
+    "BQ": "BQ",
+    "BR": "BR",
+    "BRA": "BR",
+    "BRB": "BB",
+    "BRN": "BN",
+    "BS": "BS",
+    "BT": "BT",
+    "BTN": "BT",
+    "BU": "BU",
+    "BUR": "BU",
+    "BV": "BV",
+    "BVT": "BV",
+    "BW": "BW",
+    "BWA": "BW",
+    "BY": "BY",
+    "BZ": "BZ",
+    "CA": "CA",
+    "CAF": "CF",
+    "CAN": "CA",
+    "CC": "CC",
+    "CCK": "CC",
+    "CD": "CD",
+    "CF": "CF",
+    "CG": "CG",
+    "CH": "CH",
+    "CHE": "CH",
+    "CHL": "CL",
+    "CHN": "CN",
+    "CI": "CI",
+    "CIV": "CI",
+    "CK": "CK",
+    "CL": "CL",
+    "CM": "CM",
+    "CMR": "CM",
+    "CN": "CN",
+    "CO": "CO",
+    "COD": "CD",
+    "COG": "CG",
+    "COK": "CK",
+    "COL": "CO",
+    "COM": "KM",
+    "CP": "CP",
+    "CPT": "CP",
+    "CPV": "CV",
+    "CR": "CR",
+    "CRI": "CR",
+    "CT": "CT",
+    "CTE": "CT",
+    "CU": "CU",
+    "CUB": "CU",
+    "CUW": "CW",
+    "CV": "CV",
+    "CW": "CW",
+    "CX": "CX",
+    "CXR": "CX",
+    "CY": "CY",
+    "CYM": "KY",
+    "CYP": "CY",
+    "CZ": "CZ",
+    "CZE": "CZ",
+    "DD": "DD",
+    "DDR": "DD",
+    "DE": "DE",
+    "DEU": "DE",
+    "DG": "DG",
+    "DGA": "DG",
+    "DHY": "DY",
+    "DJ": "DJ",
+    "DJI": "DJ",
+    "DK": "DK",
+    "DM": "DM",
+    "DMA": "DM",
+    "DNK": "DK",
+    "DO": "DO",
+    "DOM": "DO",
+    "DY": "DY",
+    "DZ": "DZ",
+    "DZA": "DZ",
+    "EA": "EA",
+    "EC": "EC",
+    "ECU": "EC",
+    "EE": "EE",
+    "EG": "EG",
+    "EGY": "EG",
+    "EH": "EH",
+    "ER": "ER",
+    "ERI": "ER",
+    "ES": "ES",
+    "ESH": "EH",
+    "ESP": "ES",
+    "EST": "EE",
+    "ET": "ET",
+    "ETH": "ET",
+    "EZ": "EZ",
+    "FI": "FI",
+    "FIN": "FI",
+    "FJ": "FJ",
+    "FJI": "FJ",
+    "FK": "FK",
+    "FLK": "FK",
+    "FM": "FM",
+    "FO": "FO",
+    "FR": "FR",
+    "FRA": "FR",
+    "FRO": "FO",
+    "FSM": "FM",
+    "FX": "FX",
+    "FXX": "FX",
+    "GA": "GA",
+    "GAB": "GA",
+    "GB": "GB",
+    "GBR": "GB",
+    "GD": "GD",
+    "GE": "GE",
+    "GEO": "GE",
+    "GF": "GF",
+    "GG": "GG",
+    "GGY": "GG",
+    "GH": "GH",
+    "GHA": "GH",
+    "GI": "GI",
+    "GIB": "GI",
+    "GIN": "GN",
+    "GL": "GL",
+    "GLP": "GP",
+    "GM": "GM",
+    "GMB": "GM",
+    "GN": "GN",
+    "GNB": "GW",
+    "GNQ": "GQ",
+    "GP": "GP",
+    "GQ": "GQ",
+    "GR": "GR",
+    "GRC": "GR",
+    "GRD": "GD",
+    "GRL": "GL",
+    "GS": "GS",
+    "GT": "GT",
+    "GTM": "GT",
+    "GU": "GU",
+    "GUF": "GF",
+    "GUM": "GU",
+    "GUY": "GY",
+    "GW": "GW",
+    "GY": "GY",
+    "HK": "HK",
+    "HKG": "HK",
+    "HM": "HM",
+    "HMD": "HM",
+    "HN": "HN",
+    "HND": "HN",
+    "HR": "HR",
+    "HRV": "HR",
+    "HT": "HT",
+    "HTI": "HT",
+    "HU": "HU",
+    "HUN": "HU",
+    "HV": "HV",
+    "HVO": "HV",
+    "IC": "IC",
+    "ID": "ID",
+    "IDN": "ID",
+    "IE": "IE",
+    "IL": "IL",
+    "IM": "IM",
+    "IMN": "IM",
+    "IN": "IN",
+    "IND": "IN",
+    "IO": "IO",
+    "IOT": "IO",
+    "IQ": "IQ",
+    "IR": "IR",
+    "IRL": "IE",
+    "IRN": "IR",
+    "IRQ": "IQ",
+    "IS": "IS",
+    "ISL": "IS",
+    "ISR": "IL",
+    "IT": "IT",
+    "ITA": "IT",
+    "JAM": "JM",
+    "JE": "JE",
+    "JEY": "JE",
+    "JM": "JM",
+    "JO": "JO",
+    "JOR": "JO",
+    "JP": "JP",
+    "JPN": "JP",
+    "JT": "JT",
+    "JTN": "JT",
+    "KAZ": "KZ",
+    "KE": "KE",
+    "KEN": "KE",
+    "KG": "KG",
+    "KGZ": "KG",
+    "KH": "KH",
+    "KHM": "KH",
+    "KI": "KI",
+    "KIR": "KI",
+    "KM": "KM",
+    "KN": "KN",
+    "KNA": "KN",
+    "KOR": "KR",
+    "KP": "KP",
+    "KR": "KR",
+    "KW": "KW",
+    "KWT": "KW",
+    "KY": "KY",
+    "KZ": "KZ",
+    "LA": "LA",
+    "LAO": "LA",
+    "LB": "LB",
+    "LBN": "LB",
+    "LBR": "LR",
+    "LBY": "LY",
+    "LC": "LC",
+    "LCA": "LC",
+    "LI": "LI",
+    "LIE": "LI",
+    "LK": "LK",
+    "LKA": "LK",
+    "LR": "LR",
+    "LS": "LS",
+    "LSO": "LS",
+    "LT": "LT",
+    "LTU": "LT",
+    "LU": "LU",
+    "LUX": "LU",
+    "LV": "LV",
+    "LVA": "LV",
+    "LY": "LY",
+    "MA": "MA",
+    "MAC": "MO",
+    "MAF": "MF",
+    "MAR": "MA",
+    "MC": "MC",
+    "MCO": "MC",
+    "MD": "MD",
+    "MDA": "MD",
+    "MDG": "MG",
+    "MDV": "MV",
+    "ME": "ME",
+    "MEX": "MX",
+    "MF": "MF",
+    "MG": "MG",
+    "MH": "MH",
+    "MHL": "MH",
+    "MI": "MI",
+    "MID": "MI",
+    "MK": "MK",
+    "MKD": "MK",
+    "ML": "ML",
+    "MLI": "ML",
+    "MLT": "MT",
+    "MM": "MM",
+    "MMR": "MM",
+    "MN": "MN",
+    "MNE": "ME",
+    "MNG": "MN",
+    "MNP": "MP",
+    "MO": "MO",
+    "MOZ": "MZ",
+    "MP": "MP",
+    "MQ": "MQ",
+    "MR": "MR",
+    "MRT": "MR",
+    "MS": "MS",
+    "MSR": "MS",
+    "MT": "MT",
+    "MTQ": "MQ",
+    "MU": "MU",
+    "MUS": "MU",
+    "MV": "MV",
+    "MW": "MW",
+    "MWI": "MW",
+    "MX": "MX",
+    "MY": "MY",
+    "MYS": "MY",
+    "MYT": "YT",
+    "MZ": "MZ",
+    "NA": "NA",
+    "NAM": "NA",
+    "NC": "NC",
+    "NCL": "NC",
+    "NE": "NE",
+    "NER": "NE",
+    "NF": "NF",
+    "NFK": "NF",
+    "NG": "NG",
+    "NGA": "NG",
+    "NH": "NH",
+    "NHB": "NH",
+    "NI": "NI",
+    "NIC": "NI",
+    "NIU": "NU",
+    "NL": "NL",
+    "NLD": "NL",
+    "NO": "NO",
+    "NOR": "NO",
+    "NP": "NP",
+    "NPL": "NP",
+    "NQ": "NQ",
+    "NR": "NR",
+    "NRU": "NR",
+    "NU": "NU",
+    "NZ": "NZ",
+    "NZL": "NZ",
+    "OM": "OM",
+    "OMN": "OM",
+    "PA": "PA",
+    "PAK": "PK",
+    "PAN": "PA",
+    "PCN": "PN",
+    "PCZ": "PZ",
+    "PE": "PE",
+    "PER": "PE",
+    "PF": "PF",
+    "PG": "PG",
+    "PH": "PH",
+    "PHL": "PH",
+    "PK": "PK",
+    "PL": "PL",
+    "PLW": "PW",
+    "PM": "PM",
+    "PN": "PN",
+    "PNG": "PG",
+    "POL": "PL",
+    "PR": "PR",
+    "PRI": "PR",
+    "PRK": "KP",
+    "PRT": "PT",
+    "PRY": "PY",
+    "PS": "PS",
+    "PSE": "PS",
+    "PT": "PT",
+    "PU": "PU",
+    "PUS": "PU",
+    "PW": "PW",
+    "PY": "PY",
+    "PYF": "PF",
+    "PZ": "PZ",
+    "QA": "QA",
+    "QAT": "QA",
+    "RE": "RE",
+    "REU": "RE",
+    "RH": "RH",
+    "RHO": "RH",
+    "RO": "RO",
+    "ROU": "RO",
+    "RS": "RS",
+    "RU": "RU",
+    "RUS": "RU",
+    "RW": "RW",
+    "RWA": "RW",
+    "SA": "SA",
+    "SAU": "SA",
+    "SB": "SB",
+    "SC": "SC",
+    "SD": "SD",
+    "SDN": "SD",
+    "SE": "SE",
+    "SEN": "SN",
+    "SG": "SG",
+    "SGP": "SG",
+    "SGS": "GS",
+    "SH": "SH",
+    "SHN": "SH",
+    "SI": "SI",
+    "SJ": "SJ",
+    "SJM": "SJ",
+    "SK": "SK",
+    "SL": "SL",
+    "SLB": "SB",
+    "SLE": "SL",
+    "SLV": "SV",
+    "SM": "SM",
+    "SMR": "SM",
+    "SN": "SN",
+    "SO": "SO",
+    "SOM": "SO",
+    "SPM": "PM",
+    "SR": "SR",
+    "SRB": "RS",
+    "SS": "SS",
+    "SSD": "SS",
+    "ST": "ST",
+    "STP": "ST",
+    "SUR": "SR",
+    "SV": "SV",
+    "SVK": "SK",
+    "SVN": "SI",
+    "SWE": "SE",
+    "SWZ": "SZ",
+    "SX": "SX",
+    "SXM": "SX",
+    "SY": "SY",
+    "SYC": "SC",
+    "SYR": "SY",
+    "SZ": "SZ",
+    "TA": "TA",
+    "TAA": "TA",
+    "TC": "TC",
+    "TCA": "TC",
+    "TCD": "TD",
+    "TD": "TD",
+    "TF": "TF",
+    "TG": "TG",
+    "TGO": "TG",
+    "TH": "TH",
+    "THA": "TH",
+    "TJ": "TJ",
+    "TJK": "TJ",
+    "TK": "TK",
+    "TKL": "TK",
+    "TKM": "TM",
+    "TL": "TL",
+    "TLS": "TL",
+    "TM": "TM",
+    "TMP": "TP",
+    "TN": "TN",
+    "TO": "TO",
+    "TON": "TO",
+    "TP": "TP",
+    "TR": "TR",
+    "TT": "TT",
+    "TTO": "TT",
+    "TUN": "TN",
+    "TUR": "TR",
+    "TUV": "TV",
+    "TV": "TV",
+    "TW": "TW",
+    "TWN": "TW",
+    "TZ": "TZ",
+    "TZA": "TZ",
+    "UA": "UA",
+    "UG": "UG",
+    "UGA": "UG",
+    "UK": "UK",
+    "UKR": "UA",
+    "UM": "UM",
+    "UMI": "UM",
+    "UN": "UN",
+    "URY": "UY",
+    "US": "US",
+    "USA": "US",
+    "UY": "UY",
+    "UZ": "UZ",
+    "UZB": "UZ",
+    "VA": "VA",
+    "VAT": "VA",
+    "VC": "VC",
+    "VCT": "VC",
+    "VD": "VD",
+    "VDR": "VD",
+    "VE": "VE",
+    "VEN": "VE",
+    "VG": "VG",
+    "VGB": "VG",
+    "VI": "VI",
+    "VIR": "VI",
+    "VN": "VN",
+    "VNM": "VN",
+    "VU": "VU",
+    "VUT": "VU",
+    "WAK": "WK",
+    "WF": "WF",
+    "WK": "WK",
+    "WLF": "WF",
+    "WS": "WS",
+    "WSM": "WS",
+    "YD": "YD",
+    "YE": "YE",
+    "YEM": "YE",
+    "YMD": "YD",
+    "YT": "YT",
+    "ZA": "ZA",
+    "ZAF": "ZA",
+    "ZAR": "ZR",
+    "ZM": "ZM",
+    "ZMB": "ZM",
+    "ZR": "ZR",
+    "ZW": "ZW",
+    "ZWE": "ZW"
+  },
+  "ai_vendors": {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "gemini": "Google",
+    "deepseek": "DeepSeek",
+    "qwen_intl": "Alibaba",
+    "qwen_cn": "Alibaba",
+    "moonshot": "Moonshot",
+    "zhipu": "Zhipu"
+  }
+}

@@ -1,7 +1,9 @@
+> **v0.6.9：流媒体统一单图**。新任务只运行一次固定 Service Unlock v0.5.4，按服务器实际出口自动选区（不使用清单country决定范围），失败或无对应组只测global。一个圆角框、一套英文三列、框内分区，无组统计解释。图与JSON来自同次结果，不再运行旧RRC＋17项补图。旧双图历史/文件保留。字体未改。Unknown是证据不足，不是No；Spotify signup不能证明实际注册，311不再报Yes，仅明确proxy拒绝为限定No。
+
 # GUKO
 
 [![Docker Image](https://img.shields.io/badge/ghcr.io-guko-blue?logo=docker)](https://github.com/shui1iao/GUKO/pkgs/container/guko)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT + AGPL](https://img.shields.io/badge/License-MIT%20%2B%20AGPL-blue.svg)](NOTICE-STREAM.md)
 
 **中文** | [English](README.en.md)
 
@@ -391,7 +393,7 @@ Bot 内还可以导出脱敏配置：
 
 IP质量与 NodeQuality 均默认选择「仅 IPv4」。添加服务器（含批量导入）时检测一次 IPv6 并保存地址、可用状态、原因和检测时间；菜单、切换和开始按钮只读取已存状态，不重复 SSH 探测。已记录可用时可选「IPv4 + IPv6」，已记录不可用时隐藏双栈并显示原因。实际测试在同一次 SSH 执行中更新 IP 信息；确认 IPv6 后来被禁用或已无全局地址时，清除失效地址并在结果中明确提示“没有可用 IPv6，已更新服务器 IP 状态”。即使选 IPv4，实际测试也能更新后来恢复的 IPv6；SSH／探测命令失败、超时或无效响应不会误删已知地址。IP质量双栈保留两份独立报告，含无公开链接的 IPv6 Lite；超时保留已有结果并标记未完成。
 
-GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。流媒体入口在目标服务器上执行 [lmc999/RegionRestrictionCheck](https://github.com/lmc999/RegionRestrictionCheck) 官方 `main/check.sh`，不修改脚本、不过滤上游服务目录。通过 `-M 4/6 -R <地区编号> -E en` 非交互运行，优先 IPv4；全球加服务器地区（台湾 1、香港 2、日本 3、北美 4、南美 5、欧洲 6、大洋洲 7、韩国 8、非洲 11，未知地区 0 仅全球）。每次 HTTPS 限时、限大小下载到任务临时文件，检查非空及 Bash 语法，再用 Bash 执行并清理。IPv4 能力使用本机路由判断，SSH/依赖错误不会误判为无 IPv4。目标服务器需有 Bash、curl、ip（iproute2）、CA 信任库及基础命令；上游自身可能安装其检测依赖并请求外部数据和广告，GUKO 不改写其行为。结果保留 Telegram 摘要、图片、历史记录和原始日志，图片保留服务状态和 Region/City/CDN 等原始详情；地区信息不代表解锁。只有实际服务行与上游输出上下文才算有效结果：退出 0 无有效结果仍失败，非 0 的部分结果标记未完成；媒体发送错误独立记录，不覆盖远程执行状态。TCPQuality 按实际用途提供“三网质量 / 回程线路 / 国际互联 / 三网测速 / 完整检测”五个入口：三网质量和回程线路可按服务器配置选择 IPv4 或 IPv6；国际互联按上游能力使用 IPv4；三网测速和完整检测会先显示流量提示并要求确认，避免误触。完整检测运行三网 IPv4 / IPv6、国际互联和三网测速，不包含教育网检测。带报告的结果会上传至 `tcpquality.ibsgss.uk`，回程线路则直接返回文本结果。相关按钮可以通过环境变量关闭。
+GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。流媒体入口使用固定Service Unlock v0.5.4独立程序，经现有SSH传输并SHA256校验后只运行一次，默认实际出口自动选择global＋对应当地组，失败只跑global并说明原因。完整JSON与单框PNG来自同一次测量，不跑旧RRC/补充双图、不安装远端runtime；原35项系统选族，新增项选族不冒标整个报告。完整exit1是含Unknown的有效报告，渲染/归档/发送失败不覆盖服务判据，旧双图历史保留。TCPQuality 按实际用途提供“三网质量 / 回程线路 / 国际互联 / 三网测速 / 完整检测”五个入口：三网质量和回程线路可按服务器配置选择 IPv4 或 IPv6；国际互联按上游能力使用 IPv4；三网测速和完整检测会先显示流量提示并要求确认，避免误触。完整检测运行三网 IPv4 / IPv6、国际互联和三网测速，不包含教育网检测。带报告的结果会上传至 `tcpquality.ibsgss.uk`，回程线路则直接返回文本结果。相关按钮可以通过环境变量关闭。
 
 ---
 
@@ -424,9 +426,20 @@ make check
 - 仓库不包含任何 Bot Token、真实用户 ID、服务器密码或私钥。
 - `.env`、`servers.json`、`keys/`、`media/`、`tmp/` 已加入 `.gitignore`，不要提交真实配置。
 - 默认白名单模式，未配置允许用户时会拒绝启动。
-- 使用 IPPure、bgp.tools、NodeQuality、TCPQuality、RegionRestrictionCheck 流媒体检测等功能时，会访问对应第三方服务；流媒体检测使用上游脚本及其外部数据源，GUKO 不提供账号凭据；TCPQuality 的报告模式会把检测结果上传至 `tcpquality.ibsgss.uk` 生成公开报告，纯回程识别不上传报告。
+- 使用 IPPure、bgp.tools、NodeQuality、TCPQuality、Service Unlock 流媒体检测等功能时，会访问对应第三方服务；流媒体通过固定匿名探针访问服务，自动选区最多查询两个固定HTTPS国家源，不提供账号凭据或执行旧上游脚本；TCPQuality 的报告模式会把检测结果上传至 `tcpquality.ibsgss.uk` 生成公开报告，纯回程识别不上传报告。
 - 删除服务器只会删除 Bot 本地配置，不会删除或重装远端机器。
 
 ## License
 
-MIT
+原有部分MIT；统一流媒体接入修改AGPL-3.0-only，组合发行不是MIT-only。详见NOTICE-STREAM.md。
+
+## 统一检测构建、来源与许可
+
+- 默认不传`--region`，由检测程序在与extra相同族的direct/TLS路径识别出口国家；原35项仍system-selected，不把整份报告冒标IPv4。无地区菜单/清单投票/额外信息报告。
+- 容器携带两种架构的固定CLI二进制：自动读取目标机器uname，以现有SSH认证同通道上传并SHA256核验，只执行一次完整`--machine`。不在远端装Go/Node/Python或下载执行脚本。超时/取消只清理该次独属PID/可执行文件/目录。
+- 一次报告的JSON、ANSI、PNG独立存档；完整exit1/Unknown仍交付报告。渲染/存储/TG异常独立记录，必要时用同份报告完整分段文本，不改服务判据。新任务单图，历史旧两图仍能重发。
+- 公开多架构构建：`docker buildx build --platform linux/amd64,linux/arm64 -f telegram-bot/Dockerfile .`。依赖版本沿v0.6.8（Python3.13、Node24、playwright1.59.1及原requirements），未升级字体/浏览器或改变网络/卷配置。`.github/workflows/docker-publish.yml`保留原精确mainCI门槛。
+- CLI固定v0.5.4：[对应源码](https://github.com/shui1iao/service-unlock/tree/v0.5.4)。完整source+vendor ZIP、SHA256与许可随image保存在`/app/stream-unified/source/`；每个架构二进制可用`--license`离线查看。
+- 原GUKO MIT通知保留；统一接入修改为AGPL-3.0-only，组合image**不是MIT-only**。见`NOTICE-STREAM.md`、`LICENSES/AGPL-3.0.txt`。提供远程交互的部署须保留准确修改版本的对应源码提供义务。
+- `python scripts/build-source.py`生成`dist/guko-v0.6.9-source.zip`和SHA256，含真实接入源码/构建recipe/固定CLI及其完整对应源，不含私钥、清单、token、私有字体。发布CI附带此asset；不是只提供旧上游链接。
+- 离线验收不启动机器人：`python -m unittest discover -s tests -v`（依赖image内运行；先CGO0构建`tests/native_fixture.go`到`tests/native-fixture`）。`tests/fixtures/unified`是实际v0.5.4 CLI代码走HTTPmock生成，非真实服务器解锁结论。

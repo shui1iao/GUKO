@@ -1,11 +1,13 @@
 FROM python:3.13-slim
 WORKDIR /app
-ARG GUKO_VERSION=0.6.8
+ARG GUKO_VERSION=0.6.9
 ARG GUKO_REVISION=unknown
 ENV GUKO_VERSION=${GUKO_VERSION}
 LABEL org.opencontainers.image.version=${GUKO_VERSION} \
       org.opencontainers.image.revision=${GUKO_REVISION} \
-      org.opencontainers.image.source="https://github.com/shui1iao/GUKO"
+      org.opencontainers.image.source="https://github.com/shui1iao/GUKO" \
+      org.opencontainers.image.licenses="MIT AND AGPL-3.0-only" \
+      org.opencontainers.image.description="GUKO unified stream report with fixed Service Unlock v0.5.4"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openssh-client sshpass ca-certificates fonts-dejavu-core fonts-noto-cjk fonts-noto-core curl gnupg librsvg2-bin chromium \
@@ -16,7 +18,10 @@ COPY telegram-bot/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 RUN npm install -g playwright@1.59.1
 ENV NODE_PATH=/usr/lib/node_modules PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-COPY auth.py guko.py jiaoops.py /app/
+COPY auth.py guko.py jiaoops.py stream_unified.py unified_catalogue.json /app/
+COPY stream-unified/ /app/stream-unified/
+COPY LICENSE LICENSES NOTICE-STREAM.md /app/licenses/
+RUN python -c "import hashlib, pathlib, stream_unified as u; [(_ for _ in ()).throw(ValueError(arch)) if hashlib.sha256((pathlib.Path('/app/stream-unified')/('service-unlock_linux_'+arch)).read_bytes()).hexdigest()!=digest else None for arch,digest in u.CATALOGUE['binary_sha256'].items()]"
 RUN mkdir -p /data/keys /data/media /data/tmp
 COPY telegram-bot/bot.py proxy_nodes.py telegram-bot/render_checkplace.py telegram-bot/render_ansi.js /app/
 COPY telegram-bot/resources/checkplace-terminal/ /app/resources/checkplace-terminal/

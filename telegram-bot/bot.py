@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+import stream_unified
 import csv
 import hashlib
 import html
@@ -34,7 +35,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.8').strip() or '0.6.8'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.9').strip() or '0.6.9'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -56,7 +57,7 @@ ADMIN_USERS = {x.strip() for x in os.environ.get('ADMIN_USERS', '').split(',') i
 ALLOW_INSECURE_STARTUP = os.environ.get('ALLOW_INSECURE_STARTUP', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 SCRIPT_SOURCES = {
     'nexttrace': ('NextTrace', 'https://github.com/nxtrace/NTrace-core'),
-    'stream': ('RegionRestrictionCheck', 'https://github.com/lmc999/RegionRestrictionCheck'),
+    'stream': ('Service Unlock v0.5.4', 'https://github.com/shui1iao/service-unlock'),
     'ipq': ('Check.Place', 'https://github.com/xykt/NetQuality'),
     'nq': ('NodeQuality / Check.Place', 'https://github.com/xykt/NodeQuality'),
     'tcpq': ('TcpQuality', 'https://github.com/ibsgss/TcpQuality'),
@@ -739,11 +740,11 @@ def script_command_text(kind, **kwargs):
             f'nexttrace {target}'
         )
     if kind == 'stream':
-        mode = str(kwargs.get('ip_mode') or '4')
-        if mode not in {'4', '6'}:
-            raise ValueError(f'unsupported RegionRestrictionCheck IP mode: {mode}')
-        region = REGIONRESTRICTION_REGIONS.get(kwargs.get('region_id') or '', 0)
-        return f'脚本命令：\nbash <(curl -{mode} -fsSL {REGIONRESTRICTION_URL}) -M {mode} -R {region} -E en'
+        mode = str(kwargs.get('ip_mode') or 'auto')
+        if mode not in {'auto', '4', '6'}:
+            raise ValueError('unsupported extra family')
+        return ('脚本命令（Service Unlock v0.5.4，经SSH校验上传）：\n'
+                f'service-unlock --machine --extra-family {mode} --timeout 6 --workers 4')
     if kind == 'ipq':
         suffix = ' -4' if kwargs.get('ip_mode', '4') == '4' else ''
         return '脚本命令：\nbash <(curl -Ls https://IP.Check.Place) -y' + suffix
@@ -1380,20 +1381,17 @@ STREAM_REGION_BY_COUNTRY = {
 
 
 def stream_region_for_server(s):
-    code = str(s.get('country') or '').lower()
-    if not code:
-        code = geolocate_host(s.get('host')) or ''
+    # Legacy helper for historical RRC commands, NOT used by new stream tasks.
+    code = str(s.get('country') or '').strip().lower()
     return STREAM_REGION_BY_COUNTRY.get(code, ('', '全球平台（自动识别）'))
 
 
 def stream_menu_text(s):
-    rid, label = stream_region_for_server(s)
-    proto = '优先 IPv4；若无 IPv4 自动改测 IPv6'
     return (
         f'🎬 准备在 <b>{safe(s.get("name"))}</b> 跑流媒体检测：\n\n'
-        f'地区选项：<b>{safe(label)}</b>\n'
-        f'协议策略：<b>{safe(proto)}</b>\n\n'
-        '会在目标机器执行 lmc999/RegionRestrictionCheck 官方脚本，检测全球及所选地区，保留上游状态与地区详情。'
+        '按实际出口自动识别地区，检测全球＋对应当地服务；识别失败仅检测全球。\n'
+        '一份单框分区报告、一张图；原35项系统选族，新增项自动选择可用地址族。\n'
+        'Unknown表示证据不足或安全限制；可达不等于播放、登录或实际注册成功。'
     )
 
 
@@ -1735,7 +1733,7 @@ KIND_NAME = {
     'nexttrace': 'NextTrace', 'bgp': 'BGP图', 'ippure': 'IPPure图',
     'ss': 'SS', 'anytls': 'AnyTLS', 'vless': 'VLESS', 'snell': 'Snell',
 }
-STATUS_ICON = {'running': '🟢', 'done': '✅', 'failed': '🔴'}
+STATUS_ICON = {'running': '🟢', 'done': '✅', 'failed': '🔴', 'inconclusive': '🟡'}
 INTERRUPTED_MESSAGE = '任务因 GUKO 重启或进程中断，未完成'
 
 
@@ -1874,12 +1872,15 @@ def history_append(jid, job):
     }
     if job.get('kind') == 'stream':
         item.update({key: job.get(key) for key in
-                     ('exit_code', 'proto', 'render_error', 'artifact_error', 'raw_path')})
+                     ('exit_code', 'proto', 'render_error', 'artifact_error', 'raw_path', 'json_path', 'report_format', 'unknown_count', 'extra_family', 'selection', 'cleanup_error')})
+        if isinstance(job.get('supplement'), dict):
+            item['supplement'] = dict(job['supplement'])
+            item['rrc_status'] = job.get('rrc_status', job.get('status'))
     hist = [
         x for x in load_history()
         if not (
             x.get('job_id') == jid
-            or (str(x.get('server_id') or '') == str(item.get('server_id') or '') and x.get('kind') == item.get('kind'))
+            or (item.get('kind') != 'stream' and str(x.get('server_id') or '') == str(item.get('server_id') or '') and x.get('kind') == item.get('kind'))
         )
     ]
     hist.append(item)
@@ -2036,6 +2037,15 @@ def history_detail_text(s, kind):
         lines.append('\n详情：\n<pre>' + safe(log_tail[-3200:]) + '</pre>')
     else:
         lines.append('\n详情：暂无可展示内容。')
+    if kind == 'stream' and isinstance(item.get('supplement'), dict):
+        sub = item['supplement']
+        lines.append('\n补充检测：<b>' + safe(sub.get('status') or '-') + '</b> · 17项 · 系统选择地址族')
+        if sub.get('unknown_count'):
+            lines.append('未知项目：' + safe(sub['unknown_count']))
+        if sub.get('error'):
+            lines.append('补充错误：' + safe(trim_log(sub['error'], 500)))
+        if sub.get('raw_path') or sub.get('json_path'):
+            lines.append('补充原始报告/JSON已独立归档。')
     return '\n'.join(lines)
 
 
@@ -3859,76 +3869,103 @@ async def run_nexttrace_task(bot, chat_id, s, jid, target='1.1.1.1'):
 
 
 async def run_stream_task(bot, chat_id, s, jid):
+    """One native CLI measurement, one JSON/ANSI report and one image."""
     key = (server_id(s), 'stream')
-    # Remote outcome must survive rendering/storage/Telegram failures.
+    label = '实际出口自动地区'
+    mode = str(JOBS[jid].get('ip_mode') or 'auto')
+    if mode not in ('4', '6', 'auto'):
+        mode = 'auto'
+    token = hashlib.sha256(str(jid).encode()).hexdigest()[:24]
+    root = kind_result_dir(s, 'stream-unified') / token
+    job = JOBS[jid]
+    job.update(region=label, selected='native35 + global + automatic exit region', proto='native35: system-selected; extra: ' + mode,
+               report_format='guko-unified-v1', json_path=None)
+    terminal = None
     try:
+        code, raw, stderr, cleanup_error = await stream_unified.remote_run(
+            s, ssh_args, ssh_env_for, family=mode)
+        job.update(exit_code=code, stderr=stderr, log_tail=trim_log(strip_ansi(raw), 3500))
+        if cleanup_error:
+            job['cleanup_error'] = cleanup_error
         try:
-            region_id, region_label = stream_region_for_server(s)
-            use_v4 = await remote_has_ipv4(s)
-            ip_mode = '4' if use_v4 else '6'
-            proto_text = 'IPv4' if use_v4 else 'IPv6（无 IPv4，自动切换）'
-            remote = regionrestriction_remote_command(ip_mode, region_id)
-            code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=1800, env=ssh_env_for(s))
-            valid_results = parse_stream_results(out)
-            JOBS[jid].update({
-                'status': 'done' if code == 0 and valid_results else 'failed',
-                'log': out, 'proto': proto_text, 'region': region_label, 'exit_code': code,
-            })
-        except Exception as e:
-            JOBS[jid].update({'status': 'failed', 'log': repr(e)})
-            try:
-                await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} 流媒体检测失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
-            except Exception as delivery:
-                JOBS[jid]['delivery_error'] = repr(delivery)
-            return
-
-        img = None
-        if valid_results:
-            try:
-                with tempfile.TemporaryDirectory(prefix='guko-stream-') as tmp:
-                    rendered = Path(tmp) / 'result.png'
-                    await render_ansi_png(stream_terminal_report(out), rendered, kind='stream')
-                    try:
-                        saved = persist_result_file(s, 'stream', rendered, '.png')
-                        JOBS[jid]['media_path'] = saved
-                        img = Path(saved)
-                    except Exception as e:
-                        JOBS[jid]['artifact_error'] = repr(e)
-            except Exception as e:
-                JOBS[jid]['render_error'] = repr(e)
-
+            root.mkdir(parents=True, exist_ok=True, mode=0o700)
+            (root / 'transport-output.txt').write_text(raw, encoding='utf-8')
+            (root / 'stderr.txt').write_text(stderr, encoding='utf-8')
+        except Exception as exc:
+            job['artifact_error'] = repr(exc)
+        report, terminal, unknowns = stream_unified.validate_output(raw, code, family=mode)
+        label = stream_unified.selection_label(report['selection'])
+        job['region'] = label
+        job['selection'] = report['selection']
+        job.update(status='inconclusive' if unknowns else 'done', unknown_count=unknowns,
+                   log=terminal, log_tail=trim_log(strip_ansi(terminal), 3500),
+                   extra_family=report['selection']['extra_family'])
         try:
-            root = kind_result_dir(s, 'stream')
-            root.mkdir(parents=True, exist_ok=True)
-            raw_path = root / 'latest.txt'
-            raw_path.write_text(out, encoding='utf-8')
-            JOBS[jid]['raw_path'] = str(raw_path)
-        except Exception as e:
-            JOBS[jid]['artifact_error'] = repr(e)
-
-        # A failed photo falls back to text; record the real send error, not a
-        # fictional remote or conversion failure. Full raw output stays in log.
-        if img:
-            try:
-                with img.open('rb') as photo:
-                    await bot.send_photo(chat_id, photo=photo,
-                                         caption=f'🎬 <b>{safe(s.get("name"))} 流媒体检测结果</b>',
-                                         parse_mode=ParseMode.HTML)
-            except Exception as e:
-                JOBS[jid]['delivery_error'] = repr(e)
-                img = None
+            root.mkdir(parents=True, exist_ok=True, mode=0o700)
+            raw_path, json_path = root / 'report.txt', root / 'report.json'
+            raw_path.write_text(terminal, encoding='utf-8')
+            json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+            job.update(raw_path=str(raw_path), json_path=str(json_path))
+        except Exception as exc:
+            job['artifact_error'] = repr(exc)
+        delivered = False
         try:
-            if img:
-                await bot.send_message(chat_id, script_command_text('stream', ip_mode=ip_mode, region_id=region_id))
-            else:
-                await bot.send_message(chat_id, format_stream_summary(s, out, proto_text, region_label, region_id), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-            if code != 0 and valid_results:
-                await bot.send_message(chat_id, f'⚠️ RegionRestrictionCheck 未完成（退出码 {code}），以上为已取得的部分结果。')
-        except Exception as e:
-            previous = JOBS[jid].get('delivery_error', '')
-            JOBS[jid]['delivery_error'] = (previous + '; ' if previous else '') + repr(e)
+            with tempfile.TemporaryDirectory(prefix='guko-stream-unified-') as tmp:
+                rendered = Path(tmp) / 'report.png'
+                await render_ansi_png(terminal, rendered, kind='stream')
+                image = rendered
+                try:
+                    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+                    saved = root / 'report.png'
+                    shutil.copy2(rendered, saved)
+                    job.update(media_path=str(saved), media_paths=[str(saved)])
+                    image = saved
+                except Exception as exc:
+                    job['artifact_error'] = repr(exc)
+                try:
+                    with image.open('rb') as photo:
+                        await bot.send_photo(chat_id, photo=photo,
+                            caption=f'🎬 <b>{safe(s.get("name"))} 流媒体完整报告</b>\n'
+                                    f'{safe(label)}\n原35项系统选族；新增项 IPv{report["selection"]["extra_family"] or "?"}；Unknown不等于服务拒绝。\n'
+                                    '<a href="https://github.com/shui1iao/GUKO/tree/v0.6.9">GUKO Source</a> · '
+                                    '<a href="https://github.com/shui1iao/service-unlock/tree/v0.5.4">CLI Source</a>',
+                            parse_mode=ParseMode.HTML)
+                    delivered = True
+                except Exception as exc:
+                    job['delivery_error'] = repr(exc)
+        except Exception as exc:
+            job['render_error'] = repr(exc)
+        if not delivered:
+            # Send useful chunks rather than silently truncating a large unified report.
+            plain = strip_ansi(terminal)
+            for start in range(0, len(plain), 2800):
+                try:
+                    await bot.send_message(chat_id,
+                        f'🎬 <b>{safe(s.get("name"))} 流媒体完整报告（文本）</b>\n' +
+                        ('<a href="https://github.com/shui1iao/GUKO/tree/v0.6.9">GUKO Source</a> · <a href="https://github.com/shui1iao/service-unlock/tree/v0.5.4">CLI Source</a>\n' if start == 0 else '') +
+                        '<pre>' + safe(plain[start:start+2800]) + '</pre>',
+                        parse_mode=ParseMode.HTML)
+                except Exception as exc:
+                    job['delivery_error'] = (job.get('delivery_error', '') + '; ' + repr(exc)).strip('; ')
+                    break
+    except asyncio.CancelledError:
+        job['status'] = 'cancelled'
+        raise
+    except Exception as exc:
+        job.update(status='failed', error=repr(exc))
+        if getattr(exc, 'supplement_cleanup_error', None):
+            job['cleanup_error'] = exc.supplement_cleanup_error
+        try:
+            await bot.send_message(chat_id, f'⚠️ <b>{safe(s.get("name"))} 新版完整检测未完成</b>：<code>{safe(trim_log(str(exc), 700))}</code>', parse_mode=ParseMode.HTML)
+        except Exception as delivery:
+            job['delivery_error'] = repr(delivery)
     finally:
-        finish_job(jid, key)
+        try:
+            finish_job(jid, key)
+        except Exception as exc:
+            # History storage failure is separate from the completed probe result.
+            job['artifact_error'] = repr(exc)
+            RUNNING.discard(key)
 
 
 async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
@@ -4608,7 +4645,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         item = history_item_for(s, kind)
         can_resend = bool(
             item
-            and item.get('status') == 'done'
+            and (item.get('status') == 'done' or kind == 'stream' and item.get('status') == 'inconclusive')
             and (latest_media_path(item) or kind in ('nq', 'tcpq'))
         )
         if can_resend:
@@ -4830,7 +4867,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not s:
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
-        _region_id, region_label = stream_region_for_server(s)
+        region_label = '实际出口自动地区'
         jid = launch_job(s, 'stream', run_stream_task, context.bot, q.message.chat_id, s, region=region_label)
         await bot_task_started_notice(context.bot, q.message.chat_id, s, f'流媒体检测（{safe(region_label)}）', jid is not None)
     elif data.startswith('ntask:'):
