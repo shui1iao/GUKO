@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.2] - 2026-11-05 — 六主项目的辅助地区恢复
+
+- 对接CLI v0.5.8，ChatGPT/TikTok/YouTube/Spotify/Reddit/Google从官方同平台来源补辅助国家；仍每平台一项目一主结果，22+134/Regional原名及auto单地区不变。
+- 辅助成功/失败不改变主status/value/error/detail/checked_at/elapsed_ms或退出，Spotify国家不等于可注册。YouTube仅自身countryCode，不Google/出口fallback。已有国家不覆盖，其它项目未知仍空。
+- 六项增加有界官方辅助请求，与原core共用direct/system-selected Stack；每项目辅助budget≤--timeout，Google两步共享；可能增加总耗时，不保证同IP/固定族/登录播放。
+- services三指定ID新增可选ISO2 region；严格消费者需同步。GUKO明确0.5.8 strict/raw→同次ANSI/source，历史原图JSON源offer不重测补贴地区。非stream/代理/GB5规则不改。
+- 发布前通过准确源离线回归与构建，具体最终证据随发行交付；无真实业务全扫/注册登录/安装/TG测试，arm64未实机。短链与SG运营切换另由主控确认后执行，公开发布不等于已部署。
+
 ## [0.7.1] - 2026-11-05
 
 ### 真正单主探针与区域媒体恢复

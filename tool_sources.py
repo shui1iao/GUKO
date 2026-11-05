@@ -165,7 +165,7 @@ def stream_source(arch):
     if arch not in ('amd64', 'arm64'):
         raise SourceError('Service Unlock不支持此架构，已停止。')
     r = latest_release('shui1iao/service-unlock')
-    if r['version'] != 'v0.5.7':
+    if r['version'] != 'v0.5.8':
         raise SourceError('Service Unlock发行标识不兼容，已停止。')
     binary_name = 'service-unlock_linux_' + arch
     source_name = 'service-unlock-' + r['version'] + '-source.zip'
@@ -192,7 +192,7 @@ def stream_source(arch):
         raise SourceError('CLI同发行SUMS/完整对应源码校验失败，已停止。') from None
     meta = identity(r)
     meta.update(arch=arch, binary=binary_id, sums=sums_id, source=source_id,
-                source_offer=source_id['url'], contract='v0.5.7 raw156/single-probe-regional; schema1')
+                source_offer=source_id['url'], contract='v0.5.8 raw156/single-probe-regional-aux-country; schema1')
     return body, meta
 
 

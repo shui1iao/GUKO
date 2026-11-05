@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
-ARG GUKO_VERSION=0.7.1
+ARG GUKO_VERSION=0.7.2
 ARG GUKO_REVISION=unknown
 ENV GUKO_VERSION=${GUKO_VERSION} GUKO_SOURCE_URL=https://github.com/shui1iao/GUKO/releases/download/v${GUKO_VERSION}/guko-v${GUKO_VERSION}-source.zip
 LABEL org.opencontainers.image.version=${GUKO_VERSION} \
@@ -8,7 +8,7 @@ LABEL org.opencontainers.image.version=${GUKO_VERSION} \
       org.opencontainers.image.source="https://github.com/shui1iao/GUKO" \
       org.opencontainers.image.url="https://github.com/shui1iao/GUKO/releases/tag/v${GUKO_VERSION}" \
       org.opencontainers.image.licenses="MIT AND AGPL-3.0-only" \
-      org.opencontainers.image.description="GUKO official latest tools and read-only Kat integration; strict v0.5.7 single-probe and regional media contract"
+      org.opencontainers.image.description="GUKO official latest tools and read-only Kat integration; strict v0.5.8 single-probe and regional media contract"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openssh-client sshpass ca-certificates fonts-dejavu-core fonts-noto-cjk fonts-noto-core curl gnupg librsvg2-bin chromium \

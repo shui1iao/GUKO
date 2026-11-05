@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -59,3 +60,15 @@ class ExactReleaseAssetsTest(unittest.TestCase):
             self.assertIn(module,text)
         compile_step=(ROOT/'.github/workflows/ci.yml').read_text()
         for module in ('kat_proxy.py','tool_sources.py','stream_terminal.py','proxy_nodes.py'):self.assertIn(module,compile_step)
+
+class ActualCurrentReleaseNotesTest(unittest.TestCase):
+    def test_existing_workflow_awk_extracts_this_exact_version_only(self):
+        version=(ROOT/'version.txt').read_text().strip()
+        program='''index($0, "## [" version "]") == 1 { capture=1; next }
+        capture && index($0, "## [") == 1 { exit }
+        capture { print }'''
+        notes=subprocess.check_output(['awk','-v','version='+version,program,str(ROOT/'CHANGELOG.md')],text=True)
+        self.assertIn('CLI v0.5.8',notes)
+        self.assertIn('辅助',notes)
+        self.assertNotIn('## [0.7.1]',notes)
+        self.assertNotIn('### 真正单主探针与区域媒体恢复',notes)

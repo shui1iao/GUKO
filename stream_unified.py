@@ -21,6 +21,8 @@ ACCESS = tuple((r['id'], r['name']) for r in CATALOGUE['native'] if r['array'] =
 SERVICES = tuple((r['id'], r['name'], r['kind']) for r in CATALOGUE['native'] if r['array'] == 'services')
 AI = tuple((r['id'], r['name']) for r in CATALOGUE['native'] if r['array'] == 'ai_endpoints')
 EXTRA = {r['function']: r for r in CATALOGUE['extra']}
+AUX_SERVICE_REGIONS = frozenset(('google_captcha', 'spotify_signup', 'reddit_guest'))
+AUX_ACCESS_REGIONS = frozenset(('chatgpt_web', 'youtube_premium_access', 'tiktok_access'))
 MAX_OUTPUT = 2 * 1024 * 1024
 SOURCE_COMMIT = '50e084bb3ed34b55fc6839fe0dc4bafd9fe275fc'
 EXTRA_COMMIT = 'b6d4a6f9a87fc6eae6d3e62d0092ececcec8e844'
@@ -132,7 +134,10 @@ def validate_output(raw, code, *, family='auto'):
                 raise ValueError('Wrong/duplicated/reordered unified ID or name')
             common = {'id', 'name', 'status', 'detail', 'error', 'checked_at', 'elapsed_ms'}
             fields = {'results': {'platform', 'region'}, 'services': {'type', 'value'}, 'ai_endpoints': {'vendor', 'http_status'}, 'extra_checks': {'source_function', 'source_line', 'scope', 'family', 'region'}}
-            if set(row) != common | fields[field]:
+            expected_fields = common | fields[field]
+            if field == 'services' and identity[0] in AUX_SERVICE_REGIONS and 'region' in row:
+                expected_fields = expected_fields | {'region'}
+            if set(row) != expected_fields:
                 raise ValueError('Unexpected or missing row fields')
             status = row.get('status')
             allowed = {'available', 'restricted', 'blocked', 'error'} if field in ('results', 'extra_checks') else {'observed', 'error'} if field == 'services' else {'reachable', 'blocked', 'error'}
@@ -150,6 +155,9 @@ def validate_output(raw, code, *, family='auto'):
             region_value = row.get('region')
             if region_value is not None and (not isinstance(region_value, str) or not re.fullmatch('[A-Z]{2,3}', region_value) or not _country(region_value)):
                 raise ValueError('Invalid result region')
+            if (field == 'services' and 'region' in row or field == 'results' and identity[0] in AUX_ACCESS_REGIONS and region_value is not None):
+                if not isinstance(region_value, str) or len(region_value) != 2 or _country(region_value) != region_value or region_value in ('WW', 'EU', 'UK'):
+                    raise ValueError('Invalid auxiliary ISO2 region')
             if field == 'services':
                 if row.get('type') != identity[2]:
                     raise ValueError('Wrong native observation type')
@@ -159,7 +167,7 @@ def validate_output(raw, code, *, family='auto'):
                 if identity[0] == 'spotify_signup' and status != 'error' and (value != 'no' or row['detail'] != 'legacy anonymous signup endpoint explicitly rejected this request as a proxy (status320); actual registration/login not tested'):
                     raise ValueError('Unsupported Spotify signup eligibility claim')
                 label = 'Unknown' if status == 'error' else ('Yes' if identity[2] == 'country' or (value == 'no' if identity[2] == 'blocked' else value == 'yes') else 'No')
-                display_region = _country(value) if identity[2] == 'country' else ''
+                display_region = _country(value) if identity[2] == 'country' else _country(region_value)
             else:
                 label = {'available': 'Yes', 'reachable': 'Yes', 'blocked': 'No', 'restricted': 'Limited', 'error': 'Unknown'}[status]
                 display_region = '' if field == 'ai_endpoints' else _country(region_value)

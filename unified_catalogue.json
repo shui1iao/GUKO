@@ -4131,5 +4131,5 @@
     "moonshot": "Moonshot",
     "zhipu": "Zhipu"
   },
-  "supported_contract": "v0.5.7 raw156/single-probe-regional"
+  "supported_contract": "v0.5.8 raw156/single-probe-regional-aux-country"
 }

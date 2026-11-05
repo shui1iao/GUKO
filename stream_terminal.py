@@ -1,4 +1,4 @@
-"""Strict local v0.5.7 terminal contract, not a second renderer. AGPL-3.0-only.
+"""Strict local v0.5.8 terminal contract, not a second renderer. AGPL-3.0-only.
 
 Single-probe presentation mirrors the explicitly licensed upstream terminal mapping;
 original mapping MIT (Remnawave, 2026), see NOTICE-STREAM.md. This code NEVER
@@ -46,7 +46,7 @@ def _groups(report, country):
                 raise ValueError('Unknown terminal probe contract')
             if source == 'geo':
                 is_country = row['type'] == 'country'
-                code = country(row['value']) if is_country else ''
+                code = country(row['value']) if is_country else country(row.get('region'))
                 label = 'Unknown'
                 if row['status'] != 'error':
                     yes = is_country or (row['value'] == 'no' if row['type'] == 'blocked' else row['value'] == 'yes')
