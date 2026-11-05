@@ -20,6 +20,8 @@ spec = importlib.util.spec_from_file_location(
 assert spec and spec.loader
 bot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bot)
+from frozen_sources import install as inject_frozen_sources
+inject_frozen_sources(bot)
 
 
 class Geekbench5CommandTest(unittest.TestCase):

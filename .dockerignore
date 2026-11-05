@@ -2,6 +2,7 @@
 .env
 servers.json
 servers.yml
+history.json
 docker-compose.yml
 keys/
 media/

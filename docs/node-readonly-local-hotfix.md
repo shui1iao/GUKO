@@ -1,20 +1,19 @@
-# 节点安装入口只读行为（v0.6.1）
+# 当前本地代理读取/新装边界
 
-SS / AnyTLS / Snell / VLESS 的 `ensure`、`install`、`view` 共用只读检查。已有配置返回当前节点，原模式不随按钮改变；只有完全没有安装痕迹时才下载原脚本安装。二进制、配置目录/文件、systemd unit（含厂商目录）、悬空链接和旧 Xray 路径均为保护痕迹。
+SS/AnyTLS已改为Kat，一个入口读全部受支持实例；Snell仍走原固定INI快照、本地-v和原Manager安装路径，行为不变。VLESS只保历史名称/被动URI显示，新回调和执行能力均已移除；不卸载远端服务、不改旧history。
 
-| 协议 | 已有完整配置 | 缺 unit | 缺 binary | 配置损坏/不可读 | 完全未装 |
-|---|---|---|---|---|---|
-| SS | 只读生成 URI | 只读 | 只读 | 失败且不变 | 原 SS install |
-| AnyTLS | 解析 unit 端口/密码 | 失败（unit 即权威配置） | 只读 | 失败且不变 | 原 AnyTLS install |
-| Snell | 只读 INI + 本地 `-v` | 只读 | 返回现有参数，明确版本未知 | 失败且不变 | 原 Snell install |
-| VLESS | plain 从配置输出；Reality/TLS 保留匹配摘要 | 只读 | 只读 | 失败且不变 | 原 Xray 2/3 菜单 |
+## Kat读取
 
-已有节点不做 HTTP 请求、安装、启动或重启，不改变凭据文件。Snell 本地 `-v` 仅用于客户端所需的主版本，不是更新检查；版本不可用时不猜测节点。连接地址使用 GUKO 清单 host。目标机只用 POSIX shell 与 coreutils（`stat`/`od`）采集固定路径的有界快照，配置解析在 GUKO 内完成，不要求目标机安装 Python，也不会自动安装依赖。每个文件最多 256 KiB；损坏、截断、超限或不匹配的快照安全失败，不把原始配置或编码数据写入错误消息。SSH 的 stderr 与成功快照分离，首次连接提示不会破坏配置解析。
+目标只使用已有POSIX shell/systemctl/proc/coreutils；不运行Manager view/status/check、Kat程序、Python/jq或节点API，不写临时配置或自动补依赖。发现标准/kat-*单位并用实际Kat进程补自定义服务，effective unit、exe/cgroup/绝对run CONFIG链及前后快照须一致。每文件最多1MiB、配置总量4MiB、32实例/路径，超限/未知/权限/截断均固定错误；不泄快照或编码凭据。文件仅是磁盘配置，不保证内存已reload或连接可用。完全任意且停止的自定义单位若无可发现锚定，不在支持范围，不能据此证明全机未安装。
 
-VLESS 保护非 VLESS Xray；旧 `/etc/xray/vless-basic.json` 只读而不迁移。Reality/TLS 摘要缺失或明显不匹配时失败，不生成猜测参数；两种模式入口共享任务锁。新安装保留原有兼容补丁和端口逻辑。
+旧后端inactive/disabled残留不取代可靠Kat；旧后端运行、仅旧痕迹、无主配置或权威冲突拒绝安装。多个inbound/多个unit逐项输出；2022读ss.key，2017读ss.password，AnyTLS读anytls.password，非空users拒绝。未知TLS/ACME不猜客户端校验/SNI，标unsupported；不读私钥。节点完整分页并保存本次完整私有文本，历史重发不SSH或查新。
 
-不能用管理脚本的 `view` 替代只读解析：SS view 可安装依赖，Xray 可补写摘要或迁移服务。下载失败不执行安装脚本，临时文件自动清理。
+## Kat新安装
 
-## 离线回归
+主入口/旧ensure或install回调只读。完整确认所选协议不存在后另发明确安装确认；绑定用户/chat/服务器/协议，10分钟单次有效，旧/伪造确认拒绝。点确认后重新完整发现、前置检查及同任务身份冻结，下载前再次guard/hash；竞态发现已有节点只读或停止，不覆盖。
 
-`tests/test_proxy_readonly.py` 在临时假主机路径执行实际生成的 Bash，并审计工具调用及配置字节不变。覆盖所有协议与操作、配置缺失/损坏、残留安装痕迹、缺失核心、模式保留、下载失败及新安装交互。旧 AnyTLS 单协议命令 hash 契约已由全协议矩阵替代。测试不得连接真实节点。
+仅新装时冻结官方Kat-Manager main准确commit的kat.sh/kat_manager.py/kat_config.py并校wrapper pins，CLI为install ss|anytls --host ...，非旧stdin菜单。已有合法共享core只复用；无core才冻结Kat-Server正式latest binary/SHA。缺root/Linux amd64/systemd/Python3/curl等前置停止，不装依赖、不update已有内核。安装后不用文本猜成功，重新只读采集真实unit/config和内核身份；失败不自动升级/重试。Manager仅建标准单协议节点，不接管自定义第二实例。
+
+## 源码回归契约（发行时离线运行）
+
+新Kat契约在tests/test_kat_proxy.py与test_proxy_client_formats.py，含多实例/users/TLS/编码/旧痕迹/有界帧/无Python读取/确认和安装身份。原Snell的只读副作用/版本/传输/安装交互安全断言保留。删除功能的旧VLESS正向安装期望改为明确拒绝、历史保留断言，不为追绿放宽安全。

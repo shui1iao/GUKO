@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 import stream_unified
+import tool_sources
 import csv
 import hashlib
 import html
@@ -17,9 +18,10 @@ from datetime import datetime
 import urllib.request
 import shutil
 import shlex
+import kat_proxy
 from proxy_nodes import (
     remote_command, SNAPSHOT_EXIT, SNAPSHOT_HEADER, READ_ERROR, ProxyReadError,
-    parse_snapshot, render_snapshot, snell_version_command,
+    parse_snapshot, render_snapshot, snell_version_command, snapshot_command,
 )
 import socket
 from pathlib import Path
@@ -35,7 +37,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.6.9').strip() or '0.6.9'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.0').strip() or '0.7.0'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -57,47 +59,31 @@ ADMIN_USERS = {x.strip() for x in os.environ.get('ADMIN_USERS', '').split(',') i
 ALLOW_INSECURE_STARTUP = os.environ.get('ALLOW_INSECURE_STARTUP', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 SCRIPT_SOURCES = {
     'nexttrace': ('NextTrace', 'https://github.com/nxtrace/NTrace-core'),
-    'stream': ('Service Unlock v0.5.4', 'https://github.com/shui1iao/service-unlock'),
-    'ipq': ('Check.Place', 'https://github.com/xykt/NetQuality'),
-    'nq': ('NodeQuality / Check.Place', 'https://github.com/xykt/NodeQuality'),
+    'stream': ('Service Unlock (official latest)', 'https://github.com/shui1iao/service-unlock'),
+    'ipq': ('IPQuality / Check.Place', 'https://github.com/xykt/IPQuality'),
+    'nq': ('NodeQuality / Check.Place', 'https://github.com/LloydAsp/NodeQuality'),
     'tcpq': ('TcpQuality', 'https://github.com/ibsgss/TcpQuality'),
-    'ss': ('SS-Rust-Manager', 'https://github.com/shui1iao/SS-Rust-Manager'),
-    'anytls': ('AnyTLS-Manager', 'https://github.com/shui1iao/AnyTLS-Manager'),
-    'vless': ('Xray-VLESS-Manager', 'https://github.com/shui1iao/Xray-VLESS-Manager'),
+    'ss': ('Kat-Manager', 'https://github.com/shui1iao/Kat-Manager'),
+    'anytls': ('Kat-Manager', 'https://github.com/shui1iao/Kat-Manager'),
     'snell': ('Snell-Manager', 'https://github.com/shui1iao/Snell-Manager'),
 }
 REGIONRESTRICTION_URL = 'https://raw.githubusercontent.com/lmc999/RegionRestrictionCheck/main/check.sh'
 REGIONRESTRICTION_REGIONS = {'tw': 1, 'hk': 2, 'jp': 3, 'na': 4, 'sa': 5, 'eu': 6,
                              'oc': 7, 'kr': 8, 'sea': 9, 'af': 11}
-TCPQUALITY_COMMIT = '676789de0df20cc6ade95680c79969b637e3f8fa'
-TCPQUALITY_SHA256 = {
-    'runTcpQuality.sh': 'acb8b306725ed496549a01b878a9d1313482dd38c98f294d0492055b202e12d3',
-    'runTcpQuality-core.sh': '6b9800a822c06bfbcc091730522506baf5b1557fb2718e77f4a578d9c4d9247f',
-}
-TCPQUALITY_RAW_BASE = f'https://raw.githubusercontent.com/ibsgss/TcpQuality/{TCPQUALITY_COMMIT}'
-TCPQUALITY_MIRROR_BASE = f'https://cdn.jsdelivr.net/gh/ibsgss/TcpQuality@{TCPQUALITY_COMMIT}'
-TCPQUALITY_RAW_URL = f'https://raw.githubusercontent.com/ibsgss/TcpQuality/{TCPQUALITY_COMMIT}/runTcpQuality.sh'
 PROXY_TOOLS = {
     'ss': {
-        'name': 'SS-Rust',
-        'service': 'ss-rust',
-        'script_url': 'https://ss.siaoz.si',
+        'name': 'Kat SS',
+        'service': 'kat-ss',
+        'script_url': 'https://raw.githubusercontent.com/shui1iao/Kat-Manager/main/kat.sh',
         'install_arg': 'install',
         'button': '🔐 SS',
     },
     'anytls': {
-        'name': 'AnyTLS',
-        'service': 'anytls',
-        'script_url': 'https://anytls.siaoz.si',
+        'name': 'Kat AnyTLS',
+        'service': 'kat-anytls',
+        'script_url': 'https://raw.githubusercontent.com/shui1iao/Kat-Manager/main/kat.sh',
         'install_arg': 'install',
         'button': '🛡 AnyTLS',
-    },
-    'vless': {
-        'name': 'VLESS',
-        'service': 'xray',
-        'script_url': 'https://xray.siaoz.si',
-        'install_arg': 'install',
-        'button': '⚡ VLESS',
     },
     'snell': {
         'name': 'Snell',
@@ -108,10 +94,10 @@ PROXY_TOOLS = {
     },
 }
 
-GB5_VERSION = '5.5.1'
-GB5_URL = f'https://cdn.geekbench.com/Geekbench-{GB5_VERSION}-Linux.tar.gz'
 GB5_OOM_MARKER = '__GUKO_GB5_OOM__'
 JOBS = {}
+# Short-lived, single-use, user/chat/server/protocol-bound install decisions.
+KAT_INSTALL_CONFIRMATIONS = {}
 RUNNING = set()
 PENDING_NEXTTRACE = {}
 ADD_SESSIONS = {}
@@ -727,23 +713,44 @@ def parse_host_port(text):
     return raw, None
 
 
+async def resolve_tool(jid, resolver, *args):
+    source = await asyncio.to_thread(resolver, *args)
+    JOBS[jid]['tool_source'] = source
+    return source
+
+
+def tool_source_html(item):
+    source = item.get('tool_source') or {}
+    if not source:
+        return ''  # Old history has no proof: never label it with today's latest.
+    version = source.get('version') or 'branch content (no release version)'
+    commit = source.get('commit')
+    label = version + (' · ' + commit if commit else '')
+    offer = source.get('source_offer')
+    return ('来源：' + safe(label) + (' · <a href="' + safe(offer) + '">对应源码/官方来源</a>' if offer else ''))
+
+
+def stream_source_offer(job):
+    return tool_source_html(job) + '\nGUKO对应源：https://github.com/shui1iao/GUKO/releases/download/v0.7.0/guko-v0.7.0-source.zip'
+
+
 def source_repo(kind):
     return SCRIPT_SOURCES.get(kind, ('', ''))[1]
 
 
-def script_command_text(kind, **kwargs):
+def _script_command_text(kind, **kwargs):
     if kind == 'nexttrace':
         target = kwargs.get('target') or '<目标IP或域名>'
         return (
             '脚本命令：\n'
-            'curl -sL https://nxtrace.org/nt | bash\n'
+            '任务临时目录程序（实际版本见本任务来源，不改全局安装）\n'
             f'nexttrace {target}'
         )
     if kind == 'stream':
         mode = str(kwargs.get('ip_mode') or 'auto')
         if mode not in {'auto', '4', '6'}:
             raise ValueError('unsupported extra family')
-        return ('脚本命令（Service Unlock v0.5.4，经SSH校验上传）：\n'
+        return ('脚本命令（Service Unlock，每任务官方latest，经SSH校验上传）：\n'
                 f'service-unlock --machine --extra-family {mode} --timeout 6 --workers 4')
     if kind == 'ipq':
         suffix = ' -4' if kwargs.get('ip_mode', '4') == '4' else ''
@@ -754,9 +761,8 @@ def script_command_text(kind, **kwargs):
         if action == 'view':
             return 'GUKO 只读配置：直接解析目标服务器现有文件，不调用管理脚本、不写配置。'
         arg = tool['install_arg']
-        if kind == 'vless':
-            mode = kwargs.get('mode') or '<plain|reality>'
-            return f"原管理脚本（仅未安装时调用；已有节点只读）：\nbash <(curl -Ls {tool['script_url']})  # 选择 {mode}"
+        if kind in kat_proxy.KINDS:
+            return 'Kat只读发现全部实例；仅另行明确确认新安装时调用同commit Kat-Manager install ' + kind
         return f"原管理脚本（仅未安装时调用；已有节点只读）：\nbash <(curl -Ls {tool['script_url']}) {arg}"
     if kind == 'nq':
         selected = kwargs.get('selected')
@@ -770,10 +776,21 @@ def script_command_text(kind, **kwargs):
         args = ' '.join(mode['args'])
         return (
             '脚本命令：\n'
-            f'TCPQUALITY_RAW_BASE={TCPQUALITY_RAW_BASE} '
-            f'bash <(curl -fsSL {TCPQUALITY_RAW_URL}) --no-rootfs {args}'
+            '任务冻结的同commit wrapper/core（历史版本以原来源记录为准）\n'
+            f'bash runTcpQuality.sh --no-rootfs {args}'
         )
     return ''
+
+
+def script_command_text(kind, **kwargs):
+    text = _script_command_text(kind, **kwargs)
+    source = kwargs.get('source') or {}
+    if source:
+        version = source.get('version') or 'branch content (no release version)'
+        if source.get('commit'):
+            version += ' · ' + source['commit']
+        text += '\n本次来源：' + version + '\n' + (source.get('source_offer') or '')
+    return text
 
 
 def script_command_html(kind, **kwargs):
@@ -932,8 +949,6 @@ def server_markup(s):
         test_buttons.append(InlineKeyboardButton(PROXY_TOOLS['ss']['button'], callback_data=f'proxy:ss:{sid}'))
     if tool_enabled('anytls'):
         test_buttons.append(InlineKeyboardButton(PROXY_TOOLS['anytls']['button'], callback_data=f'proxy:anytls:{sid}'))
-    if tool_enabled('vless'):
-        test_buttons.append(InlineKeyboardButton(PROXY_TOOLS['vless']['button'], callback_data=f'proxy:vless:{sid}'))
     if tool_enabled('snell'):
         test_buttons.append(InlineKeyboardButton(PROXY_TOOLS['snell']['button'], callback_data=f'proxy:snell:{sid}'))
     rows.extend(button_rows(test_buttons, 2))
@@ -1118,31 +1133,19 @@ def tcpquality_family_menu_text(s, category):
     )
 
 
-def tcpquality_remote_command(mode):
+def tcpquality_remote_command(mode, source):
     config = tcpquality_mode(mode)
     args = ' '.join(shlex.quote(arg) for arg in config['args'])
-    downloads = []
-    for filename, digest in TCPQUALITY_SHA256.items():
-        destination = f'"$bundle/{filename}"'
-        downloads.extend([
-            (
-                f"curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 "
-                f"--connect-timeout 15 --max-time 120 {shlex.quote(f'{TCPQUALITY_RAW_BASE}/{filename}')} "
-                f"-o {destination} || curl -fsSL --proto '=https' --proto-redir '=https' "
-                f"--retry 2 --connect-timeout 15 --max-time 120 "
-                f"{shlex.quote(f'{TCPQUALITY_MIRROR_BASE}/{filename}')} -o {destination}; "
-            ),
-            f"printf '%s  %s\\n' {shlex.quote(digest)} {destination} | sha256sum -c -; ",
-        ])
+    downloads = ''.join(tool_sources.shell_download(source['files'][name], '"$bundle/' + name + '"')
+                        for name in ('runTcpQuality.sh', 'runTcpQuality-core.sh'))
     return (
         "set -eu; export TERM=xterm-256color; cd /tmp; "
         "bundle=$(mktemp -d /tmp/tcpquality.XXXXXX); "
-        "cleanup() { rm -rf \"$bundle\"; }; "
+        'cleanup() { rm -rf "$bundle"; }; '
         "trap cleanup EXIT; trap 'exit 130' HUP INT TERM; "
-        + ''.join(downloads)
-        + "chmod 700 \"$bundle/runTcpQuality.sh\" \"$bundle/runTcpQuality-core.sh\"; "
-        + f"TCPQUALITY_RAW_BASE={shlex.quote(TCPQUALITY_RAW_BASE)} "
-        + f'bash "$bundle/runTcpQuality.sh" --no-rootfs {args}'
+        + downloads + 'chmod 700 "$bundle/runTcpQuality.sh" "$bundle/runTcpQuality-core.sh"; '
+        + 'TCPQUALITY_RAW_BASE=' + shlex.quote(source['raw_base']) + ' '
+        + 'bash "$bundle/runTcpQuality.sh" --no-rootfs ' + args
     )
 
 
@@ -1251,7 +1254,7 @@ def ipquality_menu_text(s, ip_mode='4', ipv6_status=IPV6_UNCHECKED):
     )
 
 
-def ipquality_remote_command(ip_mode='4'):
+def ipquality_remote_command(ip_mode='4', *, source):
     if ip_mode not in NQ_IP_MODES:
         raise ValueError('未知 IP质量协议选项')
     suffix = ' -4' if ip_mode == '4' else ''
@@ -1259,8 +1262,8 @@ def ipquality_remote_command(ip_mode='4'):
         'export TERM=xterm-256color; cd /tmp || exit; '
         'script=$(mktemp /tmp/guko-ipquality.XXXXXX.sh) || exit; '
         'trap \'rm -f -- "$script"\' EXIT; '
-        'curl -fLsS --max-time 60 https://IP.Check.Place -o "$script" && '
-        'bash "$script" -y' + suffix
+        + tool_sources.shell_download(source, '"$script"')
+        + 'bash "$script" -y' + suffix
     )
 
 
@@ -1323,7 +1326,7 @@ def validate_nodequality_work_dir(work_dir):
     return work_dir
 
 
-def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4', *, work_dir=None):
+def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4', *, work_dir=None, source):
     # This path is generated by the task, never parsed from remote stdout.
     # Official -d nests its timestamp directory here; preserve only four logs
     # before upstream removes BenchOs. Never search old .nodequality directories.
@@ -1358,7 +1361,8 @@ def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4', *, work_dir=Non
         + ensure_curl
         + log_setup
         + "script=$(mktemp /root/nodequality.XXXXXX.sh); "
-        + "curl -fsSL --max-time 60 https://run.NodeQuality.com -o \"$script\"; "
+        + "trap 'rm -f -- \"$script\"' EXIT; "
+        + tool_sources.shell_download(source, '"$script"')
         + nodequality_patch_command()
         + log_patch
         + "printf %b " + shlex.quote(answers) + " | bash \"$script\" " + ipv_arg + dir_arg
@@ -1390,7 +1394,7 @@ def stream_menu_text(s):
     return (
         f'🎬 准备在 <b>{safe(s.get("name"))}</b> 跑流媒体检测：\n\n'
         '按实际出口自动识别地区，检测全球＋对应当地服务；识别失败仅检测全球。\n'
-        '一份单框分区报告、一张图；原35项系统选族，新增项自动选择可用地址族。\n'
+        '一份单框分区报告、一张图；原34项系统选族，新增项自动选择可用地址族。\n'
         'Unknown表示证据不足或安全限制；可达不等于播放、登录或实际注册成功。'
     )
 
@@ -1731,7 +1735,8 @@ def job_id(kind, s):
 KIND_NAME = {
     'ipq': 'IP质量', 'nq': 'NodeQuality', 'tcpq': 'TCPQuality', 'gb5': 'GB5', 'stream': '流媒体检测',
     'nexttrace': 'NextTrace', 'bgp': 'BGP图', 'ippure': 'IPPure图',
-    'ss': 'SS', 'anytls': 'AnyTLS', 'vless': 'VLESS', 'snell': 'Snell',
+    'ss': 'SS', 'anytls': 'AnyTLS', 'snell': 'Snell',
+    'vless': 'VLESS（历史）',  # Passive archive label only, NEVER a runnable tool.
 }
 STATUS_ICON = {'running': '🟢', 'done': '✅', 'failed': '🔴', 'inconclusive': '🟡'}
 INTERRUPTED_MESSAGE = '任务因 GUKO 重启或进程中断，未完成'
@@ -1863,6 +1868,7 @@ def history_append(jid, job):
         'region': job.get('region'),
         'report_url': job.get('report_url'),
         'delivery_error': job.get('delivery_error'),
+        'tool_source': job.get('tool_source'),
         'started_at': job.get('started_at'),
         'completed_at': job.get('completed_at'),
         'duration_sec': job.get('duration_sec'),
@@ -1876,6 +1882,9 @@ def history_append(jid, job):
         if isinstance(job.get('supplement'), dict):
             item['supplement'] = dict(job['supplement'])
             item['rrc_status'] = job.get('rrc_status', job.get('status'))
+    if job.get('kind') in kat_proxy.KINDS:
+        item['proxy_report_path'] = job.get('proxy_report_path')
+        item['proxy_snapshot'] = job.get('proxy_snapshot')
     hist = [
         x for x in load_history()
         if not (
@@ -2026,6 +2035,9 @@ def history_detail_text(s, kind):
             params.append(f'{label}：{item.get(key)}')
     if params:
         lines.append('参数：' + safe('；'.join(params)))
+    proof = tool_source_html(item)
+    if proof:
+        lines.append(proof)
     urls = item.get('urls') or []
     if urls:
         lines.append('\n链接：\n' + '\n'.join(safe(u) for u in urls[:8]))
@@ -2863,10 +2875,14 @@ def proxy_tool_config(kind):
 
 def proxy_menu_text(s, kind):
     tool = proxy_tool_config(kind)
+    if kind in kat_proxy.KINDS:
+        return (f"{safe(tool['button'])} <b>{safe(s.get('name'))} · {safe(tool['name'])}</b>\n\n"
+                '只读发现本机全部受支持Kat实例，不检查更新、不改凭据、不启停服务。\n'
+                '若完整确认所选协议未安装，会另给明确安装确认；缺依赖停止，不安装依赖或升级已有内核。')
     return (
         f"{safe(tool['button'])} <b>{safe(s.get('name'))} · {safe(tool['name'])}</b>\n\n"
         '已安装时只读取当前节点，不检查更新、不重装、不启动/重启，也不改变凭据。\n'
-        '仅未安装时调用原管理脚本安装；VLESS 已有模式保持不变。\n'
+        '仅未安装时调用原管理脚本安装。\n'
         '查看只读取目标服务器当前配置并返回连接信息。'
     )
 
@@ -2874,11 +2890,9 @@ def proxy_menu_text(s, kind):
 def proxy_markup(s, kind):
     sid = server_id(s)
     tool = proxy_tool_config(kind)
-    if kind == 'vless':
+    if kind in kat_proxy.KINDS:
         return InlineKeyboardMarkup([
-            [InlineKeyboardButton('安装/读取 纯 VLESS', callback_data=f'vlessmode:plain:{sid}')],
-            [InlineKeyboardButton('安装/读取 Vision + Reality', callback_data=f'vlessmode:reality:{sid}')],
-            [InlineKeyboardButton('查看配置', callback_data=f'proxyrun:{kind}:view:{sid}')],
+            [InlineKeyboardButton('读取全部Kat节点', callback_data=f'proxyrun:{kind}:view:{sid}')],
             [InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')],
         ])
     return InlineKeyboardMarkup([
@@ -2892,38 +2906,13 @@ def proxy_answers(kind, port=None, mode=None):
     # Manager scripts are interactive for install: port/SNI/password prompts.
     # Empty password keeps the script default random password.
     port = str(port or '').strip()
-    if kind == 'ss':
-        # ss-rust also asks encryption method before password; empty method keeps the recommended default.
-        return f"{port}\n\n\n"
-    if kind == 'anytls':
-        return f"{port}\n\n"
     if kind == 'snell':
         return f"{port}\n\n"
-    if kind == 'vless':
-        # Xray-VLESS-Manager modes used by GUKO:
-        # 2 = pure VLESS TCP, 3 = VLESS + XTLS Vision + REALITY.
-        if mode == 'reality':
-            return f"{port}\n\n"
-        return f"{port}\n"
     return "\n"
 
 
 def proxy_extract_config(text, kind):
     clean = strip_ansi(text or '').replace('\r', '')
-    if kind == 'vless':
-        lines = []
-        keep = False
-        for raw in clean.splitlines():
-            line = raw.rstrip()
-            if line.startswith('VLESS ') or line.startswith('vless://') or line.startswith('UUID:') or line.startswith('端口:') or line.startswith('客户端 JSON:') or line.startswith('服务端配置:') or line.startswith('{'):
-                keep = True
-            if keep:
-                if 'Xray VLESS Manager' in line or line.startswith('=== 基础功能 ===') or line.startswith('=== 服务管理 ===') or line.startswith('=== 系统功能 ===') or re.match(r'^\s*\d+\)', line) or line.strip() == '0) 退出':
-                    break
-                lines.append(line)
-        body = '\n'.join(lines).strip()
-        return trim_log(body or clean.strip(), 3600)
-
     markers = ['当前配置', 'Surge:', 'Mihomo:', 'URI:', '地址:', '端口:', '密码:', '加密:', '版本:', 'UUID:', 'PublicKey:', 'ShortId:', 'SNI:', '服务端配置:', '客户端 JSON:']
     lines = []
     keep = False
@@ -2964,16 +2953,203 @@ def format_proxy_config_html(body):
     return '\n'.join(out).strip()
 
 
-async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None):
+def valid_kat_confirmation(token, user_id, chat_id):
+    now = time.time()
+    for key, item in list(KAT_INSTALL_CONFIRMATIONS.items()):
+        if item['expires'] < now:
+            KAT_INSTALL_CONFIRMATIONS.pop(key, None)
+    item = KAT_INSTALL_CONFIRMATIONS.get(token)
+    if (not item or item['user_id'] != user_id or item['chat_id'] != chat_id
+            or item['kind'] not in kat_proxy.KINDS):
+        return None
+    return item
+
+
+async def offer_kat_install(bot, chat_id, s, kind, requester):
+    if requester is None:
+        return
+    if len(KAT_INSTALL_CONFIRMATIONS) >= 128:
+        oldest = min(KAT_INSTALL_CONFIRMATIONS, key=lambda key: KAT_INSTALL_CONFIRMATIONS[key]['expires'])
+        KAT_INSTALL_CONFIRMATIONS.pop(oldest, None)
+    token = os.urandom(16).hex()
+    KAT_INSTALL_CONFIRMATIONS[token] = {'server_id':server_id(s), 'kind':kind,
+        'user_id':requester, 'chat_id':chat_id, 'expires':time.time()+600,
+        'host_hash':hashlib.sha256(str(s.get('host')).encode()).hexdigest()}
+    await bot.send_message(chat_id,
+        f'{s.get("name")}：完整只读发现未找到Kat {kind}。\n'
+        '是否明确安装这个协议？将创建配置/服务并启动；缺前置依赖停止，不安装依赖、不升级已有共享内核，不改变其它协议。\n'
+        '确认仅对本服务器/本协议有效，10分钟后失效。',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton('✅ 确认新安装 Kat '+kind, callback_data='katinstall:'+token)],
+            [InlineKeyboardButton('取消，返回操作面板', callback_data='srv:'+server_id(s))]]))
+
+
+async def kat_transport(s, command, *, timeout=180, limit=kat_proxy.MAX_WIRE):
+    # Reuse the bounded/cancellation-safe existing SSH subprocess transport.
+    code, out, _err = await stream_unified.process(
+        ssh_args(s, command, tty=False), timeout=timeout, env=ssh_env_for(s), max_output=limit)
+    return code, out
+
+
+async def read_kat_snapshot(s, kind):
+    code, raw = await kat_transport(s, kat_proxy.collector_command())
+    if code != kat_proxy.SNAPSHOT_EXIT:
+        kat_proxy.reject()
+    plan = kat_proxy.discovery(raw)
+    code, raw = await kat_transport(s, kat_proxy.config_command(plan))
+    if code != kat_proxy.SNAPSHOT_EXIT:
+        kat_proxy.reject()
+    nodes = kat_proxy.parse_nodes(kind, plan, raw)
+    paths = sorted({p for n in nodes if n.get('tls_paths') for p in n['tls_paths']})
+    if paths:
+        code, answer = await kat_transport(s, kat_proxy.tls_metadata_command(paths), limit=4096)
+        if code != 0 or answer.strip() != 'GUKO_KAT_TLS_METADATA_OK':
+            kat_proxy.reject('Kat证书引用/权限无法可靠确认；未生成猜测客户端项')
+    return plan, nodes
+
+
+async def send_kat_output(bot, chat_id, text):
+    # Do not use shared send_long_text's legacy three-chunk cap or split HTML
+    # tags. Kat-only chunks preserve every node; reject overlong single lines.
+    if not isinstance(text, str) or len(text) > 200000:
+        kat_proxy.reject('Kat完整输出超限，未静默截断')
+    lines = text.splitlines()
+    if any(len(safe(line)) > 3400 for line in lines):
+        kat_proxy.reject('Kat单行客户端项超出Telegram安全限额，未静默截断')
+    chunks, current = [], ''
+    for line in lines:
+        escaped = safe(line) + '\n'
+        if len(current) + len(escaped) > 3400:
+            chunks.append(current);current = ''
+        current += escaped
+    if current:
+        chunks.append(current)
+    for chunk in chunks:
+        await bot.send_message(chat_id, '<pre>'+chunk+'</pre>', parse_mode=ParseMode.HTML)
+
+
+async def run_kat_task(bot, chat_id, s, jid, kind, action, requester, ticket):
+    key = (server_id(s), kind)
+    job = JOBS[jid]
+    try:
+        if kind not in kat_proxy.KINDS or action not in ('view','ensure','install','kat-confirmed'):
+            kat_proxy.reject('不支持的Kat动作，未执行远程命令')
+        authorized = None
+        if action == 'kat-confirmed':
+            authorized = valid_kat_confirmation(ticket, requester, chat_id)
+            if (not authorized or authorized['server_id'] != server_id(s) or authorized['kind'] != kind
+                    or authorized['host_hash'] != hashlib.sha256(str(s.get('host')).encode()).hexdigest()):
+                kat_proxy.reject('Kat安装确认失效，未执行安装')
+            KAT_INSTALL_CONFIRMATIONS.pop(ticket, None)  # consume exactly once
+        plan, nodes = await read_kat_snapshot(s, kind)
+        installed_now = False
+        installation_attempted = False
+        install_rc = None
+        if not nodes and authorized:
+            code, answer = await kat_transport(s, kat_proxy.preflight_command(), limit=4096)
+            if code != 0 or answer.strip() != 'GUKO_KAT_PREFLIGHT_OK':
+                kat_proxy.reject('Kat新装缺前置条件：需要root/Linux amd64/systemd/Python3及已有下载工具；未安装依赖或变更服务')
+            source = await resolve_tool(jid, tool_sources.kat_install_source, plan['core'])
+            # Re-discover AFTER source resolution; changed authority/JSON stops.
+            fresh_plan, fresh_nodes = await read_kat_snapshot(s, kind)
+            if fresh_nodes:
+                plan, nodes = fresh_plan, fresh_nodes
+                job['tool_source']['installation_executed'] = False
+            else:
+                if fresh_plan['digest'] != plan['digest'] or fresh_plan['config_hashes'] != plan['config_hashes']:
+                    kat_proxy.reject('Kat发现信息变化，安装已停止；请重新检查后确认')
+                default_port = os.environ.get('GUKO_'+kind.upper()+'_DEFAULT_PORT', '').strip()
+                command = kat_proxy.install_command(kind, s.get('host'), default_port, fresh_plan, source)
+                installation_attempted = True
+                job['tool_source']['installation_attempted'] = True
+                code, answer = await kat_transport(s, command, timeout=1600, limit=4096)
+                match = re.fullmatch(r'GUKO_KAT_INSTALL_RC:([0-9]+)\s*', answer)
+                install_rc = int(match[1]) if match else None
+                job['tool_source']['installation_executed'] = True if match is not None else None
+                job['tool_source']['installer_exit_code'] = install_rc
+                # Never declare success based on manager text. Always reread
+                # real units/configs, even when the installer failed or timed out.
+                plan, nodes = await read_kat_snapshot(s, kind)
+                expected = source['server']
+                if (not plan['core'] or plan['core']['sha256'] != expected['sha256']
+                        or plan['core']['version'] != expected['version'].lstrip('v')):
+                    kat_proxy.reject('安装后Kat内核身份未匹配冻结记录，已停止，不自动重试/升级')
+                source['server']['observed_after'] = {'version':plan['core']['version'], 'sha256':plan['core']['sha256']}
+                installed_now = code == 0 and install_rc == 0
+                if not nodes:
+                    kat_proxy.reject('Kat安装未得到所选协议的可靠配置；未宣称成功，请手动检查')
+        job['proxy_snapshot'] = {'backend':'kat', 'kernel_record':plan['core'],
+            'instances':[{'unit':n['unit'],'config':n['path'],'inbound':n['index'],'state':n['state']} for n in nodes],
+            'claim':'configuration files only; connectivity/effective credentials not verified'}
+        if not nodes:
+            output = '未安装所选Kat协议；本次仅完成只读发现，没有安装或修改。'
+            job.update(status='done',log=output,target='view')
+            await bot.send_message(chat_id, output)
+            await offer_kat_install(bot, chat_id, s, kind, requester)
+            return
+        output, complete = kat_proxy.render(kind, s.get('host'), nodes)
+        if action == 'kat-confirmed' and installation_attempted and not installed_now:
+            output = '安装命令未成功完成；以下仅为当前可读取配置，不代表安装成功。\n'+output
+            complete = False
+        if installed_now:
+            # A created but stopped/failed unit must not be called install success.
+            if not all(n['state']=='active' for n in nodes):
+                complete = False
+            output = ('Kat新安装后只读回读（非连通性测试）。\n' if complete else 'Kat安装后存在停止/unsupported状态，未宣称成功。\n')+output
+        job.update(status='done' if complete else 'failed', log=output, target=action)
+        root = kind_result_dir(s, kind)
+        try:
+            root.mkdir(parents=True,exist_ok=True,mode=0o700)
+            path = root/(jid+'.txt')
+            with path.open('x',encoding='utf-8') as handle:
+                os.chmod(path,0o600);handle.write(output)
+            job['proxy_report_path'] = str(path)
+        except Exception:
+            job['artifact_error'] = 'Kat完整历史报告未能保存；未重新运行或伪造历史'
+        await send_kat_output(bot, chat_id, output)
+        if job.get('tool_source'):
+            await bot.send_message(chat_id, tool_source_html(job), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    except (kat_proxy.KatError, tool_sources.SourceError) as exc:
+        job.update(status='failed',log=str(exc),target=action)
+        await bot.send_message(chat_id, '❌ '+str(exc))
+    except asyncio.CancelledError:
+        job.update(status='failed',log='Kat任务已取消；未重试安装，请只读检查当前状态',target=action)
+        raise
+    except Exception:
+        # Do not leak snapshots, installer output, SSH addresses or secrets.
+        job.update(status='failed',log='Kat任务未完成；已停止且不回退旧后端/自动重试',target=action)
+        await bot.send_message(chat_id, '❌ Kat任务未完成；已停止，请手动检查。')
+    finally:
+        finish_job(jid,key)
+
+
+async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None, requester=None, install_ticket=None):
+    if action not in ('view', 'ensure', 'install', 'kat-confirmed'):
+        JOBS[jid].update(status='failed', log='未知代理操作，未执行远程命令')
+        finish_job(jid, (server_id(s), kind))
+        return
+    if kind in kat_proxy.KINDS:
+        return await run_kat_task(bot, chat_id, s, jid, kind, action, requester, install_ticket)
+    if kind != 'snell':
+        JOBS[jid].update(status='failed', log='不支持的代理协议，未执行远程命令')
+        finish_job(jid, (server_id(s), kind))
+        return
     key = (server_id(s), kind)
     tool = proxy_tool_config(kind)
     try:
         port = os.environ.get(f"GUKO_{kind.upper()}_DEFAULT_PORT", '').strip()
-        remote = remote_command(kind, action, tool['script_url'],
-                                proxy_answers(kind, port, mode), s.get('host'), mode, port)
-        timeout = 1800 if action in ('install', 'ensure') else 300
-        code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=timeout,
-                                         env=ssh_env_for(s), stdout_only_codes=(SNAPSHOT_EXIT,))
+        code, out = await run_subprocess(ssh_args(s, snapshot_command(kind), tty=False),
+                                         timeout=300, env=ssh_env_for(s), stdout_only_codes=(SNAPSHOT_EXIT,))
+        if code == 10 and action != 'view':
+            source = await resolve_tool(jid, tool_sources.script_source, kind)
+            # Repeat the existing snapshot guard inside remote_command: a node
+            # installed between the two steps is still NEVER overwritten.
+            remote = remote_command(kind, action, tool['script_url'],
+                                    proxy_answers(kind, port, mode), s.get('host'), mode, port, source=source)
+            code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=1800,
+                                             env=ssh_env_for(s), stdout_only_codes=(SNAPSHOT_EXIT,))
+        elif code == 10:
+            code, out = 23, 'GUKO_STATUS:未安装，暂无配置'
         if code == SNAPSHOT_EXIT:
             try:
                 files = parse_snapshot(kind, out)
@@ -3040,7 +3216,8 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
         if config['family'] == 'v6' and not server_has_ipv6(s):
             raise RuntimeError('这台服务器没有配置 IPv6')
         label = config['label']
-        remote = tcpquality_remote_command(mode)
+        source = await resolve_tool(jid, tool_sources.tcp_source)
+        remote = tcpquality_remote_command(mode, source)
         timeout = 7200 if mode == 'all' else 3600
         code, out = await run_subprocess(
             ssh_args(s, remote, tty=False),
@@ -3069,7 +3246,7 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
             JOBS[jid].update({'status': 'done', 'media_paths': []})
             await deliver_message(
                 f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(label)}\n\n"
-                f"{script_command_html('tcpq', mode=mode)}",
+                f"{script_command_html('tcpq', mode=mode, source=JOBS[jid].get('tool_source'))}",
                 parse_mode=ParseMode.HTML,
             )
             await deliver_long_plain(trim_log(clean_output, 11700) or '脚本执行成功，但没有文本输出。')
@@ -3110,7 +3287,7 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
         msg = (
             f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(label)}\n\n"
             f"{safe(report)}\n\n"
-            f"{script_command_html('tcpq', mode=mode)}"
+            f"{script_command_html('tcpq', mode=mode, source=JOBS[jid].get('tool_source'))}"
         )
         if code != 0:
             msg += f"\n\n⚠️ 脚本退出码为 <code>{safe(code)}</code>，但报告已经生成。"
@@ -3138,7 +3315,8 @@ async def run_ip_quality_task(bot, chat_id, s, jid, ip_mode='4'):
     key = (server_id(s), 'ipq')
     try:
         endpoint = ssh_endpoint(s)
-        remote = '(' + IPV6_PROBE_COMMAND + '); ' + ipquality_remote_command(ip_mode)
+        source = await resolve_tool(jid, tool_sources.script_source, 'ipq')
+        remote = '(' + IPV6_PROBE_COMMAND + '); ' + ipquality_remote_command(ip_mode, source=source)
         code, out, _first_url = await run_until_report(
             ssh_args(s, remote, tty=False), timeout=1800 if ip_mode == '46' else 900,
             env=ssh_env_for(s), wait_for_exit=ip_mode == '46',
@@ -3421,39 +3599,38 @@ def gb5_result_image(s, scores, out_png):
     image.save(out_png, quality=95)
     return out_png
 
-def gb5_remote_command():
-    # Geekbench 5 can briefly use about 500 MiB by itself. Total RAM is a poor
-    # guard because background services may already consume half of a 1 GiB
-    # VPS. Use currently available RAM plus free swap and add temporary swap
-    # when the combined headroom is below 1.5 GiB.
+def gb5_remote_command(source):
+    version = source['version']
+    if not re.fullmatch(r'5\.[0-9]+\.[0-9]+', version):
+        raise tool_sources.SourceError('不是可确认的Geekbench 5正式包，已停止。')
     return (
         "set -e; export TERM=xterm-256color; cd /root; "
-        "swapfile=; cleanup(){ if [ -n \"$swapfile\" ]; then swapoff $swapfile 2>/dev/null || true; rm -f $swapfile; fi; }; trap cleanup EXIT; "
-        "mem_available_kb=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo); "
+        'case "$(uname -m)" in x86_64|amd64) :;; *) echo "GUKO: GB5 unsupported architecture"; exit 65;; esac; '
+        'bundle=$(mktemp -d /root/guko-gb5.XXXXXXXX); swapfile=; '
+        'cleanup(){ if [ -n "$swapfile" ]; then swapoff "$swapfile" 2>/dev/null || true; rm -f "$swapfile"; fi; rm -rf "$bundle"; }; '
+        "trap cleanup EXIT; trap 'exit 130' HUP INT TERM; "
+        + tool_sources.shell_download(source, '"$bundle/package.tar.gz"')
+        + 'tar -xzf "$bundle/package.tar.gz" -C "$bundle"; '
+        + 'd="$bundle/Geekbench-' + version + '-Linux"; '
+        + '[ -x "$d/geekbench5" ] || exit 65; '
+        + "mem_available_kb=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo); "
         "swap_free_kb=$(awk '/SwapFree:/ {print $2}' /proc/meminfo); "
         "memory_headroom_kb=$((${mem_available_kb:-0} + ${swap_free_kb:-0})); "
-        "if [ $memory_headroom_kb -lt 1500000 ]; then "
-        "swapfile=/root/geekbench5.swap; rm -f $swapfile; "
-        "(fallocate -l 2G $swapfile 2>/dev/null || dd if=/dev/zero of=$swapfile bs=1M count=2048 status=none); "
-        "chmod 600 $swapfile; mkswap $swapfile >/dev/null; swapon $swapfile; "
-        "fi; "
-        "d=/root/Geekbench-" + GB5_VERSION + "-Linux; "
-        "if [ ! -x $d/geekbench5 ]; then "
-        "curl -fsSL " + shlex.quote(GB5_URL) + " -o /tmp/geekbench5.tar.gz; "
-        "tar -xzf /tmp/geekbench5.tar.gz -C /root; "
-        "fi; "
-        "oom_before=$(awk '$1 == \"oom_kill\" {print $2}' /proc/vmstat); "
-        "set +e; $d/geekbench5 --upload 2>&1; rc=$?; set -e; "
-        "oom_after=$(awk '$1 == \"oom_kill\" {print $2}' /proc/vmstat); "
-        "if [ ${oom_after:-0} -gt ${oom_before:-0} ]; then echo " + shlex.quote(GB5_OOM_MARKER) + "; fi; "
-        "exit $rc"
+        'if [ $memory_headroom_kb -lt 1500000 ]; then swapfile="$bundle/geekbench5.swap"; '
+        '(fallocate -l 2G "$swapfile" 2>/dev/null || dd if=/dev/zero of="$swapfile" bs=1M count=2048 status=none); '
+        'chmod 600 "$swapfile"; mkswap "$swapfile" >/dev/null; swapon "$swapfile"; fi; '
+        + "oom_before=$(awk '$1 == \"oom_kill\" {print $2}' /proc/vmstat); "
+        + 'set +e; "$d/geekbench5" --upload 2>&1; rc=$?; set -e; '
+        + "oom_after=$(awk '$1 == \"oom_kill\" {print $2}' /proc/vmstat); "
+        + 'if [ ${oom_after:-0} -gt ${oom_before:-0} ]; then echo ' + shlex.quote(GB5_OOM_MARKER) + '; fi; exit $rc'
     )
 
 
 async def run_gb5_task(bot, chat_id, s, jid):
     key = (server_id(s), 'gb5')
     try:
-        remote = gb5_remote_command()
+        source = await resolve_tool(jid, tool_sources.gb5_source)
+        remote = gb5_remote_command(source)
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=3600, env=ssh_env_for(s))
         oom_killed = GB5_OOM_MARKER in out
         out = sanitize_geekbench5_output(
@@ -3832,15 +4009,21 @@ def format_nexttrace_output(s, target, out, code):
 async def run_nexttrace_task(bot, chat_id, s, jid, target='1.1.1.1'):
     key = (server_id(s), 'nexttrace')
     try:
-        qt = shlex.quote(str(target))
-        trace_cmd = 'nexttrace ' + qt
+        arch_code, arch = await run_subprocess(ssh_args(s, 'LC_ALL=C uname -m', tty=False), timeout=20, env=ssh_env_for(s))
+        if arch_code != 0:
+            raise tool_sources.SourceError('NextTrace架构读取失败，已停止。')
+        source = await resolve_tool(jid, tool_sources.nexttrace_source, arch.strip())
+        # The quoted command is interpreted only after an owned directory exists.
+        trace_cmd = '"$bundle/nexttrace" ' + shlex.quote(str(target))
         remote = (
-            "set -e; export TERM=xterm-256color COLORTERM=truecolor; export CLICOLOR_FORCE=1 FORCE_COLOR=1; "
-            "if ! command -v nexttrace >/dev/null 2>&1; then "
-            "  curl -sL https://nxtrace.org/nt | bash >/tmp/nexttrace-install.log 2>&1 || "
-            "  curl -Ls https://raw.githubusercontent.com/nxtrace/NTrace-core/main/nt_install.sh | bash >/tmp/nexttrace-install.log 2>&1; "
-            "fi; "
-            "script -qfec " + shlex.quote(trace_cmd) + " /dev/null 2>&1"
+            "set -eu; umask 077; export TERM=xterm-256color COLORTERM=truecolor CLICOLOR_FORCE=1 FORCE_COLOR=1; "
+            'command -v script >/dev/null 2>&1 || exit 127; '
+            'bundle=$(mktemp -d /tmp/guko-nexttrace.XXXXXXXX); export bundle; child=; '
+            'cleanup(){ if [ -n "$child" ]; then kill -TERM "$child" 2>/dev/null || :; wait "$child" 2>/dev/null || :; fi; rm -rf "$bundle"; }; '
+            "trap cleanup EXIT; trap 'exit 130' HUP INT TERM; "
+            + tool_sources.shell_download(source['binary'], '"$bundle/nexttrace"')
+            + 'chmod 700 "$bundle/nexttrace"; script -qfec ' + shlex.quote(trace_cmd) + ' /dev/null 2>&1 & child=$!; '
+            + 'set +e; wait "$child"; rc=$?; child=; exit "$rc"'
         )
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=300, env=ssh_env_for(s))
         JOBS[jid].update({'status': 'done' if code == 0 else 'failed', 'log': out, 'target': target})
@@ -3856,7 +4039,7 @@ async def run_nexttrace_task(bot, chat_id, s, jid, target='1.1.1.1'):
             JOBS[jid].update({'media_path': saved})
             with img.open('rb') as f:
                 await bot.send_photo(chat_id, photo=f)
-            await bot.send_message(chat_id, script_command_text('nexttrace', target=target))
+            await bot.send_message(chat_id, script_command_text('nexttrace', target=target, source=JOBS[jid].get('tool_source')))
             if code != 0:
                 await bot.send_message(chat_id, '提示：NextTrace 退出码不为 0，图片是已抓到的部分结果。')
         else:
@@ -3878,12 +4061,13 @@ async def run_stream_task(bot, chat_id, s, jid):
     token = hashlib.sha256(str(jid).encode()).hexdigest()[:24]
     root = kind_result_dir(s, 'stream-unified') / token
     job = JOBS[jid]
-    job.update(region=label, selected='native35 + global + automatic exit region', proto='native35: system-selected; extra: ' + mode,
+    job.update(region=label, selected='native34 + global + automatic exit region', proto='native34: system-selected; extra: ' + mode,
                report_format='guko-unified-v1', json_path=None)
     terminal = None
     try:
+        job['tool_source'] = {}
         code, raw, stderr, cleanup_error = await stream_unified.remote_run(
-            s, ssh_args, ssh_env_for, family=mode)
+            s, ssh_args, ssh_env_for, family=mode, identity_out=job['tool_source'])
         job.update(exit_code=code, stderr=stderr, log_tail=trim_log(strip_ansi(raw), 3500))
         if cleanup_error:
             job['cleanup_error'] = cleanup_error
@@ -3926,9 +4110,8 @@ async def run_stream_task(bot, chat_id, s, jid):
                     with image.open('rb') as photo:
                         await bot.send_photo(chat_id, photo=photo,
                             caption=f'🎬 <b>{safe(s.get("name"))} 流媒体完整报告</b>\n'
-                                    f'{safe(label)}\n原35项系统选族；新增项 IPv{report["selection"]["extra_family"] or "?"}；Unknown不等于服务拒绝。\n'
-                                    '<a href="https://github.com/shui1iao/GUKO/tree/v0.6.9">GUKO Source</a> · '
-                                    '<a href="https://github.com/shui1iao/service-unlock/tree/v0.5.4">CLI Source</a>',
+                                    f'{safe(label)}\n原34项系统选族；新增项 IPv{report["selection"]["extra_family"] or "?"}；Unknown不等于服务拒绝。\n'
+                                    + stream_source_offer(job),
                             parse_mode=ParseMode.HTML)
                     delivered = True
                 except Exception as exc:
@@ -3942,7 +4125,7 @@ async def run_stream_task(bot, chat_id, s, jid):
                 try:
                     await bot.send_message(chat_id,
                         f'🎬 <b>{safe(s.get("name"))} 流媒体完整报告（文本）</b>\n' +
-                        ('<a href="https://github.com/shui1iao/GUKO/tree/v0.6.9">GUKO Source</a> · <a href="https://github.com/shui1iao/service-unlock/tree/v0.5.4">CLI Source</a>\n' if start == 0 else '') +
+                        (stream_source_offer(job) + '\n' if start == 0 else '') +
                         '<pre>' + safe(plain[start:start+2800]) + '</pre>',
                         parse_mode=ParseMode.HTML)
                 except Exception as exc:
@@ -3974,9 +4157,10 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
     try:
         selected_text = nq_selected_text(mask)
         ip_text = nq_ip_mode_text(ip_mode)
-        work_dir = '/root/guko-nodequality-' + os.urandom(16).hex()
         endpoint = ssh_endpoint(s)
-        remote = '(' + IPV6_PROBE_COMMAND + '); ' + nodequality_remote_command(s, mask, ip_mode, work_dir=work_dir)
+        source = await resolve_tool(jid, tool_sources.script_source, 'nq')
+        work_dir = '/root/guko-nodequality-' + os.urandom(16).hex()
+        remote = '(' + IPV6_PROBE_COMMAND + '); ' + nodequality_remote_command(s, mask, ip_mode, work_dir=work_dir, source=source)
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=7200, env=ssh_env_for(s))
         ipv6_status = update_ipv6_from_output(s, out, expected_endpoint=endpoint)
         JOBS[jid].update({'log': out, 'selected': selected_text, 'ip_mode': ip_text})
@@ -4058,6 +4242,14 @@ async def send_history_result(bot, chat_id, s, kind):
     if not item:
         await bot.send_message(chat_id, f'暂无 {safe(KIND_NAME.get(kind, kind))} 历史。', parse_mode=ParseMode.HTML)
         return False
+    if kind in kat_proxy.KINDS and item.get('proxy_report_path'):
+        path = Path(item['proxy_report_path'])
+        root = kind_result_dir(s, kind)
+        if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(root.resolve()) or path.stat().st_size > 800000:
+            await bot.send_message(chat_id, 'Kat历史完整报告不可读取；未重新检测或补造结果。')
+            return False
+        await send_kat_output(bot, chat_id, path.read_text(encoding='utf-8'))
+        return True
     media_paths = []
     for x in item.get('media_paths') or []:
         p = Path(x)
@@ -4100,7 +4292,7 @@ async def send_history_result(bot, chat_id, s, kind):
             await bot.send_message(
                 chat_id,
                 f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(selected)}\n\n"
-                f"{script_command_html('tcpq', mode=mode)}",
+                f"{script_command_html('tcpq', mode=mode, source=item.get('tool_source'))}",
                 parse_mode=ParseMode.HTML,
             )
             await send_long_text(bot, chat_id, log_tail)
@@ -4127,7 +4319,7 @@ async def send_history_result(bot, chat_id, s, kind):
                 photo_errors.append(trim_log(str(photo_error), 200))
         msg = f"✅ {safe(s.get('name'))} TCPQuality 完成：{safe(selected)}\n\n{safe(report)}"
         safe_mode = mode if mode in TCPQUALITY_MODES else 'v4'
-        msg += f"\n\n{script_command_html('tcpq', mode=safe_mode)}"
+        msg += f"\n\n{script_command_html('tcpq', mode=safe_mode, source=item.get('tool_source'))}"
         if photo_errors:
             msg += f"\n\n报告图重发失败：<code>{safe('；'.join(photo_errors))}</code>"
         await bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
@@ -4151,7 +4343,7 @@ async def send_history_result(bot, chat_id, s, kind):
             msg += "\n\nGeekbench:\n" + "\n".join(safe(u) for u in gb_urls)
         if not media_paths and report_urls:
             msg += "\n\n分项报告：\n" + "\n".join(f"- {safe(u)}" for u in report_urls)
-        msg += f"\n\n{script_command_html('nq', selected=selected, ip_mode=ip_mode)}"
+        msg += f"\n\n{script_command_html('nq', selected=selected, ip_mode=ip_mode, source=item.get('tool_source'))}"
         await bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
         return True
     if media_paths:
@@ -4645,8 +4837,9 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         item = history_item_for(s, kind)
         can_resend = bool(
             item
-            and (item.get('status') == 'done' or kind == 'stream' and item.get('status') == 'inconclusive')
-            and (latest_media_path(item) or kind in ('nq', 'tcpq'))
+            and ((item.get('status') == 'done' or kind == 'stream' and item.get('status') == 'inconclusive')
+                 and (latest_media_path(item) or kind in ('nq', 'tcpq'))
+                 or kind in kat_proxy.KINDS and item.get('proxy_report_path'))
         )
         if can_resend:
             sent = await send_history_result(context.bot, q.message.chat_id, s, kind)
@@ -4722,6 +4915,24 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=main_menu_markup())
             return
         await q.edit_message_text(f'已从配置删除：<b>{safe(removed.get("name"))}</b>', parse_mode=ParseMode.HTML, reply_markup=main_menu_markup())
+    elif data.startswith(('proxy:vless:', 'proxyrun:vless:', 'vlessmode:')) or data in ('proxy:vless', 'proxyrun:vless'):
+        await q.edit_message_text('VLESS入口已移除；远端既有服务和历史记录未改变。')
+        return
+    elif data.startswith('katinstall:'):
+        token = data.split(':', 1)[1]
+        decision = valid_kat_confirmation(token, update.effective_user.id, q.message.chat_id)
+        if not decision:
+            await q.edit_message_text('Kat安装确认已失效，请重新只读检查后确认。')
+            return
+        s = find_server_by_id(decision['server_id'])
+        if not s or decision['host_hash'] != hashlib.sha256(str(s.get('host')).encode()).hexdigest():
+            KAT_INSTALL_CONFIRMATIONS.pop(token, None)
+            await q.edit_message_text('服务器信息已变化，原Kat安装确认失效。')
+            return
+        kind = decision['kind']
+        jid = launch_job(s, kind, run_proxy_tool_task, context.bot, q.message.chat_id,
+                         s, kind, 'kat-confirmed', None, update.effective_user.id, token, target='confirmed install')
+        await bot_task_started_notice(context.bot, q.message.chat_id, s, 'Kat明确确认新安装', jid is not None)
     elif data.startswith('proxy:'):
         parts = data.split(':', 2)
         kind = parts[1]
@@ -4742,22 +4953,12 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         tool = proxy_tool_config(kind)
         task = f"{safe(tool['name'])} {'安装/读取检查' if action in ('install', 'ensure') else '查看配置'}"
-        jid = launch_job(s, kind, run_proxy_tool_task, context.bot, q.message.chat_id, s, kind, action, target=action)
+        # Old ensure/install callbacks for Kat ONLY read. They never authorize installation.
+        if kind in kat_proxy.KINDS:
+            action = 'view'
+        jid = launch_job(s, kind, run_proxy_tool_task, context.bot, q.message.chat_id, s, kind, action, None, update.effective_user.id, target=action)
         await bot_task_started_notice(context.bot, q.message.chat_id, s, task, jid is not None)
 
-    elif data.startswith('vlessmode:'):
-        parts = data.split(':', 2)
-        mode = parts[1] if len(parts) > 1 else 'plain'
-        sid = parts[2] if len(parts) > 2 else ''
-        s = find_server_by_id(sid)
-        if mode not in ('plain', 'reality') or not s:
-            await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
-            return
-        tool = proxy_tool_config('vless')
-        label = 'Vision + Reality' if mode == 'reality' else '纯 VLESS'
-        task = f"{safe(tool['name'])} {label} 安装/读取"
-        jid = launch_job(s, 'vless', run_proxy_tool_task, context.bot, q.message.chat_id, s, 'vless', 'ensure', mode, target=mode)
-        await bot_task_started_notice(context.bot, q.message.chat_id, s, task, jid is not None)
     elif data.startswith('tqask:'):
         sid = data.split(':', 1)[1]
         s = find_server_by_id(sid)

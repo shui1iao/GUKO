@@ -14,7 +14,7 @@ import unittest
 
 from test_anytls_existing import ROOT, load
 
-KINDS = ('ss', 'anytls', 'snell', 'vless')
+KINDS = ('snell',)  # Kat installs require separate confirmation; see test_kat_proxy.py
 PATHS = r'/usr/local/(?:bin|etc)(?=/|[\"\'])|/(?:usr/)?lib/systemd/system|/etc(?=/|[\"\'])|/root(?=[/;\s])'
 SUCCESS = '''#!/bin/bash
 cat >/dev/null
@@ -23,7 +23,7 @@ echo "progress-noise 100 12.7M" >&2
 echo "请选择加密方式 progress-noise" >&2
 echo "Created symlink progress-noise" >&2
 echo "✓ 已安装并启动"
-echo "VLESS 当前配置"
+echo "Snell 当前配置"
 echo "fixture-config-line"
 '''
 FAILURE = '''#!/bin/bash
@@ -55,6 +55,8 @@ def run_install(kind, manager_text):
         for name, content in wrappers.items():
             (fakebin / name).write_text(content)
             (fakebin / name).chmod(0o755)
+        ns['fixture_source'] = {'url':'https://raw.githubusercontent.com/shui1iao/Snell-Manager/frozen/snell.sh',
+                                'sha256':__import__('hashlib').sha256(manager.read_bytes()).hexdigest()}
         env = dict(os.environ, PATH=str(fakebin) + ':' + os.environ['PATH'], MANAGER=str(manager))
 
         def ssh(s, remote, tty=False):

@@ -1,41 +1,61 @@
 #!/usr/bin/env python3
-"""Build exact distributable Corresponding Source; no credentials/runtime data.
-Includes fixed CLI binaries and their complete upstream source+vendor archive.
-Run from a release checkout (or the uncommitted reviewed working tree).
+"""Deterministic exact tracked Corresponding Source, never runtime/untracked data.
+Stage reviewed new source before local pre-release verification. Release Actions
+runs against the final clean tag. Legacy embedded CLI bundles are unreachable;
+per-task CLI Corresponding Source is frozen with that task's official release.
 """
 import argparse
 import hashlib
-import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import re
 import subprocess
 import zipfile
 
-ROOT=Path(__file__).resolve().parents[1]
-parser=argparse.ArgumentParser()
-parser.add_argument('--output',default=str(ROOT/'dist'))
-args=parser.parse_args()
-catalogue=json.loads((ROOT/'unified_catalogue.json').read_text())
-for arch,digest in catalogue['binary_sha256'].items():
-    binary=ROOT/'stream-unified'/('service-unlock_linux_'+arch)
-    if hashlib.sha256(binary.read_bytes()).hexdigest()!=digest:
-        raise SystemExit('Fixed CLI binary hash mismatch: '+arch)
-sums={line.split()[1]:line.split()[0] for line in (ROOT/'stream-unified/source/SHA256SUMS').read_text().splitlines()}
-source=ROOT/'stream-unified/source/service-unlock-v0.5.4-source.zip'
-if hashlib.sha256(source.read_bytes()).hexdigest()!=sums[source.name]:raise SystemExit('CLI Corresponding Source hash mismatch')
-files=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard'],cwd=ROOT,text=True).splitlines()
-files=sorted(set(files))
-for name in files:
-    p=Path(name)
-    if name in ('.env','history.json','servers.json','docker-compose.yml') or any(part in ('keys','results','media','node_modules','__pycache__','.git') for part in p.parts) or p.suffix=='.pyc':
-        raise SystemExit('Unexpected private/generated file in source inventory: '+name)
-output=Path(args.output);output.mkdir(parents=True,exist_ok=True)
-target=output/'guko-v0.6.9-source.zip'
-with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as z:
-    for name in files:
-        p=ROOT/name
-        if p.is_file():z.write(p,'guko-v0.6.9/'+name)
-with zipfile.ZipFile(target) as z:
-    if z.testzip() is not None:raise SystemExit('Source archive corruption')
-digest=hashlib.sha256(target.read_bytes()).hexdigest()
-(output/'SHA256SUMS').write_text(digest+'  '+target.name+'\n')
-print(digest+'  '+str(target))
+ROOT = Path(__file__).resolve().parents[1]
+
+def source_files():
+    names = subprocess.check_output(['git','ls-files','-z'],cwd=ROOT).decode().split('\0')
+    result = []
+    for name in sorted(set(filter(None,names))):
+        p = PurePosixPath(name)
+        if name.startswith('stream-unified/'):
+            continue
+        if (p.is_absolute() or '..' in p.parts or name in
+            ('.env','servers.json','servers.yml','history.json','docker-compose.yml','local-source.tar.gz') or
+            set(p.parts) & {'.git','keys','results','media','tmp','node_modules','__pycache__','dist'} or
+            p.suffix in ('.pyc','.bak') or (ROOT/name).is_symlink()):
+            raise ValueError('Unexpected private/generated source inventory path')
+        if not (ROOT/name).is_file():
+            raise ValueError('Missing tracked source file')
+        result.append(name)
+    required = {'version.txt','LICENSE','LICENSES/AGPL-3.0.txt','NOTICE-STREAM.md',
+                'kat_proxy.py','tool_sources.py','stream_platforms.json','stream_terminal.py',
+                'telegram-bot/bot.py','telegram-bot/Dockerfile','scripts/build-source.py'}
+    if not required <= set(result):
+        raise ValueError('Incomplete Corresponding Source')
+    return result
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--output',default=str(ROOT/'dist'))
+    args=parser.parse_args()
+    version=(ROOT/'version.txt').read_text().strip()
+    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',version):
+        raise SystemExit('Invalid release version')
+    files=source_files()
+    output=Path(args.output);output.mkdir(parents=True,exist_ok=True)
+    target=output/('guko-v'+version+'-source.zip')
+    with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+        for name in files:
+            info=zipfile.ZipInfo('guko-v'+version+'/'+name,date_time=(1980,1,1,0,0,0))
+            info.compress_type=zipfile.ZIP_DEFLATED
+            info.external_attr=(0o100755 if (ROOT/name).stat().st_mode & 0o111 else 0o100644)<<16
+            z.writestr(info,(ROOT/name).read_bytes())
+    with zipfile.ZipFile(target) as z:
+        if z.testzip() is not None:raise SystemExit('Source archive corruption')
+    digest=hashlib.sha256(target.read_bytes()).hexdigest()
+    (output/'SHA256SUMS').write_text(digest+'  '+target.name+'\n')
+    print(digest+'  '+str(target))
+
+if __name__=='__main__':
+    main()

@@ -22,7 +22,9 @@ jobs:
         with:
           python-version: '3.13'
       - name: Python compile
-        run: python -m py_compile auth.py guko.py jiaoops.py stream_unified.py telegram-bot/bot.py optional/update_from_nezha.py
+        run: python -m py_compile auth.py guko.py jiaoops.py stream_unified.py stream_terminal.py tool_sources.py kat_proxy.py proxy_nodes.py scripts/build-source.py telegram-bot/bot.py optional/update_from_nezha.py
+      - name: Exact source packager regression
+        run: python -m unittest discover -s tests -p test_source_release.py -v
       - name: Docker build
         run: docker build -t guko-ci -f telegram-bot/Dockerfile .
       # Openly licensed font is only for synthetic safety/geometry tests.

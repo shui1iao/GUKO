@@ -51,29 +51,7 @@ class NoPythonProxyTests(unittest.TestCase):
                         self.assertNotIn('fixture-secret', result['message'])
                         self.assertNotIn('fixture-secret', result['job']['log'])
 
-    def test_vless_legacy_and_summary_checks_without_python(self):
-        for action in ('ensure', 'view'):
-            for state, mode, expected in (
-                ('legacy', 'none', 'done'), ('installed', 'tls', 'done'),
-                ('installed', 'reality', 'done'), ('stale_client', 'reality', 'failed'),
-                ('client_unreadable', 'tls', 'failed'), ('other_xray', 'none', 'failed'),
-                ('client_unreadable', 'none', 'done'),
-            ):
-                with self.subTest(action=action, state=state, mode=mode):
-                    result = host('vless', state, action, no_python=True, existing_mode=mode)
-                    self.assertEqual(result['job']['status'], expected, result['message'])
-                    self.assertEqual(result['audit'], '')
-                    self.assertEqual(result['before'], result['after'])
 
-    def test_plain_vless_ignores_invalid_optional_summary(self):
-        for state in ('client_invalid_utf8', 'client_oversized'):
-            for mode in ('none', 'tls', 'reality'):
-                for action in ('view', 'ensure'):
-                    with self.subTest(state=state, mode=mode, action=action):
-                        result = host('vless', state, action, no_python=True, existing_mode=mode)
-                        self.assertEqual(result['job']['status'], 'done' if mode == 'none' else 'failed')
-                        self.assertEqual(result['audit'], '')
-                        self.assertEqual(result['before'], result['after'])
 
     def test_file_at_bound_still_renders_without_python(self):
         for kind in KINDS:
@@ -101,14 +79,14 @@ class NoPythonProxyTests(unittest.TestCase):
             with self.subTest(kind=kind, value=value):
                 raw = f'GUKO_SNAPSHOT_V1:{kind}\nconfig:ok\n{value}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n'
                 with self.assertRaises(ProxyReadError):
-                    parse_snapshot('ss', raw)
+                    parse_snapshot('snell', raw)
 
     def test_interrupted_collection_does_not_leak_even_encoded_secrets(self):
         secret = 'INTERRUPTED-DO-NOT-LEAK'
-        frame = 'GUKO_SNAPSHOT_V1:ss\nconfig:ok\n' + secret.encode().hex()
+        frame = 'GUKO_SNAPSHOT_V1:snell\nconfig:ok\n' + secret.encode().hex()
         for code in (0, 23, 124, 255):
             with self.subTest(code=code):
-                result = asyncio.run(invoke(ROOT/'telegram-bot/bot.py', 'view', 'ss', lambda command: (code, frame)))
+                result = asyncio.run(invoke(ROOT/'telegram-bot/bot.py', 'view', 'snell', lambda command: (code, frame)))
                 self.assertEqual(result['job']['status'], 'failed')
                 for output in (result['message'], result['job']['log']):
                     self.assertNotIn(secret, output)
@@ -121,16 +99,16 @@ class NoPythonProxyTests(unittest.TestCase):
         # 20 identifies an existing-node snapshot, never installer output.
         frames = [
             secret,
-            f'GUKO_SNAPSHOT_V1:ss\nconfig:ok\n{encoded}\n',
-            f'GUKO_SNAPSHOT_V1:ss\nconfig:ok\n{encoded}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n',
-            f'GUKO_SNAPSHOT_V1:ss\nconfig:ok\n{secret}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n',
-            'GUKO_SNAPSHOT_V1:ss\n' + encoded * 40000,
-            f'GUKO_SNAPSHOT_V1:ss\nconfig:ok\n{encoded}\nGUKO_END_FILE\nconfig:ok\n{encoded}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n',
-            f'GUKO_SNAPSHOT_V1:ss\n/etc/shadow:ok\n{encoded}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n',
+            f'GUKO_SNAPSHOT_V1:snell\nconfig:ok\n{encoded}\n',
+            f'GUKO_SNAPSHOT_V1:snell\nconfig:ok\n{encoded}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n',
+            f'GUKO_SNAPSHOT_V1:snell\nconfig:ok\n{secret}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n',
+            'GUKO_SNAPSHOT_V1:snell\n' + encoded * 40000,
+            f'GUKO_SNAPSHOT_V1:snell\nconfig:ok\n{encoded}\nGUKO_END_FILE\nconfig:ok\n{encoded}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n',
+            f'GUKO_SNAPSHOT_V1:snell\n/etc/shadow:ok\n{encoded}\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n',
         ]
         for frame in frames:
             with self.subTest(size=len(frame), prefix=frame[:32]):
-                result = asyncio.run(invoke(ROOT/'telegram-bot/bot.py', 'ensure', 'ss', lambda command: (20, frame)))
+                result = asyncio.run(invoke(ROOT/'telegram-bot/bot.py', 'ensure', 'snell', lambda command: (20, frame)))
                 self.assertEqual(result['job']['status'], 'failed')
                 for output in (result['message'], result['job']['log']):
                     self.assertNotIn(secret, output)

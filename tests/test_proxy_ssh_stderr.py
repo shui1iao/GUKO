@@ -16,8 +16,8 @@ def run_with_ssh_warning():
     node = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == 'run_subprocess')
     ns['asyncio'] = asyncio
     exec(compile(ast.Module(body=[node], type_ignores=[]), str(path), 'exec'), ns)
-    config = json.dumps({'server_port': 443, 'method': 'aes-128-gcm', 'password': 'fixture-secret'})
-    frame = 'GUKO_SNAPSHOT_V1:ss\nconfig:ok\n' + config.encode().hex() + '\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n'
+    config = '[snell-server]\nlisten=0.0.0.0:443\npsk=fixture-secret\n'
+    frame = 'GUKO_SNAPSHOT_V1:snell\nconfig:ok\n' + config.encode().hex() + '\nGUKO_END_FILE\nGUKO_END_SNAPSHOT\n'
     script = ('import sys; '
               'sys.stderr.write("Warning: Permanently added host to known hosts.\\n"); '
               f'sys.stdout.write({frame!r}); sys.exit(20)')
@@ -29,7 +29,7 @@ def run_with_ssh_warning():
 
     ns['send_long_text'] = send
     asyncio.run(ns['run_proxy_tool_task'](types.SimpleNamespace(send_message=send), 1,
-                                       {'name': 'test', 'host': 'example.invalid'}, 'job', 'ss', 'view'))
+                                       {'name': 'test', 'host': 'example.invalid'}, 'job', 'snell', 'view'))
     return ns['JOBS']['job'], captured
 
 
@@ -37,5 +37,5 @@ class SSHStderrTests(unittest.TestCase):
     def test_first_connection_warning_does_not_corrupt_snapshot(self):
         job, captured = run_with_ssh_warning()
         self.assertEqual(job['status'], 'done', captured)
-        self.assertIn('ss://', captured['message'])
+        self.assertIn('Snell', captured['message'])
         self.assertNotIn('Warning:', job['log'])

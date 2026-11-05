@@ -1,20 +1,30 @@
-# OFFLINE MOCK — never real unlock or account-registration results
+# OFFLINE MOCK — never live unlock or account-registration results
 
-Generated from exact Service Unlock v0.5.4 source by a temporary Go test in its
-own source checkout, using real runCLI/runWithClients/core35/extra.Run and HTTP
-mock transports. No region override, account identity, live platform or SSH call.
-`generate_fixture.go.txt` is the generator (copy as a *_test.go only into a task
-copy of that source and run TestTaskGukoFixtures with GUKO_FIXTURE_DIR set).
-The fixed CLI source+vendor ZIP is included in stream-unified/source.
+Regenerated for GUKO v0.7.0 from the **exact official Service Unlock v0.5.6**
+complete source ZIP, release commit 53e7e8f1bfc9fe0cd9513dd78638d513a7aea257.
+Source asset SHA256: 8d1c25c4b78eb6b5536f18b782d6b9f7b96d06fe41506a1842dcd67e3279c22d.
 
-JP/NA/EU/SEA and other supported groups are selected by the actual mocked
-Cloudflare trace country. global-failed gives two HTTP500 country replies;
-global-unsupported gives valid CN. jp-unknown has complete67 Unknown rows.
-Normal Spotify fixture311 with country/launch and field errors MUST be Unknown;
-jp-denied uses the exact previously captured status320 proxy-refusal shape,
-not a real registration. No account was created to obtain a fixture.
+The generator `generate_fixture.go.txt` is copied as task_guko_fixture_test.go
+into a task-local extraction of that source root. Run `go test -mod=vendor -run
+^TestTaskGukoFixtures$ -count=1 .` with GUKO_FIXTURE_DIR targeting this folder.
+This was executed in an existing Go1.26 container **with --network none** and
+vendor dependencies. No product/upstream source modifications or live HTTP.
 
-Additional same-code mocks: global-no-route (actualfamily0), jp-ipv6 (auto
-route selector injected family6 without changing native35 strategy), and
-sea-fallback (primary HTTP500, fixed ip.sb country_code SG). No IPv6 or country
-source was contacted on the network.
+This is the real CLI runCLI/runWithClients path and its current renderer using
+existing HTTP mocks, 34 native +134 extra catalogue, platform single logical row,
+six presentation groups, same measurement JSON and ANSI. Fixture counts differ
+by actual mocked exit-country selection; no inventory region override.
+
+Spotify status311 errors remain Unknown; jp-denied uses the previously captured
+status320 refusal **mock** shape, not a new registration. No account, login,
+Spotify request, SSH or live service scan was made. No fixture is field evidence.
+
+global-failed/global-unsupported/global-no-route, jp-ipv6 and sea-fallback retain
+their documented failure/family/country-source scenarios. Full protocol/security
+mutations continue to test rejection, not rewritten to arbitrary success text.
+
+`jp-narrow.json` uses the same captured JP mock measurement and the official
+NewMachineOutput/PrintAccess renderer with Width=40. The companion
+`generate_narrow_fixture.go.txt` is run instead of the base generator in a separate
+output directory; only jp-narrow.json is copied. It tests real lossless wraps and
+independent ANSI fragments, not invented successful platform responses.

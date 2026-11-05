@@ -1,68 +1,60 @@
-name: Draft GitHub Release
+name: GitHub Release
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release, for example v0.1.1'
+        description: 'New release tag, for example v0.7.0'
         required: true
         type: string
-
 permissions:
   contents: write
-
+  actions: read
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Resolve tag
-        id: vars
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Resolve and verify exact release identity and main CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          tag="$RELEASE_TAG"
+          test "$tag" = "v$(cat version.txt)"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "$tag^{commit}")"
+          SHA=$(git rev-parse HEAD)
+          test "$SHA" = "$(gh api "repos/${{ github.repository }}/git/ref/heads/main" --jq .object.sha)"
+          gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=$SHA&branch=main&event=push" --jq '.workflow_runs | any(.status == "completed" and .conclusion == "success")' | grep -qx true
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to overwrite body/assets' >&2
+            exit 1
           fi
-      - name: Build release notes from CHANGELOG
-        shell: bash
+      - name: Build exact assets and notes
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          tag="${{ steps.vars.outputs.tag }}"
-          version="${tag#v}"
+          python scripts/build-source.py
+          cp .env.example dist/default.env.example
+          cp docker-compose.example.yml dist/docker-compose.example.yml
+          (cd dist && sha256sum default.env.example docker-compose.example.yml "guko-${RELEASE_TAG}-source.zip" > SHA256SUMS)
+          version="${RELEASE_TAG#v}"
           awk -v version="$version" '
             index($0, "## [" version "]") == 1 { capture=1; next }
             capture && index($0, "## [") == 1 { exit }
             capture { print }
-          ' CHANGELOG.md > /tmp/release-notes.md
-          if [ ! -s /tmp/release-notes.md ]; then
-            printf 'Release %s\n' "$tag" > /tmp/release-notes.md
-          fi
-      - name: Build exact Corresponding Source asset
-        run: python scripts/build-source.py
-      - name: Create or update release
+          ' CHANGELOG.md > dist/release-notes.md
+          test -s dist/release-notes.md
+      - name: Publish complete new release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          tag="${{ steps.vars.outputs.tag }}"
-          assets=(docker-compose.example.yml .env.example dist/guko-v0.6.9-source.zip dist/SHA256SUMS)
-          existing=()
-          for asset in "${assets[@]}"; do
-            [ -f "$asset" ] && existing+=("$asset")
-          done
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release edit "$tag" --title "$tag" --notes-file /tmp/release-notes.md
-            if [ ${#existing[@]} -gt 0 ]; then
-              gh release upload "$tag" "${existing[@]}" --clobber
-            fi
-          else
-            gh release create "$tag" "${existing[@]}" --title "$tag" --notes-file /tmp/release-notes.md
-          fi
+          gh release create "$RELEASE_TAG" dist/default.env.example dist/docker-compose.example.yml "dist/guko-${RELEASE_TAG}-source.zip" dist/SHA256SUMS --verify-tag --title "$RELEASE_TAG" --notes-file dist/release-notes.md --latest

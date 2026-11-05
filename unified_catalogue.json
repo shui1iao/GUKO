@@ -68,14 +68,6 @@
     },
     {
       "array": "services",
-      "id": "youtube_premium",
-      "name": "YouTube Premium",
-      "kind": "availability",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
       "id": "youtube_music",
       "name": "YouTube Music",
       "kind": "availability",
@@ -3676,11 +3668,6 @@
     "ZM": "af",
     "ZW": "af"
   },
-  "cli_version": "v0.5.4",
-  "binary_sha256": {
-    "amd64": "928792d4c39f60ac02a12533d5f51908c0eb4ec0d4dad57c3884cec43bf90535",
-    "arm64": "3df73dcd8413606a352081da673c51fe425674624e1403f7c7a235b83da04fe9"
-  },
   "region_codes": {
     "ABW": "AW",
     "AC": "AC",
@@ -4239,5 +4226,6 @@
     "qwen_cn": "Alibaba",
     "moonshot": "Moonshot",
     "zhipu": "Zhipu"
-  }
+  },
+  "supported_contract": "v0.5.6 raw168/platform145"
 }

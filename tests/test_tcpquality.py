@@ -19,6 +19,8 @@ spec = importlib.util.spec_from_file_location("guko_bot_under_test", ROOT / "tel
 assert spec and spec.loader
 bot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bot)
+from frozen_sources import install as inject_frozen_sources
+inject_frozen_sources(bot)
 
 
 def _tiny_png_bytes() -> bytes:
@@ -60,7 +62,7 @@ class TcpQualityHelpersTest(unittest.TestCase):
             "https://github.com/ibsgss/TcpQuality",
         )
         command = bot.script_command_text("tcpq", mode="v4")
-        self.assertIn("676789de0df20cc6ade95680c79969b637e3f8fa", command)
+        self.assertIn("任务冻结", command)
         self.assertNotIn("TcpQuality/main/runTcpQuality.sh", command)
         self.assertIn("--no-rootfs", command)
         self.assertIn("-v4", command)
@@ -204,9 +206,9 @@ class FakeBot:
 class TcpQualityExecutionTest(unittest.TestCase):
     def test_remote_command_pins_and_verifies_the_upstream_script(self):
         command = bot.tcpquality_remote_command("v4")
-        self.assertIn("676789de0df20cc6ade95680c79969b637e3f8fa", command)
-        self.assertIn("acb8b306725ed496549a01b878a9d1313482dd38c98f294d0492055b202e12d3", command)
-        self.assertIn("6b9800a822c06bfbcc091730522506baf5b1557fb2718e77f4a578d9c4d9247f", command)
+        self.assertIn("a"*40, command)
+        self.assertIn("b"*64, command)
+        self.assertEqual(command.count("sha256sum -c -"),2)
         self.assertIn("sha256sum -c", command)
         self.assertNotIn("TcpQuality/main/runTcpQuality.sh", command)
         self.assertNotIn("https://tcpquality.ibsgss.uk/run", command)

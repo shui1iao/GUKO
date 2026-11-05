@@ -1,4 +1,4 @@
-> **v0.6.9 unified stream report:** one fixed Service Unlock v0.5.4 run, automatic actual-exit-country selection (inventory does not override it), one internally sectioned rounded frame and one PNG from the same JSON/ANSI measurement. Failed/unmapped country falls back to global. New jobs no longer execute RRC or the legacy17 supplement. Existing two-image history stays readable; fonts are unchanged. Unknown is not a refusal or a playback/login/registration guarantee.
+> **v0.7.0:** task-scoped official latest tools and read-only Kat SS/AnyTLS, explicit confirmed new installs, VLESS history only, Snell unchanged. Publication never deploys to an operator instance.
 
 # GUKO
 
@@ -9,7 +9,7 @@
 
 **A lightweight VPS / server management Telegram Bot: server status dashboard, SSH login management, common diagnostics, and protocol management entries.**
 
-> Open a private chat with the Bot to view server lists, status details, traffic, and resource usage. Add servers, test SSH, and run IP quality, NodeQuality, TCPQuality, streaming unlock, NextTrace, GB5, SS-Rust, AnyTLS, VLESS, Snell, and other common checks from Telegram.
+> Open a private chat with the Bot to view server lists, status details, traffic, and resource usage. Add servers, test SSH, and run IP quality, NodeQuality, TCPQuality, streaming unlock, NextTrace, GB5, Kat SS, Kat AnyTLS, Snell, and other common checks from Telegram.
 > Whitelist mode is enabled by default, making it suitable for self-hosting.
 
 ---
@@ -396,7 +396,7 @@ You can also export sanitized config from the Bot:
 
 IPQuality and NodeQuality default to IPv4 only. Add/import detects IPv6 once and persists the address, availability, reason, and timestamp. Menus, selection, and start callbacks read saved state without SSH probes. Saved availability enables dual-stack; saved unavailability hides it with a reason. Actual tests refresh capability within the same SSH invocation. If IPv6 is confirmed disabled or no global address remains, the stale address is cleared and the result explicitly reports missing IPv6 and the updated server state. IPv4 tests can rediscover restored IPv6; SSH/probe command failures, timeouts, and invalid responses never erase known addresses. IPQuality retains both independent reports, including URL-less IPv6 Lite, and preserves partial results on timeout.
 
-GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. The streaming entry uploads and SHA256-verifies the fixed Service Unlock v0.5.4 standalone binary through existing SSH authentication, then runs it once with default actual-exit-country auto selection. Failure/unmapped country selects global with a reason. Its single-frame PNG and JSON are from one measurement; no legacy RRC/supplement tasks or remote runtime installation. Native35 remain system-selected; only extra probes use their resolved family. Complete exit1/Unknown reports are valid, with renderer/storage/delivery errors separate from probe results. Legacy two-image history is retained. TCPQuality is organized into five task-focused entries: carrier quality, return path, international connectivity, carrier speed test, and complete test. Carrier quality and return-path checks support IPv4 or IPv6 when configured; international connectivity uses IPv4 as supported upstream. Speed-test and complete-test entries show a traffic warning and require confirmation to prevent accidental runs. The complete test runs carrier IPv4/IPv6, international connectivity, and carrier speed tests; CERNET checks are excluded. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while return-path mode sends text directly. Related buttons can be disabled with environment variables.
+GUKO can enable IP quality, NodeQuality, TCPQuality, streaming unlock checks, NextTrace, GB5, BGP images, IPPure images, and other tools as needed. The streaming entry uploads and SHA256-verifies the official latest Service Unlock standalone binary frozen with same-release checksums and full source through existing SSH authentication, then runs it once with default actual-exit-country auto selection. Failure/unmapped country selects global with a reason. Its single-frame PNG and JSON are from one measurement; no legacy RRC/supplement tasks or remote runtime installation. Native34 remain system-selected; only extra probes use their resolved family. Complete exit1/Unknown reports are valid, with renderer/storage/delivery errors separate from probe results. Legacy two-image history is retained. TCPQuality is organized into five task-focused entries: carrier quality, return path, international connectivity, carrier speed test, and complete test. Carrier quality and return-path checks support IPv4 or IPv6 when configured; international connectivity uses IPv4 as supported upstream. Speed-test and complete-test entries show a traffic warning and require confirmation to prevent accidental runs. The complete test runs carrier IPv4/IPv6, international connectivity, and carrier speed tests; CERNET checks are excluded. Report-producing modes upload results to `tcpquality.ibsgss.uk`, while return-path mode sends text directly. Related buttons can be disabled with environment variables.
 
 ---
 
@@ -438,6 +438,32 @@ Original portions: MIT. Unified integration modifications: AGPL-3.0-only; the co
 
 ## Stream integration distribution
 
-The existing `telegram-bot/Dockerfile` and Docker publish workflow support linux/amd64 and linux/arm64 without dependency/font upgrades. Fixed v0.5.4 CLI binaries are selected by target uname, uploaded using existing SSH auth and SHA256 verified; no remote runtime installation or script download. Only the extra probes use the selected4/6 family; native35 remain system-selected.
+The public Dockerfile builds linux/amd64 and linux/arm64 independently of private
+local images. Every new task resolves official latest metadata and freezes its
+binary, hashes and complete source; failures never fall back to old cache.
+The explicit v0.5.6 raw168/platform145 contract is supported; unknown future
+contracts stop. Existing history is not rerun or relabelled.
 
-`python scripts/build-source.py` creates the exact GUKO source release (integration/build recipes and fixed CLI binaries + complete CLI source/vendor ZIP). Keep this source asset with the matching image revision. Original GUKO MIT notices remain; unified integration modifications are AGPL-3.0-only, and the combined image is not MIT-only. See NOTICE-STREAM.md and LICENSES/AGPL-3.0.txt. CLI source is pinned to https://github.com/shui1iao/service-unlock/tree/v0.5.4 and carried inside /app/stream-unified/source; each binary supports --license without network requests. No inventory/credentials/private font are included in Corresponding Source.
+`python scripts/build-source.py` creates tracked exact GUKO Corresponding Source;
+per-task CLI complete source is offered independently at its frozen release.
+No inventory, credentials, private fonts or recursive generated archives are
+included. MIT/AGPL obligations and third-party notices remain intact.
+
+## Kat proxy integration (v0.7.0)
+
+SS and AnyTLS each have one entry reading all supported Kat instances through
+a bounded POSIX/systemd/proc snapshot, parsed inside GUKO. Existing nodes never
+run the Manager, require remote Python or change files/services. Unknown or
+conflicting authority fails closed. VLESS new actions and executors are removed;
+old callbacks explicitly reject, while historical records/URI display and remote
+VLESS services stay untouched. Snell is unchanged.
+
+Only a separate, expiring, user/chat/server/protocol-bound confirmation may install
+a genuinely absent protocol. Missing prerequisites stop; dependencies and existing
+shared kernels are never upgraded. The same-commit Kat-Manager wrapper/helpers
+and actual reused/new Kat-Server identity are recorded. Readback is file evidence,
+not connectivity or effective-credential verification. Unknown TLS export is marked
+unsupported, never silently insecure. Release verification uses offline regressions and isolated containers, not live
+measurements, installations or Telegram messages. Publishing does not deploy.
+
+Exact Corresponding Source: https://github.com/shui1iao/GUKO/releases/download/v0.7.0/guko-v0.7.0-source.zip ; verify SHA256SUMS in the same Release. OCI revision identifies the source commit. MIT/AGPL and third-party notices remain applicable.

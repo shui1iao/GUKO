@@ -27,8 +27,8 @@ class NativeCleanupTest(unittest.IsolatedAsyncioTestCase):
                 if args[-1]=='LC_ALL=C uname -m':return 0,'x86_64\n',''
                 if timeout and 'cat > "$work/probe"' in args[-1]:kwargs['timeout']=.08
                 return await s.process(['sh','-c',args[-1]],**kwargs)
-            with patch.object(s.uuid,'uuid4',return_value=type('Token',(),{'hex':token})()), patch.dict(s.CATALOGUE['binary_sha256'], {'amd64':hashlib.sha256(native.read_bytes()).hexdigest()}):
-                task=asyncio.create_task(s.remote_run({},lambda server,cmd,**kw:['local-stub',cmd],lambda server:env,binary_dir=root,runner=runner))
+            with patch.object(s.uuid,'uuid4',return_value=type('Token',(),{'hex':token})()), patch.object(s.tool_sources,'stream_source',return_value=(native.read_bytes(),{'binary':{'sha256':hashlib.sha256(native.read_bytes()).hexdigest()}})):
+                task=asyncio.create_task(s.remote_run({},lambda server,cmd,**kw:['local-stub',cmd],lambda server:env,runner=runner))
                 deadline=asyncio.get_running_loop().time()+2
                 while not pidfile.exists() and asyncio.get_running_loop().time()<deadline:await asyncio.sleep(.005)
                 self.assertTrue(pidfile.exists(),'native child did not start')
@@ -72,8 +72,8 @@ class NativeCleanupTest(unittest.IsolatedAsyncioTestCase):
                 if cmd=='LC_ALL=C uname -m':return 0,'amd64',''
                 if 'cat > "$work/probe"' in cmd:return 1,'complete-report','separate stderr'
                 return 255,'','SSH cleanup unreachable'
-            with patch.dict(s.CATALOGUE['binary_sha256'], {'amd64':hashlib.sha256(b'fixture').hexdigest()}):
-                out=await s.remote_run({},lambda server,cmd,**kw:['stub',cmd],lambda server:None,binary_dir=root,runner=runner)
+            with patch.object(s.tool_sources,'stream_source',return_value=(b'fixture',{'binary':{'sha256':hashlib.sha256(b'fixture').hexdigest()}})):
+                out=await s.remote_run({},lambda server,cmd,**kw:['stub',cmd],lambda server:None,runner=runner)
             self.assertEqual(out[:3],(1,'complete-report','separate stderr'))
             self.assertIn('cleanup failed',out[3])
 

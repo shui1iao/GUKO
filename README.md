@@ -1,4 +1,4 @@
-> **v0.6.9：流媒体统一单图**。新任务只运行一次固定 Service Unlock v0.5.4，按服务器实际出口自动选区（不使用清单country决定范围），失败或无对应组只测global。一个圆角框、一套英文三列、框内分区，无组统计解释。图与JSON来自同次结果，不再运行旧RRC＋17项补图。旧双图历史/文件保留。字体未改。Unknown是证据不足，不是No；Spotify signup不能证明实际注册，311不再报Yes，仅明确proxy拒绝为限定No。
+> **v0.7.0：官方逐任务查新＋Kat SS/AnyTLS。** 查新失败/不兼容即停止；VLESS仅保历史，Snell不变。公开发布不自动切运营实例。GB5官方无法确认最新版5系时明确停止。
 
 # GUKO
 
@@ -19,7 +19,7 @@
 - **服务器状态面板**：展示在线数量、CPU / 内存 / 硬盘、流量、实时网速、系统信息等。
 - **Telegram 内添加服务器**：支持单台添加、批量导入、编辑、删除和 SSH 连通性测试。
 - **灵活 SSH 鉴权**：支持默认密钥继承、每台独立密钥、已有密钥路径、上传 / 粘贴私钥、密码登录。
-- **常用测试与协议入口**：支持 IP 质量、NodeQuality、TCPQuality、流媒体解锁、NextTrace、GB5、SS-Rust、AnyTLS、VLESS、Snell 等任务。
+- **常用测试与协议入口**：支持 IP 质量、NodeQuality、TCPQuality、流媒体解锁、NextTrace、GB5、Kat SS、Kat AnyTLS、Snell 等任务。
 - **IP / 域名工具**：支持 IPPure 官方图片与 bgp.tools BGP 路由图。
 - **适合 Docker 部署**：提供 Docker Compose、Makefile 和初始化脚本。
 
@@ -265,9 +265,8 @@ ALLOW_INSECURE_STARTUP=false
 | `ENABLE_NQ` | 否 | `true` | 是否启用 NodeQuality 功能 |
 | `ENABLE_TCPQ` | 否 | `true` | 是否启用 TCPQuality 三网质量、回程、国际互联和测速入口 |
 | `ENABLE_GB5` | 否 | `true` | 是否启用 GB5 功能 |
-| `ENABLE_SS` | 否 | `true` | 是否启用 SS-Rust 管理入口 |
-| `ENABLE_ANYTLS` | 否 | `true` | 是否启用 AnyTLS 管理入口 |
-| `ENABLE_VLESS` | 否 | `true` | 是否启用 VLESS 管理入口 |
+| `ENABLE_SS` | 否 | `true` | 是否启用 Kat SS 读取/确认安装入口 |
+| `ENABLE_ANYTLS` | 否 | `true` | 是否启用 Kat AnyTLS 读取/确认安装入口 |
 | `ENABLE_SNELL` | 否 | `true` | 是否启用 Snell 管理入口 |
 | `ENABLE_STREAM` | 否 | `true` | 是否启用流媒体检测 |
 | `ENABLE_NEXTTRACE` | 否 | `true` | 是否启用 NextTrace |
@@ -393,7 +392,7 @@ Bot 内还可以导出脱敏配置：
 
 IP质量与 NodeQuality 均默认选择「仅 IPv4」。添加服务器（含批量导入）时检测一次 IPv6 并保存地址、可用状态、原因和检测时间；菜单、切换和开始按钮只读取已存状态，不重复 SSH 探测。已记录可用时可选「IPv4 + IPv6」，已记录不可用时隐藏双栈并显示原因。实际测试在同一次 SSH 执行中更新 IP 信息；确认 IPv6 后来被禁用或已无全局地址时，清除失效地址并在结果中明确提示“没有可用 IPv6，已更新服务器 IP 状态”。即使选 IPv4，实际测试也能更新后来恢复的 IPv6；SSH／探测命令失败、超时或无效响应不会误删已知地址。IP质量双栈保留两份独立报告，含无公开链接的 IPv6 Lite；超时保留已有结果并标记未完成。
 
-GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、SS-Rust、AnyTLS、VLESS、Snell 等功能。流媒体入口使用固定Service Unlock v0.5.4独立程序，经现有SSH传输并SHA256校验后只运行一次，默认实际出口自动选择global＋对应当地组，失败只跑global并说明原因。完整JSON与单框PNG来自同一次测量，不跑旧RRC/补充双图、不安装远端runtime；原35项系统选族，新增项选族不冒标整个报告。完整exit1是含Unknown的有效报告，渲染/归档/发送失败不覆盖服务判据，旧双图历史保留。TCPQuality 按实际用途提供“三网质量 / 回程线路 / 国际互联 / 三网测速 / 完整检测”五个入口：三网质量和回程线路可按服务器配置选择 IPv4 或 IPv6；国际互联按上游能力使用 IPv4；三网测速和完整检测会先显示流量提示并要求确认，避免误触。完整检测运行三网 IPv4 / IPv6、国际互联和三网测速，不包含教育网检测。带报告的结果会上传至 `tcpquality.ibsgss.uk`，回程线路则直接返回文本结果。相关按钮可以通过环境变量关闭。
+GUKO 支持按需启用 IP 质量、NodeQuality、TCPQuality、流媒体、NextTrace、GB5、BGP 图、IPPure 图、Kat SS、Kat AnyTLS、Snell 等功能。流媒体入口逐次解析官方正式latest、冻结同发行binary/SUMS/完整源码的Service Unlock独立程序，经现有SSH传输并SHA256校验后只运行一次，默认实际出口自动选择global＋对应当地组，失败只跑global并说明原因。完整JSON与单框PNG来自同一次测量，不跑旧RRC/补充双图、不安装远端runtime；原34项系统选族，新增项选族不冒标整个报告。完整exit1是含Unknown的有效报告，渲染/归档/发送失败不覆盖服务判据，旧双图历史保留。TCPQuality 按实际用途提供“三网质量 / 回程线路 / 国际互联 / 三网测速 / 完整检测”五个入口：三网质量和回程线路可按服务器配置选择 IPv4 或 IPv6；国际互联按上游能力使用 IPv4；三网测速和完整检测会先显示流量提示并要求确认，避免误触。完整检测运行三网 IPv4 / IPv6、国际互联和三网测速，不包含教育网检测。带报告的结果会上传至 `tcpquality.ibsgss.uk`，回程线路则直接返回文本结果。相关按钮可以通过环境变量关闭。
 
 ---
 
@@ -435,11 +434,41 @@ make check
 
 ## 统一检测构建、来源与许可
 
-- 默认不传`--region`，由检测程序在与extra相同族的direct/TLS路径识别出口国家；原35项仍system-selected，不把整份报告冒标IPv4。无地区菜单/清单投票/额外信息报告。
-- 容器携带两种架构的固定CLI二进制：自动读取目标机器uname，以现有SSH认证同通道上传并SHA256核验，只执行一次完整`--machine`。不在远端装Go/Node/Python或下载执行脚本。超时/取消只清理该次独属PID/可执行文件/目录。
+- 默认不传`--region`，由检测程序在与extra相同族的direct/TLS路径识别出口国家；原34项仍system-selected，不把整份报告冒标IPv4。无地区菜单/清单投票/额外信息报告。
+- 自动读取目标机器uname，逐任务解析官方最新支持发行的对应架构CLI；以现有SSH认证同通道上传并SHA256核验，只执行一次完整`--machine`。不在远端装Go/Node/Python或下载执行脚本。超时/取消只清理该次独属PID/可执行文件/目录。
 - 一次报告的JSON、ANSI、PNG独立存档；完整exit1/Unknown仍交付报告。渲染/存储/TG异常独立记录，必要时用同份报告完整分段文本，不改服务判据。新任务单图，历史旧两图仍能重发。
 - 公开多架构构建：`docker buildx build --platform linux/amd64,linux/arm64 -f telegram-bot/Dockerfile .`。依赖版本沿v0.6.8（Python3.13、Node24、playwright1.59.1及原requirements），未升级字体/浏览器或改变网络/卷配置。`.github/workflows/docker-publish.yml`保留原精确mainCI门槛。
-- CLI固定v0.5.4：[对应源码](https://github.com/shui1iao/service-unlock/tree/v0.5.4)。完整source+vendor ZIP、SHA256与许可随image保存在`/app/stream-unified/source/`；每个架构二进制可用`--license`离线查看。
+- CLI不再用镜像固定版本；每任务查`shui1iao/service-unlock`官方正式latest并冻结tag/commit/arch与同发行asset集合。binary/SHA256SUMS/完整source+vendor ZIP须都匹配发行digest；缓存按摘要复用且重新核hash，每任务仍查新，失败不退旧。实际版本与immutable source offer写入任务/history的`tool_source`；旧历史不重跑、不补新版本标签。
 - 原GUKO MIT通知保留；统一接入修改为AGPL-3.0-only，组合image**不是MIT-only**。见`NOTICE-STREAM.md`、`LICENSES/AGPL-3.0.txt`。提供远程交互的部署须保留准确修改版本的对应源码提供义务。
-- `python scripts/build-source.py`生成`dist/guko-v0.6.9-source.zip`和SHA256，含真实接入源码/构建recipe/固定CLI及其完整对应源，不含私钥、清单、token、私有字体。发布CI附带此asset；不是只提供旧上游链接。
-- 离线验收不启动机器人：`python -m unittest discover -s tests -v`（依赖image内运行；先CGO0构建`tests/native_fixture.go`到`tests/native-fixture`）。`tests/fixtures/unified`是实际v0.5.4 CLI代码走HTTPmock生成，非真实服务器解锁结论。
+- `python scripts/build-source.py`从准确tracked通用源码生成`dist/guko-v0.7.0-source.zip`和SHA256SUMS，含真实集成/构建/许可/测试源码，不含运行数据或递归生成归档。动态CLI完整对应源按本次真实发行单独提供，不复用旧嵌入ZIP。
+- 离线回归：python -m unittest discover -s tests -v（使用镜像依赖；先构建tests/native_fixture.go到tests/native-fixture）。fixture为明确CLI版本的离线HTTPmock输出，不代表真实节点解锁。
+
+## 本地最新工具策略（2026-11-05）
+
+- Service Unlock：34原生+134extra的明确raw目录、安全/身份/状态/退出码校验继续保留；按本地v0.5.6明确映射检查六用途组、一平台一个逻辑行、独立能力及来源地区/颜色/自然换行。未知schema/目录/呈现变化拒绝，不能只看schema_version=1或跳过ANSI/raw一致性。网络/请求不因展示聚合减少。
+- TCP：每任务官方正式latest解析到commit，同commit下载wrapper/core并设RAW_BASE；保--no-rootfs/现有模式。上游无签名/hash时只称官方HTTPS固定commit+内容身份，不冒称独立签名真实性。
+- NextTrace：每任务官方正式latest，按支持架构选发行资产，任务临时程序+PTY；不复用PATH旧版，不写/usr/local/bin。
+- IPQ/NQ：每次读取当前官方入口并确认其真实仓库/commit同内容，随后只执行该commit/hash。真实来源是xykt/IPQuality及LloydAsp/NodeQuality；NQ内部BenchOS/NextTrace/GB5等跟上游，不修改。
+- GB5：仅官方legacy页面明确列出的5系列Linux包；页面403/无可确认链接则明确停止，不复用5.5.1、不迁6、不扫描猜测CDN版本。原GB5名称、评分/CSV/临时低内存swap产品保持。
+- Kat SS/AnyTLS：每协议一个入口，读取全部受支持Kat实例；只读完整确认所选协议未安装后另给限时、用户/chat/服务器/协议绑定的一次性安装确认。旧ensure/install按钮不构成确认。新装才冻结Kat-Manager官方main三组件及pins，已有共享内核只复用，无内核才冻结Kat-Server正式latest资产/hash。缺root/Linux amd64/systemd/Python3/下载工具即停止，不自动装依赖或升级已有内核。Snell维持原独立Manager渠道与行为。VLESS新任务/底层能力删除，旧回调明确失效，历史与远端既有VLESS原样保。
+- BGP/IPPure/renderer及系统依赖随GUKO维护，不热替换、不自动升级节点。无后台更新器。
+- 当前官方元数据/内容不可得、坏hash、缺必要资产/CLI对应源码或不兼容都停止。历史重发只用原报告/图片及原来源证据；没有证据的旧历史不伪造最新版。
+- 正式完整对应源为同一Release的guko-v0.7.0-source.zip及SHA256SUMS；不以旧公共tag或local归档冒充。许可见NOTICE-STREAM.md。
+- 公共镜像使用telegram-bot/Dockerfile独立构建，私有Dockerfile.local仅保历史运营配方；公开发布不自动部署任何实例。
+- 离线fixture使用明确标注的CLI/HTTPmock来源，不代表真实服务器解锁结论；发行验证运行范围与结果见发布交付，不以构建冒充业务验收。
+
+## Kat代理契约（本地修改，2026-11-05）
+
+SS/AnyTLS读取仅用目标已有POSIX shell、systemctl/proc/coreutils作有界快照，GUKO侧解析；不运行远端Kat/Manager view/status/check，不需要远端Python，不访问节点API，不写配置或启停服务。标准和kat-*实例加实际Kat进程锚定的自定义unit可识别，多JSON/多inbound逐项保留；有限发现不完整、未知wrapper/drop-in/相对路径/替换exe、残缺或旧后端冲突一律停止，不当作未安装。完全任意名字且停止、无运行进程锚定的自定义unit，不能据本功能宣称全机不存在；若留下相关Kat配置痕迹则拒绝安装。
+
+SS2022读取ss.key、2017读取ss.password；SS/AnyTLS每inbound单身份，非空users拒绝。AnyTLS省略tls用已知随机内存证书语义；明确匹配legacy-insecure的单cert/key仅核文件元信息、不读私钥。其它显式TLS/ACME或绑定可达性不明时标unsupported，不编SNI/指纹、不降级为insecure、不宣称完整成功。客户端输出保精确secret及IPv6/Surge转义；AnyTLS URI编码/，Mihomo带udp:true；多节点消息完整分页，不用旧三段/3600字符截断。
+
+输出仅称“Kat实例配置文件中的节点信息，未验证连接/当前生效凭据”；磁盘文件不冒充已reload的内存配置。inactive/failed仍是已安装，不自动启动。Kat有效且旧SSRust/AnyTLSGo inactive/disabled遗留时只读Kat；旧backend活跃、仅旧痕迹或归属不明则拒绝，不回退旧配置。
+
+确认安装后再次完整发现，下载前还核身份/hash；只创建缺失的标准协议。Manager普通install自检及daemon-reload/enable--now仅发生于未来用户明确确认的新安装任务，非已有节点读取。安装输出不回传凭据日志；结束后重新只读采集真实unit/config/内核身份，不能仅靠成功文字报成功；失败不自动重试、升级或接管自定义第二实例。
+
+v0.7.0发布经过离线回归与隔离构建验证；不运行真实流媒体扫描/测速跑分/代理安装或TG测试。公开发布不自动切换运营实例。
+
+## v0.7.0 正式对应源
+
+完整源和SHA256SUMS：https://github.com/shui1iao/GUKO/releases/tag/v0.7.0 。公共镜像为ghcr.io/shui1iao/guko:v0.7.0（amd64/arm64）；org.opencontainers.image.revision标准确提交。源附件guko-v0.7.0-source.zip为本镜像对应源，非旧tag或私有local归档。动态工具的同次发行完整源仍单独随tool_source提供。MIT/AGPL及第三方义务见NOTICE-STREAM.md。

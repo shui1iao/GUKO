@@ -24,6 +24,8 @@ spec = importlib.util.spec_from_file_location(
 assert spec and spec.loader
 bot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bot)
+from frozen_sources import install as inject_frozen_sources
+inject_frozen_sources(bot)
 
 import auth
 
@@ -78,7 +80,6 @@ class FullFeatureSurfaceTest(unittest.TestCase):
             f"ippure:{sid}",
             f"proxy:ss:{sid}",
             f"proxy:anytls:{sid}",
-            f"proxy:vless:{sid}",
             f"proxy:snell:{sid}",
             f"jobsrv:{sid}",
             f"hist:{sid}",
@@ -96,12 +97,12 @@ class FullFeatureSurfaceTest(unittest.TestCase):
                 self.assertIn(kind, bot.KIND_NAME)
                 found = callbacks(bot.proxy_markup(server, kind))
                 self.assertIn(f"proxyrun:{kind}:view:{bot.server_id(server)}", found)
-                if kind == "vless":
-                    self.assertIn(f"vlessmode:plain:{bot.server_id(server)}", found)
-                    self.assertIn(f"vlessmode:reality:{bot.server_id(server)}", found)
+                if kind in ('ss','anytls'):
+                    self.assertNotIn(f"proxyrun:{kind}:ensure:{bot.server_id(server)}", found)
+                    self.assertNotIn(f"proxyrun:{kind}:install:{bot.server_id(server)}", found)
                 else:
                     self.assertIn(f"proxyrun:{kind}:ensure:{bot.server_id(server)}", found)
-                self.assertTrue(bot.proxy_answers(kind, 12345, "plain").startswith("12345"))
+                    self.assertTrue(bot.proxy_answers(kind, 12345, "plain").startswith("12345"))
 
     def test_bot_command_menu_is_complete(self):
         set_my_commands = AsyncMock()
@@ -160,7 +161,8 @@ class FullFeatureSurfaceTest(unittest.TestCase):
         self.assertIn("apk add", command)
         self.assertIn("dnf install", command)
         self.assertIn("yum install", command)
-        self.assertIn("curl -fsSL --max-time 60", command)
+        self.assertIn("curl -fsSL --proto", command)
+        self.assertIn("sha256sum -c -", command)
         self.assertIn('-o "$script"', command)
         self.assertIn('bash "$script"', command)
 
@@ -238,8 +240,9 @@ class FullFeatureSurfaceTest(unittest.TestCase):
                     ):
                         await bot.run_proxy_tool_task(capture, 1, server, jid, kind, action)
                     remote = run.await_args.args[0][-1]
-                    if action != "view":
-                        self.assertIn("trap 'rm -f \"$tmp\"' EXIT", remote)
+                    # Initial read is always a pure snapshot, even ensure.
+                    self.assertNotIn('curl ', remote)
+                    self.assertNotIn('mktemp ', remote)
                     checked = subprocess.run(
                         ["/bin/bash", "-n"],
                         input=remote,
@@ -253,7 +256,7 @@ class FullFeatureSurfaceTest(unittest.TestCase):
                     bot.JOBS = old_jobs
                     bot.RUNNING = old_running
 
-        for kind in bot.PROXY_TOOLS:
+        for kind in ("snell",):  # Kat multi-stage guard has its own contract tests.
             for action in ("view", "ensure"):
                 with self.subTest(kind=kind, action=action):
                     asyncio.run(exercise(kind, action))

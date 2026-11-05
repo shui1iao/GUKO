@@ -1,0 +1,930 @@
+{
+  "contract": "service-unlock-v0.5.6@53e7e8f1bfc9fe0cd9513dd78638d513a7aea257",
+  "titles": [
+    "Video, live & sports",
+    "Music & audio",
+    "AI services",
+    "Gaming",
+    "Community",
+    "General websites"
+  ],
+  "mapping": {
+    "geo:google": {
+      "purpose": "general",
+      "platform": "google",
+      "name": "Google",
+      "regionLabel": "Geo"
+    },
+    "geo:google_captcha": {
+      "purpose": "general",
+      "platform": "google",
+      "name": "Google",
+      "capability": "Search"
+    },
+    "geo:youtube": {
+      "purpose": "video",
+      "platform": "youtube",
+      "name": "YouTube",
+      "regionLabel": "Geo"
+    },
+    "geo:youtube_music": {
+      "purpose": "music",
+      "platform": "youtube_music",
+      "name": "YouTube Music"
+    },
+    "geo:twitch": {
+      "purpose": "video",
+      "platform": "twitch",
+      "name": "Twitch",
+      "regionLabel": "Geo"
+    },
+    "geo:chatgpt": {
+      "purpose": "aiServices",
+      "platform": "chatgpt",
+      "name": "ChatGPT",
+      "regionLabel": "Geo"
+    },
+    "geo:netflix": {
+      "purpose": "video",
+      "platform": "netflix",
+      "name": "Netflix",
+      "regionLabel": "Fast"
+    },
+    "geo:spotify": {
+      "purpose": "music",
+      "platform": "spotify",
+      "name": "Spotify",
+      "regionLabel": "Geo"
+    },
+    "geo:spotify_signup": {
+      "purpose": "music",
+      "platform": "spotify",
+      "name": "Spotify",
+      "capability": "Legacy signup"
+    },
+    "geo:deezer": {
+      "purpose": "music",
+      "platform": "deezer",
+      "name": "Deezer",
+      "regionLabel": "Geo"
+    },
+    "geo:reddit": {
+      "purpose": "community",
+      "platform": "reddit",
+      "name": "Reddit",
+      "regionLabel": "Geo"
+    },
+    "geo:reddit_guest": {
+      "purpose": "community",
+      "platform": "reddit",
+      "name": "Reddit",
+      "capability": "Guest"
+    },
+    "geo:prime": {
+      "purpose": "video",
+      "platform": "prime",
+      "name": "Amazon Prime Video",
+      "regionLabel": "Geo"
+    },
+    "geo:apple": {
+      "purpose": "general",
+      "platform": "apple",
+      "name": "Apple",
+      "regionLabel": "Geo"
+    },
+    "geo:steam": {
+      "purpose": "gaming",
+      "platform": "steam",
+      "name": "Steam",
+      "capability": "Store region",
+      "regionLabel": "Geo"
+    },
+    "geo:playstation": {
+      "purpose": "gaming",
+      "platform": "playstation",
+      "name": "PlayStation",
+      "regionLabel": "Geo"
+    },
+    "geo:tiktok": {
+      "purpose": "video",
+      "platform": "tiktok",
+      "name": "TikTok",
+      "regionLabel": "Geo"
+    },
+    "geo:ookla": {
+      "purpose": "general",
+      "platform": "ookla",
+      "name": "Ookla Speedtest",
+      "regionLabel": "Geo"
+    },
+    "geo:jetbrains": {
+      "purpose": "general",
+      "platform": "jetbrains",
+      "name": "JetBrains",
+      "regionLabel": "Geo"
+    },
+    "geo:bing": {
+      "purpose": "general",
+      "platform": "bing",
+      "name": "Microsoft (Bing)",
+      "regionLabel": "Geo"
+    },
+    "access:chatgpt_web": {
+      "purpose": "aiServices",
+      "platform": "chatgpt",
+      "name": "ChatGPT",
+      "capability": "Web"
+    },
+    "access:youtube_premium_access": {
+      "purpose": "video",
+      "platform": "youtube",
+      "name": "YouTube",
+      "capability": "Premium"
+    },
+    "access:netflix_access": {
+      "purpose": "video",
+      "platform": "netflix",
+      "name": "Netflix",
+      "capability": "Catalogue",
+      "regionLabel": "Catalogue",
+      "regionExpected": true,
+      "regionFirst": true
+    },
+    "access:claude_access": {
+      "purpose": "aiServices",
+      "platform": "claude",
+      "name": "Claude",
+      "capability": "Web",
+      "regionLabel": "Geo",
+      "regionExpected": true
+    },
+    "access:tiktok_access": {
+      "purpose": "video",
+      "platform": "tiktok",
+      "name": "TikTok",
+      "capability": "Web"
+    },
+    "access:gemini_access": {
+      "purpose": "aiServices",
+      "platform": "gemini",
+      "name": "Gemini",
+      "capability": "Web",
+      "regionLabel": "Geo",
+      "regionExpected": true
+    },
+    "ai:openai": {
+      "purpose": "aiServices",
+      "platform": "chatgpt",
+      "name": "ChatGPT",
+      "capability": "API"
+    },
+    "ai:anthropic": {
+      "purpose": "aiServices",
+      "platform": "claude",
+      "name": "Claude",
+      "capability": "API"
+    },
+    "ai:gemini": {
+      "purpose": "aiServices",
+      "platform": "gemini",
+      "name": "Gemini",
+      "capability": "API"
+    },
+    "ai:deepseek": {
+      "purpose": "aiServices",
+      "platform": "deepseek",
+      "name": "DeepSeek",
+      "capability": "API"
+    },
+    "ai:qwen_intl": {
+      "purpose": "aiServices",
+      "platform": "qwen",
+      "name": "Qwen",
+      "capability": "API SG"
+    },
+    "ai:qwen_cn": {
+      "purpose": "aiServices",
+      "platform": "qwen",
+      "name": "Qwen",
+      "capability": "API CN"
+    },
+    "ai:moonshot": {
+      "purpose": "aiServices",
+      "platform": "moonshot",
+      "name": "Kimi / Moonshot",
+      "capability": "API"
+    },
+    "ai:zhipu": {
+      "purpose": "aiServices",
+      "platform": "zhipu",
+      "name": "Zhipu GLM",
+      "capability": "API"
+    },
+    "extra:MediaUnlockTest_BahamutAnime": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_BahamutAnime",
+      "name": "Bahamut Anime"
+    },
+    "extra:MediaUnlockTest_BilibiliHKMCTW": {
+      "purpose": "video",
+      "platform": "bilibili",
+      "name": "Bilibili",
+      "capability": "HK-MO-TW",
+      "regionLabel": "HK-MO-TW"
+    },
+    "extra:MediaUnlockTest_BilibiliTW": {
+      "purpose": "video",
+      "platform": "bilibili",
+      "name": "Bilibili",
+      "capability": "TW",
+      "regionLabel": "TW"
+    },
+    "extra:MediaUnlockTest_AbemaTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_AbemaTV",
+      "name": "Abema.TV"
+    },
+    "extra:GameTest_PCRJP": {
+      "purpose": "gaming",
+      "platform": "extra:GameTest_PCRJP",
+      "name": "Princess Connect Re:Dive Japan"
+    },
+    "extra:GameTest_UMAJP": {
+      "purpose": "gaming",
+      "platform": "extra:GameTest_UMAJP",
+      "name": "Pretty Derby Japan"
+    },
+    "extra:GameTest_SDGGGE": {
+      "purpose": "gaming",
+      "platform": "extra:GameTest_SDGGGE",
+      "name": "SD Gundam G Generation Eternal"
+    },
+    "extra:GameTest_Kancolle": {
+      "purpose": "gaming",
+      "platform": "extra:GameTest_Kancolle",
+      "name": "Kancolle Japan"
+    },
+    "extra:MediaUnlockTest_Lemino": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Lemino",
+      "name": "Lemino"
+    },
+    "extra:MediaUnlockTest_AnimeFesta": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_AnimeFesta",
+      "name": "AnimeFesta"
+    },
+    "extra:MediaUnlockTest_mora": {
+      "purpose": "music",
+      "platform": "extra:MediaUnlockTest_mora",
+      "name": "Mora"
+    },
+    "extra:MediaUnlockTest_BBCiPLAYER": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_BBCiPLAYER",
+      "name": "BBC iPLAYER"
+    },
+    "extra:MediaUnlockTest_DisneyPlus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_DisneyPlus",
+      "name": "Disney+"
+    },
+    "extra:MediaUnlockTest_Dazn": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Dazn",
+      "name": "Dazn"
+    },
+    "extra:MediaUnlockTest_HuluJP": {
+      "purpose": "video",
+      "platform": "hulu",
+      "name": "Hulu",
+      "capability": "JP",
+      "regionLabel": "JP"
+    },
+    "extra:MediaUnlockTest_MyTVSuper": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_MyTVSuper",
+      "name": "MyTVSuper"
+    },
+    "extra:MediaUnlockTest_NowE": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_NowE",
+      "name": "Now E"
+    },
+    "extra:MediaUnlockTest_ViuTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_ViuTV",
+      "name": "Viu.TV"
+    },
+    "extra:MediaUnlockTest_unext": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_unext",
+      "name": "U-NEXT"
+    },
+    "extra:MediaUnlockTest_wowow": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_wowow",
+      "name": "WOWOW"
+    },
+    "extra:MediaUnlockTest_TVer": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_TVer",
+      "name": "TVer"
+    },
+    "extra:MediaUnlockTest_HamiVideo": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_HamiVideo",
+      "name": "Hami Video"
+    },
+    "extra:MediaUnlockTest_4GTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_4GTV",
+      "name": "4GTV.TV"
+    },
+    "extra:MediaUnlockTest_SlingTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_SlingTV",
+      "name": "Sling TV"
+    },
+    "extra:MediaUnlockTest_PlutoTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_PlutoTV",
+      "name": "Pluto TV"
+    },
+    "extra:MediaUnlockTest_HBOMax": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_HBOMax",
+      "name": "HBO Max"
+    },
+    "extra:MediaUnlockTest_Showmax": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Showmax",
+      "name": "Showmax"
+    },
+    "extra:MediaUnlockTest_Channel4": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Channel4",
+      "name": "Channel 4"
+    },
+    "extra:MediaUnlockTest_ITVHUB": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_ITVHUB",
+      "name": "ITV Hub"
+    },
+    "extra:MediaUnlockTest_DSTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_DSTV",
+      "name": "DSTV"
+    },
+    "extra:MediaUnlockTest_HuluUS": {
+      "purpose": "video",
+      "platform": "hulu",
+      "name": "Hulu",
+      "capability": "US",
+      "regionLabel": "US"
+    },
+    "extra:MediaUnlockTest_encoreTVB": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_encoreTVB",
+      "name": "encoreTVB"
+    },
+    "extra:MediaUnlockTest_Molotov": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Molotov",
+      "name": "Molotov"
+    },
+    "extra:MediaUnlockTest_LineTVTW": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_LineTVTW",
+      "name": "LineTV.TW"
+    },
+    "extra:MediaUnlockTest_ViuCom": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_ViuCom",
+      "name": "Viu.com"
+    },
+    "extra:MediaUnlockTest_Niconico": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Niconico",
+      "name": "Niconico"
+    },
+    "extra:MediaUnlockTest_ParamountPlus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_ParamountPlus",
+      "name": "Paramount+"
+    },
+    "extra:MediaUnlockTest_KKTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_KKTV",
+      "name": "KKTV"
+    },
+    "extra:MediaUnlockTest_PeacockTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_PeacockTV",
+      "name": "Peacock TV"
+    },
+    "extra:MediaUnlockTest_FOD": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_FOD",
+      "name": "FOD(Fuji TV)"
+    },
+    "extra:MediaUnlockTest_BritBox": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_BritBox",
+      "name": "BritBox"
+    },
+    "extra:MediaUnlockTest_PrimeVideo": {
+      "purpose": "video",
+      "platform": "prime",
+      "name": "Amazon Prime Video",
+      "capability": "Access",
+      "regionLabel": "Access",
+      "regionFirst": true
+    },
+    "extra:MediaUnlockTest_Radiko": {
+      "purpose": "music",
+      "platform": "extra:MediaUnlockTest_Radiko",
+      "name": "Radiko"
+    },
+    "extra:MediaUnlockTest_DMM": {
+      "purpose": "general",
+      "platform": "extra:MediaUnlockTest_DMM",
+      "name": "DMM (financial site)"
+    },
+    "extra:MediaUnlockTest_DMMTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_DMMTV",
+      "name": "DMM TV"
+    },
+    "extra:MediaUnlockTest_Catchplay": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Catchplay",
+      "name": "CatchPlay+"
+    },
+    "extra:MediaUnlockTest_HotStar": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_HotStar",
+      "name": "HotStar"
+    },
+    "extra:MediaUnlockTest_LiTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_LiTV",
+      "name": "LiTV"
+    },
+    "extra:MediaUnlockTest_FuboTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_FuboTV",
+      "name": "Fubo TV"
+    },
+    "extra:MediaUnlockTest_Fox": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Fox",
+      "name": "FOX"
+    },
+    "extra:MediaUnlockTest_Joyn": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Joyn",
+      "name": "Joyn"
+    },
+    "extra:MediaUnlockTest_SpotvNow": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_SpotvNow",
+      "name": "SPOTV NOW"
+    },
+    "extra:MediaUnlockTest_SKY_DE": {
+      "purpose": "video",
+      "platform": "sky",
+      "name": "Sky",
+      "capability": "DE",
+      "regionLabel": "DE"
+    },
+    "extra:MediaUnlockTest_ZDF": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_ZDF",
+      "name": "ZDF"
+    },
+    "extra:MediaUnlockTest_EPIX": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_EPIX",
+      "name": "MGM+"
+    },
+    "extra:MediaUnlockTest_NLZIET": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_NLZIET",
+      "name": "NLZIET"
+    },
+    "extra:MediaUnlockTest_videoland": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_videoland",
+      "name": "videoland"
+    },
+    "extra:MediaUnlockTest_NPO_Start_Plus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_NPO_Start_Plus",
+      "name": "NPO Start Plus"
+    },
+    "extra:MediaUnlockTest_RakutenTV": {
+      "purpose": "video",
+      "platform": "rakuten_tv",
+      "name": "Rakuten TV",
+      "capability": "EU",
+      "regionLabel": "EU"
+    },
+    "extra:MediaUnlockTest_MoviStarPlus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_MoviStarPlus",
+      "name": "Movistar+"
+    },
+    "extra:MediaUnlockTest_Starz": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Starz",
+      "name": "Starz"
+    },
+    "extra:MediaUnlockTest_CanalPlus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_CanalPlus",
+      "name": "Canal+"
+    },
+    "extra:MediaUnlockTest_Sky_CH": {
+      "purpose": "video",
+      "platform": "sky",
+      "name": "Sky",
+      "capability": "CH",
+      "regionLabel": "CH"
+    },
+    "extra:MediaUnlockTest_CBCGem": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_CBCGem",
+      "name": "CBC Gem"
+    },
+    "extra:MediaUnlockTest_AcornTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_AcornTV",
+      "name": "Acorn TV"
+    },
+    "extra:MediaUnlockTest_Crave": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Crave",
+      "name": "Crave"
+    },
+    "extra:MediaUnlockTest_Amediateka": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Amediateka",
+      "name": "Amediateka"
+    },
+    "extra:MediaUnlockTest_MegogoTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_MegogoTV",
+      "name": "Megogo TV"
+    },
+    "extra:MediaUnlockTest_RaiPlay": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_RaiPlay",
+      "name": "Rai Play"
+    },
+    "extra:MediaUnlockTest_TVBAnywhere": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_TVBAnywhere",
+      "name": "TVBAnywhere+"
+    },
+    "extra:GameTest_ProjectSekai": {
+      "purpose": "gaming",
+      "platform": "extra:GameTest_ProjectSekai",
+      "name": "Project Sekai: Colorful Stage"
+    },
+    "extra:GameTest_KonosubaFD": {
+      "purpose": "gaming",
+      "platform": "extra:GameTest_KonosubaFD",
+      "name": "Konosuba Fantastic Days"
+    },
+    "extra:MediaUnlockTest_NBATV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_NBATV",
+      "name": "NBA TV"
+    },
+    "extra:MediaUnlockTest_Directv": {
+      "purpose": "video",
+      "platform": "directv",
+      "name": "DIRECTV",
+      "capability": "Stream",
+      "regionLabel": "Stream"
+    },
+    "extra:MediaUnlockTest_SkyGo": {
+      "purpose": "video",
+      "platform": "sky",
+      "name": "Sky",
+      "capability": "Go UK",
+      "regionLabel": "Go UK"
+    },
+    "extra:MediaUnlockTest_DirecTVGO": {
+      "purpose": "video",
+      "platform": "directv",
+      "name": "DIRECTV",
+      "capability": "Go",
+      "regionLabel": "Go"
+    },
+    "extra:MediaUnlockTest_DAM": {
+      "purpose": "music",
+      "platform": "extra:MediaUnlockTest_DAM",
+      "name": "Karaoke@DAM"
+    },
+    "extra:MediaUnlockTest_DiscoveryPlus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_DiscoveryPlus",
+      "name": "Discovery+"
+    },
+    "extra:MediaUnlockTest_ESPNPlus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_ESPNPlus",
+      "name": "ESPN+"
+    },
+    "extra:MediaUnlockTest_Binge": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Binge",
+      "name": "Binge"
+    },
+    "extra:MediaUnlockTest_Docplay": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Docplay",
+      "name": "Docplay"
+    },
+    "extra:MediaUnlockTest_OptusSports": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_OptusSports",
+      "name": "Optus Sports"
+    },
+    "extra:MediaUnlockTest_KayoSports": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_KayoSports",
+      "name": "Kayo Sports"
+    },
+    "extra:MediaUnlockTest_NeonTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_NeonTV",
+      "name": "Neon TV"
+    },
+    "extra:MediaUnlockTest_SkyGONZ": {
+      "purpose": "video",
+      "platform": "sky",
+      "name": "Sky",
+      "capability": "Go NZ",
+      "regionLabel": "Go NZ"
+    },
+    "extra:MediaUnlockTest_ThreeNow": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_ThreeNow",
+      "name": "ThreeNow"
+    },
+    "extra:MediaUnlockTest_MaoriTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_MaoriTV",
+      "name": "Maori TV"
+    },
+    "extra:MediaUnlockTest_SBSonDemand": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_SBSonDemand",
+      "name": "SBS on Demand"
+    },
+    "extra:MediaUnlockTest_ABCiView": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_ABCiView",
+      "name": "ABC iView"
+    },
+    "extra:MediaUnlockTest_Channel9": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Channel9",
+      "name": "Channel 9"
+    },
+    "extra:MediaUnlockTest_Telasa": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Telasa",
+      "name": "Telasa"
+    },
+    "extra:MediaUnlockTest_SetantaSports": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_SetantaSports",
+      "name": "Setanta Sports"
+    },
+    "extra:MediaUnlockTest_Channel5": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Channel5",
+      "name": "Channel 5"
+    },
+    "extra:MediaUnlockTest_MyVideo": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_MyVideo",
+      "name": "MyVideo"
+    },
+    "extra:MediaUnlockTest_7plus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_7plus",
+      "name": "7plus"
+    },
+    "extra:MediaUnlockTest_Channel10": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Channel10",
+      "name": "Channel 10"
+    },
+    "extra:MediaUnlockTest_VideoMarket": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_VideoMarket",
+      "name": "VideoMarket"
+    },
+    "extra:MediaUnlockTest_musicjp": {
+      "purpose": "music",
+      "platform": "extra:MediaUnlockTest_musicjp",
+      "name": "music.jp"
+    },
+    "extra:MediaUnlockTest_Popcornflix": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Popcornflix",
+      "name": "Popcornflix"
+    },
+    "extra:MediaUnlockTest_TubiTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_TubiTV",
+      "name": "Tubi TV"
+    },
+    "extra:MediaUnlockTest_Philo": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Philo",
+      "name": "Philo"
+    },
+    "extra:MediaUnlockTest_FXNOW": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_FXNOW",
+      "name": "FXNOW"
+    },
+    "extra:MediaUnlockTest_Crunchyroll": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Crunchyroll",
+      "name": "Crunchyroll"
+    },
+    "extra:MediaUnlockTest_CWTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_CWTV",
+      "name": "CW TV"
+    },
+    "extra:MediaUnlockTest_Shudder": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Shudder",
+      "name": "Shudder"
+    },
+    "extra:MediaUnlockTest_TLCGO": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_TLCGO",
+      "name": "TLC GO"
+    },
+    "extra:MediaUnlockTest_Wavve": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Wavve",
+      "name": "Wavve"
+    },
+    "extra:MediaUnlockTest_Tving": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Tving",
+      "name": "Tving"
+    },
+    "extra:MediaUnlockTest_CoupangPlay": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_CoupangPlay",
+      "name": "Coupang Play"
+    },
+    "extra:MediaUnlockTest_NaverTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_NaverTV",
+      "name": "Naver TV"
+    },
+    "extra:MediaUnlockTest_Afreeca": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Afreeca",
+      "name": "Afreeca TV"
+    },
+    "extra:MediaUnlockTest_KBSDomestic": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_KBSDomestic",
+      "name": "KBS Domestic"
+    },
+    "extra:MediaUnlockTest_Watcha": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Watcha",
+      "name": "WATCHA"
+    },
+    "extra:MediaUnlockTest_KOCOWA": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_KOCOWA",
+      "name": "KOCOWA"
+    },
+    "extra:MediaUnlockTest_NBCTV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_NBCTV",
+      "name": "NBC TV"
+    },
+    "extra:MediaUnlockTest_Crackle": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_Crackle",
+      "name": "Crackle"
+    },
+    "extra:MediaUnlockTest_AETV": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_AETV",
+      "name": "A&E TV"
+    },
+    "extra:MediaUnlockTest_NFLPlus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_NFLPlus",
+      "name": "NFL+"
+    },
+    "extra:MediaUnlockTest_SkyShowTime": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_SkyShowTime",
+      "name": "SkyShowTime"
+    },
+    "extra:GameTest_MathsSpot": {
+      "purpose": "gaming",
+      "platform": "extra:GameTest_MathsSpot",
+      "name": "MathsSpot Roblox"
+    },
+    "extra:MediaUnlockTest_BGlobalSEA": {
+      "purpose": "video",
+      "platform": "bilibili",
+      "name": "Bilibili",
+      "capability": "Global SEA",
+      "regionLabel": "Global SEA"
+    },
+    "extra:MediaUnlockTest_BGlobalTH": {
+      "purpose": "video",
+      "platform": "bilibili",
+      "name": "Bilibili",
+      "capability": "Global TH",
+      "regionLabel": "Global TH"
+    },
+    "extra:MediaUnlockTest_BGlobalID": {
+      "purpose": "video",
+      "platform": "bilibili",
+      "name": "Bilibili",
+      "capability": "Global ID",
+      "regionLabel": "Global ID"
+    },
+    "extra:MediaUnlockTest_BGlobalVN": {
+      "purpose": "video",
+      "platform": "bilibili",
+      "name": "Bilibili",
+      "capability": "Global VN",
+      "regionLabel": "Global VN"
+    },
+    "extra:MediaUnlockTest_AISPlay": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_AISPlay",
+      "name": "AIS Play"
+    },
+    "extra:WebTest_MetaAI": {
+      "purpose": "aiServices",
+      "platform": "extra:WebTest_MetaAI",
+      "name": "Meta AI",
+      "capability": "Web"
+    },
+    "extra:WebTest_Wikipedia_Editable": {
+      "purpose": "community",
+      "platform": "extra:WebTest_Wikipedia_Editable",
+      "name": "Wikipedia Editability"
+    },
+    "extra:MediaUnlockTest_MeWatch": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_MeWatch",
+      "name": "MeWatch"
+    },
+    "extra:MediaUnlockTest_trueID": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_trueID",
+      "name": "trueID"
+    },
+    "extra:MediaUnlockTest_SonyLiv": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_SonyLiv",
+      "name": "SonyLiv"
+    },
+    "extra:WebTest_EroGameSpace": {
+      "purpose": "gaming",
+      "platform": "extra:WebTest_EroGameSpace",
+      "name": "EroGameSpace"
+    },
+    "extra:MediaUnlockTest_DAnimeStore": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_DAnimeStore",
+      "name": "D Anime Store"
+    },
+    "extra:MediaUnlockTest_RakutenTVJP": {
+      "purpose": "video",
+      "platform": "rakuten_tv",
+      "name": "Rakuten TV",
+      "capability": "JP",
+      "regionLabel": "JP"
+    },
+    "extra:MediaUnlockTest_AMCPlus": {
+      "purpose": "video",
+      "platform": "extra:MediaUnlockTest_AMCPlus",
+      "name": "AMC+"
+    }
+  }
+}

@@ -38,3 +38,24 @@ class DockerPublishWorkflowTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ExactReleaseAssetsTest(unittest.TestCase):
+    def test_dynamic_assets_exact_main_ci_and_no_old_release_overwrite(self):
+        text=(ROOT/'.github/workflows/release.yml').read_text()
+        for required in ('test "$tag" = "v$(cat version.txt)"','head_sha=$SHA&branch=main&event=push',
+                         'dist/default.env.example','dist/docker-compose.example.yml',
+                         'dist/guko-${RELEASE_TAG}-source.zip','dist/SHA256SUMS',
+                         '--verify-tag','--latest','Release already exists; refusing'):
+            self.assertIn(required,text)
+        self.assertNotIn('--clobber',text)
+        self.assertNotIn('guko-v0.6.9-source.zip',text)
+        self.assertLess(text.index('same') if 'same' in text else text.index('main CI'),text.index('Publish complete'))
+    def test_public_docker_is_independent_and_offers_matching_source(self):
+        text=(ROOT/'telegram-bot/Dockerfile').read_text()
+        self.assertNotIn('FROM guko-local:',text)
+        self.assertNotIn('COPY local-source.tar.gz',text)
+        self.assertIn('guko-v${GUKO_VERSION}-source.zip',text)
+        for module in ('kat_proxy.py','tool_sources.py','stream_terminal.py','stream_platforms.json'):
+            self.assertIn(module,text)
+        compile_step=(ROOT/'.github/workflows/ci.yml').read_text()
+        for module in ('kat_proxy.py','tool_sources.py','stream_terminal.py','proxy_nodes.py'):self.assertIn(module,compile_step)

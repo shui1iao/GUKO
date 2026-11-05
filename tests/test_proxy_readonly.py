@@ -10,8 +10,9 @@ import unittest
 from unittest.mock import patch
 from test_anytls_existing import invoke, ROOT
 
-KINDS = ('ss', 'anytls', 'snell', 'vless')
-BINS = dict(zip(KINDS, ('ss-rust', 'anytls-server', 'snell-server', 'xray')))
+# SS/AnyTLS moved to test_kat_proxy.py; VLESS is rejected, not installed.
+KINDS = ('snell',)
+BINS = {'snell':'snell-server'}
 CONFIGS = {'ss': '/etc/ss-rust/config.json', 'anytls': '/etc/systemd/system/anytls.service',
            'snell': '/etc/snell/snell-server.conf', 'vless': '/usr/local/etc/xray/config.json'}
 UUID = '12345678-1234-4234-8234-123456789abc'
@@ -119,6 +120,8 @@ exit 99
                                              AUDIT=str(audit), MANAGER=str(manager), ANSWERS=str(root/'answers'),
                                              DOWNLOAD_FAIL=str(int(download_fail))))
             return result.returncode, result.stdout + result.stderr
+        runner.source = {'url':'https://raw.githubusercontent.com/shui1iao/Snell-Manager/frozen/snell.sh',
+                         'sha256':__import__('hashlib').sha256(manager.read_bytes()).hexdigest()}
         with patch.dict(os.environ, {f'GUKO_{kind.upper()}_DEFAULT_PORT': default_port}):
             result = asyncio.run(invoke(ROOT/'telegram-bot/bot.py', action, kind, runner, mode))
         result.update(audit=audit.read_text() if audit.exists() else '',
@@ -129,9 +132,6 @@ exit 99
 
 
 class ProxyReadonlyTests(unittest.TestCase):
-    def test_vless_modes_share_one_install_job_lock(self):
-        source = (ROOT/'telegram-bot/bot.py').read_text()
-        self.assertNotIn("launch_job(s, f'vless-{mode}'", source)
 
     def test_deployment_includes_shared_module(self):
         self.assertIn('proxy_nodes.py', (ROOT/'telegram-bot/Dockerfile').read_text())
@@ -141,11 +141,6 @@ class ProxyReadonlyTests(unittest.TestCase):
         self.assertIn('version=6', r['message'])
         self.assertNotIn('curl:', r['audit'])
 
-    def test_stale_vless_summary_fails_closed(self):
-        r = host('vless', 'stale_client', existing_mode='reality')
-        self.assertEqual(r['job']['status'], 'failed')
-        self.assertEqual(r['audit'], '')
-        self.assertEqual(r['before'], r['after'])
 
     def test_all_existing_actions_are_readonly(self):
         for kind in KINDS:
@@ -171,10 +166,6 @@ class ProxyReadonlyTests(unittest.TestCase):
                         self.assertEqual(r['audit'], '')
                         self.assertEqual(r['job']['status'], 'failed', r['job'])
 
-    def test_fresh_xray_keeps_existing_installer_compatibility_guards(self):
-        r = host('vless', 'absent')
-        self.assertIn('geoip:private', r['command'])
-        self.assertIn('run -test', r['command'])
 
     def test_original_default_prompts_are_preserved(self):
         for kind in KINDS:
@@ -215,19 +206,3 @@ class ProxyReadonlyTests(unittest.TestCase):
                 r = host(kind, 'absent', 'view')
                 self.assertEqual(r['audit'], '')
                 self.assertEqual(r['job']['status'], 'failed')
-
-    def test_vless_retains_original_mode_and_protects_other_protocols(self):
-        for existing in ('none', 'reality', 'tls'):
-            for requested in ('plain', 'reality'):
-                r = host('vless', mode=requested, existing_mode=existing)
-                self.assertEqual(r['audit'], '')
-                self.assertEqual(r['job']['status'], 'done', r['job'])
-                self.assertIn('security='+existing, r['message'])
-        r = host('vless', 'other_xray')
-        self.assertEqual(r['audit'], '')
-        self.assertEqual(r['job']['status'], 'failed')
-        self.assertIn('不是 VLESS', r['message'])
-        r = host('vless', 'legacy')
-        self.assertEqual(r['audit'], '')
-        self.assertEqual(r['job']['status'], 'done', r['job'])
-        self.assertEqual(r['before'], r['after'])

@@ -18,13 +18,14 @@ def load(path):
     tree = ast.parse(path.read_text())
     names = {'run_proxy_tool_task', 'proxy_tool_config', 'proxy_answers',
              'proxy_extract_config', 'is_proxy_link_line', 'format_proxy_config_html',
-             'proxy_menu_text', 'proxy_markup', 'script_command_text'}
+             'proxy_menu_text', 'proxy_markup', 'script_command_text', '_script_command_text'}
     nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name in names]
     nodes += [n for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'PROXY_TOOLS' for t in n.targets)]
     import sys
     sys.path.insert(0, str(ROOT))
+    import kat_proxy, tool_sources
     from proxy_nodes import remote_command
-    ns = dict(remote_command=remote_command, os=os, shlex=shlex, re=re, safe=lambda v: html.escape(str(v)),
+    ns = dict(kat_proxy=kat_proxy, tool_sources=tool_sources, remote_command=remote_command, os=os, shlex=shlex, re=re, safe=lambda v: html.escape(str(v)),
               strip_ansi=lambda s: re.sub(r'\x1b\[[0-9;]*m', '', s), trim_log=lambda s, n=3600: s[:n],
               server_id=lambda s: 'test', ssh_env_for=lambda s: {},
               ssh_args=lambda s, remote, tty=False: remote, ParseMode=types.SimpleNamespace(HTML='HTML'),
@@ -33,10 +34,13 @@ def load(path):
     helper_imports = [n for n in tree.body if isinstance(n, ast.ImportFrom) and n.module == 'proxy_nodes']
     exec(compile(ast.Module(body=helper_imports, type_ignores=[]), str(path), 'exec'), ns)
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), 'exec'), ns)
+    async def resolve_tool(jid, resolver, kind):
+        return ns['fixture_source']
+    ns['resolve_tool'] = resolve_tool
     return ns
 
 
-async def invoke(path, action='ensure', kind='anytls', runner=None, mode=None):
+async def invoke(path, action='ensure', kind='snell', runner=None, mode=None):
     ns = load(path)
     captured = {}
     async def run(cmd, **kw):
@@ -44,6 +48,8 @@ async def invoke(path, action='ensure', kind='anytls', runner=None, mode=None):
         return runner(cmd) if runner else (0, '当前配置\nanytls://existing-secret@example.invalid:443')
     async def send(*args, **kw):
         captured['message'] = args[-1]
+    if hasattr(runner, 'source'):
+        ns['fixture_source'] = runner.source
     ns.update(run_subprocess=run, send_long_text=send)
     bot = types.SimpleNamespace(send_message=send)
     await ns['run_proxy_tool_task'](bot, 1, {'name': 'test'}, 'job', kind, action, mode)
@@ -69,6 +75,10 @@ class ProxyCommandTests(unittest.TestCase):
         ns = load(ROOT / 'telegram-bot/bot.py')
         for kind in ns['PROXY_TOOLS']:
             text = ns['proxy_menu_text']({'name': 'fixture'}, kind)
-            self.assertIn('不重装', text)
-            self.assertIn('不启动/重启', text)
+            if kind in ('ss','anytls'):
+                self.assertIn('不启停', text)
+                self.assertIn('明确安装确认', text)
+            else:
+                self.assertIn('不重装', text)
+                self.assertIn('不启动/重启', text)
             self.assertNotIn('安装/更新', str(ns['proxy_markup']({}, kind)))

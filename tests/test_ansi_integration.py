@@ -18,6 +18,8 @@ os.environ.setdefault('ALLOWED_USERS', '1')
 spec = importlib.util.spec_from_file_location('ansi_bot_under_test', ROOT / 'telegram-bot/bot.py')
 bot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bot)
+from frozen_sources import install as inject_frozen_sources
+inject_frozen_sources(bot)
 URL = 'https://Report.Check.Place/ip/ABC123.svg'
 REPORT = '\r' + '#' * 72 + '\n\r\x1b[1mIP质量体检报告：\x1b[36m192.0.2.*\x1b[0m\n\r风险 \x1b[42m低\x1b[0m\n\r' + '#' * 72 + '\n\r报告链接：\x1b[4m' + URL + '\x1b[0m\n'
 RAW = 'Downloading 10%\r99%\x1b[2J\x1b[H\n' + REPORT + '\x1b[2Jgoodbye'
@@ -209,7 +211,8 @@ rm -rf "${work_dir}"/
             curl.write_text('#!/bin/bash\nwhile [ "$#" -gt 0 ]; do if [ "$1" = -o ]; then cp "$NQ_FIXTURE" "$2"; exit; fi; shift; done\nexit 9\n')
             curl.chmod(0o700)
             env = dict(os.environ, PATH=str(td) + ':' + os.environ['PATH'], NQ_FIXTURE=str(upstream))
-            cmd = bot.nodequality_remote_command(SERVER, 2, work_dir=work_dir)
+            from frozen_sources import script as frozen_script
+            cmd = bot.nodequality_remote_command(SERVER, 2, work_dir=work_dir, source=frozen_script('nq', upstream.read_bytes()))
             checked = subprocess.run(['bash', '-n'], input=cmd, text=True, capture_output=True)
             self.assertEqual(checked.returncode, 0, checked.stderr)
             try:

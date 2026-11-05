@@ -1,5 +1,6 @@
 """IPQuality runs upstream directly, without local Amazon parser patches."""
 import os
+from frozen_sources import script as frozen_script
 from pathlib import Path
 import subprocess
 import tempfile
@@ -16,7 +17,7 @@ class UpstreamOnlyTest(unittest.TestCase):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as td:
                 fixture=Path(td)/'upstream.sh'
                 fixture.write_text('cmp -- "$0" "$FIXTURE" || exit 88\nprintf "UPSTREAM:%s\\n" "$*"\n')
-                command='curl() { cp -- "$FIXTURE" "${@: -1}"; }; '+bot.ipquality_remote_command(mode)
+                command='curl() { cp -- "$FIXTURE" "${@: -1}"; }; '+bot.ipquality_remote_command(mode, source=frozen_script('ipq', fixture.read_bytes()))
                 result=subprocess.run(['bash','-c',command],capture_output=True,text=True,env={**os.environ,'FIXTURE':str(fixture)})
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertEqual(result.stdout.strip(),'UPSTREAM:'+expected)
@@ -26,7 +27,7 @@ class UpstreamOnlyTest(unittest.TestCase):
             dest=Path(td)/'dest'
             command='curl() { printf "%s" "${@: -1}" > "$DEST"; return 22; }; '+bot.ipquality_remote_command('4')
             result=subprocess.run(['bash','-c',command],capture_output=True,text=True,env={**os.environ,'DEST':str(dest)})
-            self.assertEqual(result.returncode,22)
+            self.assertEqual(result.returncode,65)
             self.assertFalse(Path(dest.read_text()).exists())
             self.assertEqual(result.stdout,'')
 

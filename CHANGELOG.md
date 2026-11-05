@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.7.0] - 2026-11-05
+
+### 累计功能
+- 每个新任务从官方查最新并冻结版本/commit/hash/完整资产；缓存只省下载，查询失败、缺源/坏hash或未知契约明确停止，不回退旧版。
+- Service Unlock支持明确v0.5.6 raw168/六用途组/平台单行及同次JSON+ANSI契约；保独立Web/API/来源地区/颜色、自然换行、退出码和任务owned清理。未知未来格式拒绝。
+- TCP同commit wrapper/core；NextTrace任务局部程序不覆盖宿主；IPQ/NQ冻结官方当前入口，NQ内部工具不扩改；BGP/IPPure和自有渲染依赖不热换。
+- GB5仅5系：若官方legacy页面不能可靠确认最新5系Linux包即明确停止，不沿用5.5.1或改GB6。此限制保留。
+- SS/AnyTLS各一个Kat入口，读取全部受支持实例/多inbound；目标只用已有shell/systemd/proc/coreutils，读取不执行Manager/Kat、不要求远端Python、不写配置或启停服务。
+- Kat新装必须单独、限时一次性绑定确认并多重guard；缺前置停止、不自动补依赖或升级已有共享内核。冻结同commit的Manager完整组件/pins和实际复用/新Server身份。未知TLS/SNI标unsupported，不编客户端参数；完整多节点输出，保精确secret/IPv6/URI与Mihomo UDP。
+- 删除VLESS全部新任务/解析/安装能力，旧callback明确拒绝；历史/被动URI显示与远端既有VLESS保留。Snell原渠道、解析、-v、安装交互和输出不变。
+
+### 发布与验证
+- 发行回归修复：Kat仅对已确认PF_KTHREAD的内核线程跳过无exe读取，未知/不可读用户进程仍拒绝；修复无效代理动作在SSH前拒绝；冻结CLI数据上传前再核SHA256，未知新CLI契约在执行前停止。
+- 离线Python284项通过（运行镜像跳过2项私有字体及1项Git归档器；归档器另在Git checkout实际通过），Node ANSI23项中19通过/4项私有golden条件跳过。0.5.6真实CLI＋HTTPmock和Width40原renderer生成fixture，无网；Hytron真实只读解析SS1＋AnyTLS1，不执行Manager或改服务。未验证真实业务连通性、真实安装及arm64实机。
+- 版本遵循既有进位规则，由0.6.9进为0.7.0；完整对应源及校验、MIT/AGPL/第三方许可与双架构公开镜像同一提交，main CI先通过再tag。
+- 发行验证仅离线回归/受控HTTPmock/隔离容器，不进行真实业务扫描、测速跑分、代理安装或TG测试；GB5当前官方查新受限不伪装可用。具体验证与修复证据见发行交付。
+- 本次公开发布不自动更新任何运营实例；SG仍保原本地kat-proxy镜像。公开修复不会偷偷部署到该实例。
+
 ## [0.6.9] - 2026-10-18
 
 - Replace new stream jobs with one fixed Service Unlock v0.5.4 measurement and one single-frame PNG; automatically select global + actual exit region, falling back to global with a reason.

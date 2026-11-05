@@ -1,0 +1,15 @@
+# Local-only overlay: keep the EXACT deployed runtime/dependencies/fonts.
+# No registry push, no test/renderer/real-task execution during build.
+FROM guko-local:latest-tools-20261105
+ARG GUKO_REVISION=unknown
+ENV GUKO_VERSION=0.6.9+local-kat-proxy
+LABEL org.opencontainers.image.version="0.6.9+local-kat-proxy" \
+      org.opencontainers.image.revision=${GUKO_REVISION} \
+      org.opencontainers.image.licenses="MIT AND AGPL-3.0-only" \
+      org.opencontainers.image.description="Local Kat proxy integration; VLESS history only; not a public release"
+COPY auth.py guko.py jiaoops.py stream_unified.py stream_terminal.py tool_sources.py unified_catalogue.json stream_platforms.json /app/
+COPY telegram-bot/bot.py proxy_nodes.py kat_proxy.py /app/
+COPY LICENSE LICENSES NOTICE-STREAM.md /app/licenses/
+COPY local-source.tar.gz /app/source/guko-local-source.tar.gz
+# Retain the base image's untouched renderer, browser, fonts and BGP/IPPure tools.
+# Inherited historical stream-unified assets are unreachable by current code.

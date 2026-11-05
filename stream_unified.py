@@ -1,7 +1,7 @@
 """GUKO unified integration, AGPL-3.0-only; original MIT portions preserved. No imports perform network I/O.
 
 Transport is injected from bot.py's existing SSH builder/auth environment.
-No public downloader, new SSH policy, provider framework, or remote runtime.
+No new SSH policy, provider framework, or remote runtime.
 """
 import asyncio
 import hashlib
@@ -13,13 +13,14 @@ import re
 import shlex
 import signal
 import uuid
+import tool_sources
+from stream_terminal import validate_terminal
 
 CATALOGUE = json.loads((Path(__file__).resolve().parent / 'unified_catalogue.json').read_text())
 ACCESS = tuple((r['id'], r['name']) for r in CATALOGUE['native'] if r['array'] == 'results')
 SERVICES = tuple((r['id'], r['name'], r['kind']) for r in CATALOGUE['native'] if r['array'] == 'services')
 AI = tuple((r['id'], r['name']) for r in CATALOGUE['native'] if r['array'] == 'ai_endpoints')
 EXTRA = {r['function']: r for r in CATALOGUE['extra']}
-BINARY_DIR = Path('/app/stream-unified')
 MAX_OUTPUT = 2 * 1024 * 1024
 SOURCE_COMMIT = '50e084bb3ed34b55fc6839fe0dc4bafd9fe275fc'
 EXTRA_COMMIT = 'b6d4a6f9a87fc6eae6d3e62d0092ececcec8e844'
@@ -113,7 +114,7 @@ def validate_output(raw, code, *, family='auto'):
     if source != {'repository': 'https://github.com/remnawave/geocheck', 'tag': 'v0.3.0', 'commit': SOURCE_COMMIT, 'port': 'Go v0.4.0 standalone three-group extraction with conservative error handling'}:
         raise ValueError('Unexpected historical native source (not the CLI release version)')
     if network != {'mode': 'direct', 'address_family': 'system-selected', 'timeout_seconds': 6, 'timeout_scope': 'request including redirects and body', 'workers': 4}:
-        raise ValueError('Unexpected native35 network/resources')
+        raise ValueError('Unexpected native34 network/resources')
     region, ids, actual_family = _selection(selection, family)
     timestamp = lambda value: isinstance(value, str) and bool(re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z', value))
     if not timestamp(report.get('generated_at')):
@@ -180,45 +181,7 @@ def validate_output(raw, code, *, family='auto'):
     if (errors > 0) != (code == 1):
         raise ValueError('Exit code contradicts complete results')
     terminal = normalize_terminal(doc.get('terminal'))
-    clean = re.sub(r'\x1b\[[0-9;:]*m', '', terminal)
-    if '\x1b' in clean or any(ord(c) < 32 and c != '\n' for c in clean):
-        raise ValueError('Invalid terminal controls')
-    lines, ansi_lines = clean.splitlines(), terminal.splitlines()
-    if not lines or lines.pop(0) != selection_label(selection):
-        raise ValueError('Missing/incorrect automatic selection notice')
-    ansi_lines.pop(0)
-    if not lines or not re.fullmatch('╭─+╮', lines[0]) or not re.fullmatch('╰─+╯', lines[-1]):
-        raise ValueError('Not a complete single rounded frame')
-    width = len(lines[0])
-    if width > 100 or width < 14 or any(len(line) != width for line in lines):
-        raise ValueError('Broken unified frame width')
-    separator = '├' + '─' * (width-2) + '┤'
-    expected = [('services', 'Service regions & access'), ('results', 'Service availability'), ('ai_endpoints', 'AI endpoints'), ('global', 'Global services')]
-    if region != 'global': expected.append(('regional', 'Regional services'))
-    if not re.fullmatch(r'│ Service +Result +Region │', lines[1]) or lines[2] != separator:
-        raise ValueError('Wrong/duplicate table header')
-    at = 3
-    colors = {'Yes': '\x1b[1;38;5;2m● Yes\x1b[m', 'No': '\x1b[1;38;5;1m● No\x1b[m', 'Limited': '\x1b[1;38;5;3m● Limited\x1b[m', 'Unknown': '\x1b[1m○ Unknown\x1b[m'}
-    for field, title in expected:
-        if at+1 >= len(lines) or lines[at] != '│ ' + title + ' ' * (width-3-len(title)) + '│' or lines[at+1] != separator:
-            raise ValueError('Missing/reordered internal section')
-        at += 2
-        if field in ('global', 'regional'):
-            rows = [v for v, row in zip(displayed['extra_checks'], report['extra_checks']) if (row['scope'] == 'global') == (field == 'global')]
-        else: rows = displayed[field]
-        for name, label, display_region in rows:
-            if at >= len(lines)-1:
-                raise ValueError('Missing terminal rows')
-            line, ansi_line = lines[at], ansi_lines[at]
-            match = re.fullmatch(r'│ (.*?) +([●○]) (Yes|No|Limited|Unknown) +([A-Z]{2})? *│', line)
-            if not match or (match[1], match[2], match[3], match[4] or '') != (name, '○' if label == 'Unknown' else '●', label, display_region) or colors[label] not in ansi_line:
-                raise ValueError('Terminal row/region/color differs from JSON')
-            at += 1
-        if at < len(lines)-1:
-            if lines[at] != separator: raise ValueError('Unexpected group footer')
-            at += 1
-    if at != len(lines)-1 or any(clean.count(c) != 1 for c in '╭╮╰╯'):
-        raise ValueError('Extra rows/footers/frames in unified report')
+    validate_terminal(terminal, report, selection_label(selection), _country)
     return report, terminal, errors
 
 
@@ -336,7 +299,7 @@ rm -rf -- "$parent"
 '''.replace('__PARENT__', shlex.quote(parent)).replace('__TOKEN__', shlex.quote(token))
 
 
-async def remote_run(server, ssh_args, ssh_env, *, region="auto", family="auto", binary_dir=BINARY_DIR, runner=process):
+async def remote_run(server, ssh_args, ssh_env, *, region="auto", family="auto", runner=process, identity_out=None):
     if region != 'auto':
         raise ValueError('GUKO new tasks must use exit-country auto')
     if family not in ("auto", "4", "6"):
@@ -347,17 +310,17 @@ async def remote_run(server, ssh_args, ssh_env, *, region="auto", family="auto",
     try:
         code, arch, err = await runner(ssh_args(server, 'LC_ALL=C uname -m', tty=False), timeout=20, env=env, max_output=128)
         if code != 0:
-            raise RuntimeError('Unified architecture probe failed: ' + err[-500:])
+            raise RuntimeError('Unified architecture probe failed; no previous version used')
         architectures = {'x86_64': 'amd64', 'amd64': 'amd64', 'aarch64': 'arm64', 'arm64': 'arm64'}
         target = architectures.get(arch.strip())
         if not target:
-            raise RuntimeError('Unified unsupported architecture: ' + arch.strip()[:80])
-        data = (Path(binary_dir) / ('service-unlock_linux_' + target)).read_bytes()
-        if not 0 < len(data) <= 16 * 1024 * 1024:
-            raise ValueError('Invalid unified binary size')
-        digest = hashlib.sha256(data).hexdigest()
-        if digest != CATALOGUE['binary_sha256'][target]:
-            raise ValueError('Packaged Service Unlock v0.5.4 checksum mismatch')
+            raise RuntimeError('Unified unsupported architecture; no previous version used')
+        data, source = await asyncio.to_thread(tool_sources.stream_source, target)
+        if identity_out is not None:
+            identity_out.update(source)
+        digest = source['binary']['sha256']
+        if hashlib.sha256(data).hexdigest() != digest:
+            raise ValueError('Unified frozen binary SHA256 mismatch; not executed')
         code, raw, err = await runner(ssh_args(server, execution_command(token, digest, region, family), tty=False), timeout=1200, env=env, payload=data)
         result = (code, raw, err)
     except BaseException as exc:
@@ -369,7 +332,7 @@ async def remote_run(server, ssh_args, ssh_env, *, region="auto", family="auto",
         try:
             code, _, err = await asyncio.shield(task)
             if code != 0:
-                cleanup_error = 'Unified cleanup failed: ' + err[-500:]
+                cleanup_error = 'Unified scoped cleanup failed; manual review required'
         except asyncio.CancelledError as exc:
             failure = failure or exc
             try:

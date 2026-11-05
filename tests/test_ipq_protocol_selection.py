@@ -58,7 +58,8 @@ class IpqProtocolMenuTest(unittest.IsolatedAsyncioTestCase):
         for mode, ending in [('4', '-y -4'), ('46', '-y')]:
             cmd = bot.ipquality_remote_command(mode)
             self.assertTrue(cmd.endswith('bash "$script" ' + ending))
-            self.assertIn('https://IP.Check.Place -o "$script"', cmd)
+            self.assertIn('raw.githubusercontent.com/xykt/IPQuality/', cmd)
+            self.assertIn('sha256sum -c -', cmd)
             self.assertEqual(subprocess.run(['bash','-n','-c',cmd], capture_output=True).returncode, 0)
             self.assertTrue(bot.script_command_text('ipq', ip_mode=mode).endswith(ending))
         with self.assertRaises(ValueError):

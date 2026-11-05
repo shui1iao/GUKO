@@ -12,7 +12,8 @@ The script will:
   1. check that the git working tree is clean;
   2. update version files when they exist;
   3. prepend CHANGELOG.md;
-  4. commit, tag and push to GitHub.
+  4. commit/push main, wait for exact main CI, then tag/push.
+Requires gh authentication; never force-push or rewrite an existing release.
 HELP
 }
 
@@ -27,6 +28,13 @@ if [[ "$normalized_version" != "$version" ]]; then
   echo "version carried: $version -> $normalized_version"
 fi
 version="$normalized_version"
+command -v gh >/dev/null || { echo 'gh with repository access required' >&2; exit 1; }
+test "$(git branch --show-current)" = main
+git fetch origin main --tags
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+if git rev-parse "v$version" >/dev/null 2>&1; then
+  echo 'Tag already exists; refusing to overwrite' >&2; exit 1
+fi
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "working tree is not clean" >&2
   git status --short
@@ -92,6 +100,17 @@ PYHELP
 
 git add -A
 git commit -m "Release v$version"
+git push origin HEAD:main
+sha=$(git rev-parse HEAD)
+repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+# No tag publication until the same main commit has a successful CI run.
+for attempt in $(seq 1 120); do
+  result=$(gh api "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$sha&branch=main&event=push" --jq '.workflow_runs | map(select(.status == "completed")) | first | .conclusion // "waiting"')
+  if [ "$result" = success ]; then break; fi
+  if [ "$result" != waiting ]; then echo "Main CI stopped: $result" >&2; exit 1; fi
+  sleep 15
+done
+test "$result" = success
+test "$(gh api "repos/$repo/git/ref/heads/main" --jq .object.sha)" = "$sha"
 git tag -a "v$version" -m "v$version"
-git push
 git push origin "v$version"

@@ -16,3 +16,6 @@ history.json
 # Generated offline test executable / release source bundles
 tests/native-fixture
 dist/
+
+# Historical private-overlay generated source; never recurse into releases
+local-source.tar.gz
