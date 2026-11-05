@@ -1,3 +1,9 @@
+# CLI v0.5.7 offline fixtures
+
+Generated from this release's exact service-unlock v0.5.7 source through the actual runCLI --machine, injected HTTPmock transports and unchanged original renderer. Native22 + selected extras. No real platform/Spotify/signup requests, accounts or现场结果. All regions, auto errors/fallback/IPv6/no-route/denied/Unknown retained. jp-narrow uses the same actual mock measurement and renderer Width40. Generator scripts are included and run in the CLI root as temporary *_test.go files; do not publish them as production probes. Exact commit/source identity is recorded in the release handoff after the CLI commit is frozen.
+
+Historical fixture generation notes below are from v0.5.6, not current directory counts.
+
 # OFFLINE MOCK — never live unlock or account-registration results
 
 Regenerated for GUKO v0.7.0 from the **exact official Service Unlock v0.5.6**

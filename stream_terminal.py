@@ -1,6 +1,6 @@
-"""Strict local v0.5.6 terminal contract, not a second renderer. AGPL-3.0-only.
+"""Strict local v0.5.7 terminal contract, not a second renderer. AGPL-3.0-only.
 
-Platform aggregation mirrors the explicitly licensed upstream terminal mapping;
+Single-probe presentation mirrors the explicitly licensed upstream terminal mapping;
 original mapping MIT (Remnawave, 2026), see NOTICE-STREAM.md. This code NEVER
 replaces CLI output; it checks the original same-measurement ANSI before display.
 Unknown future directory/schema/visual contracts fail closed.
@@ -33,56 +33,35 @@ def _plain(cell):
 
 
 def _groups(report, country):
-    platforms = {}
     buckets = [[] for _ in PURPOSES]
+    regional = []
+    region = report['selection']['region']
+    catalogue = json.loads((Path(__file__).parent / 'unified_catalogue.json').read_text())
+    global_ids = set(catalogue['groups']['global'])
+    local_ids = set(catalogue['groups'].get(region, ())) - global_ids if region != 'global' else set()
     for field, source in (('services', 'geo'), ('results', 'access'), ('ai_endpoints', 'ai'), ('extra_checks', 'extra')):
         for row in report[field]:
             p = CONTRACT['mapping'].get(source + ':' + row['id'])
             if not p:
-                raise ValueError('Unknown terminal platform contract')
-            target = platforms.get(p['platform'])
-            if target is None:
-                target = {'name': p['name'], 'results': [], 'countries': [], 'regions': []}
-                platforms[p['platform']] = target
-                buckets[PURPOSES.index(p['purpose'])].append(target)
-            is_country = source == 'geo' and row['type'] == 'country'
+                raise ValueError('Unknown terminal probe contract')
             if source == 'geo':
+                is_country = row['type'] == 'country'
+                code = country(row['value']) if is_country else ''
                 label = 'Unknown'
                 if row['status'] != 'error':
                     yes = is_country or (row['value'] == 'no' if row['type'] == 'blocked' else row['value'] == 'yes')
                     label = 'Yes' if yes else 'No'
-                code = country(row['value']) if is_country else ''
-                has_region = is_country
             else:
                 label = {'available': 'Yes', 'reachable': 'Yes', 'blocked': 'No', 'restricted': 'Limited', 'error': 'Unknown'}[row['status']]
                 code = '' if source == 'ai' else country(row.get('region'))
-                has_region = bool(row.get('region')) if source != 'ai' else False
-            capability = p.get('capability', '') or ('Region' if is_country else '')
-            target['countries' if is_country else 'results'].append(_part(capability, ('○ ' if label == 'Unknown' else '● ') + label, COLOR[label]))
-            if has_region or p.get('regionExpected'):
-                value, style = code, (False, None)
-                if not value:
-                    value, style = 'Unknown', COLOR['Unknown']
-                elif is_country and label == 'Unknown':
-                    value, style = value + ' (Unknown)', COLOR['Unknown']
-                target['regions'].append((p.get('regionFirst', False), p.get('regionLabel') or 'Geo', value, style,
-                                          p['platform'] in ('netflix', 'prime')))
-    groups = []
-    for index, rows in enumerate(buckets):
-        if not rows:
-            continue
-        cells = []
-        for target in rows:
-            regions = []
-            for first in (True, False):
-                for priority, label, value, style, force in target['regions']:
-                    if priority != first:
-                        continue
-                    if len(target['regions']) == 1 and not force and 'Unknown' not in value:
-                        label = ''
-                    regions.append(_part(label, value, style))
-            cells.append([_part('', target['name']), _join(target['results'] or target['countries']), _join(regions)])
-        groups.append((CONTRACT['titles'][index], cells))
+            cells = [_part('', p['name']), _part('', ('○ ' if label == 'Unknown' else '● ') + label, COLOR[label]), _part('', code)]
+            if source == 'extra' and row['id'] in local_ids and p['purpose'] in ('video', 'music'):
+                regional.append(cells)
+            else:
+                buckets[PURPOSES.index(p['purpose'])].append(cells)
+    groups = [(CONTRACT['titles'][i], rows) for i, rows in enumerate(buckets) if rows]
+    if regional:
+        groups.append(('Regional media — ' + CONTRACT['region_titles'][region], regional))
     return groups
 
 

@@ -44,25 +44,9 @@
     },
     {
       "array": "services",
-      "id": "google",
-      "name": "Google",
-      "kind": "country",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
       "id": "google_captcha",
       "name": "Google Search captcha",
       "kind": "blocked",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
-      "id": "youtube",
-      "name": "YouTube",
-      "kind": "country",
       "action": "keep unchanged",
       "source": "internal/geo/services.go:46-69"
     },
@@ -78,30 +62,6 @@
       "array": "services",
       "id": "twitch",
       "name": "Twitch",
-      "kind": "country",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
-      "id": "chatgpt",
-      "name": "ChatGPT",
-      "kind": "country",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
-      "id": "netflix",
-      "name": "Netflix",
-      "kind": "country",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
-      "id": "spotify",
-      "name": "Spotify",
       "kind": "country",
       "action": "keep unchanged",
       "source": "internal/geo/services.go:46-69"
@@ -124,25 +84,9 @@
     },
     {
       "array": "services",
-      "id": "reddit",
-      "name": "Reddit",
-      "kind": "country",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
       "id": "reddit_guest",
       "name": "Reddit guest access",
       "kind": "availability",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
-      "id": "prime",
-      "name": "Amazon Prime Video",
-      "kind": "country",
       "action": "keep unchanged",
       "source": "internal/geo/services.go:46-69"
     },
@@ -166,14 +110,6 @@
       "array": "services",
       "id": "playstation",
       "name": "PlayStation",
-      "kind": "country",
-      "action": "keep unchanged",
-      "source": "internal/geo/services.go:46-69"
-    },
-    {
-      "array": "services",
-      "id": "tiktok",
-      "name": "TikTok",
       "kind": "country",
       "action": "keep unchanged",
       "source": "internal/geo/services.go:46-69"
@@ -204,27 +140,6 @@
     },
     {
       "array": "ai_endpoints",
-      "id": "openai",
-      "name": "OpenAI",
-      "action": "keep unchanged",
-      "source": "internal/ai/endpoints.go:36-85"
-    },
-    {
-      "array": "ai_endpoints",
-      "id": "anthropic",
-      "name": "Anthropic",
-      "action": "keep unchanged",
-      "source": "internal/ai/endpoints.go:36-85"
-    },
-    {
-      "array": "ai_endpoints",
-      "id": "gemini",
-      "name": "Google Gemini",
-      "action": "keep unchanged",
-      "source": "internal/ai/endpoints.go:36-85"
-    },
-    {
-      "array": "ai_endpoints",
       "id": "deepseek",
       "name": "DeepSeek",
       "action": "keep unchanged",
@@ -234,13 +149,6 @@
       "array": "ai_endpoints",
       "id": "qwen_intl",
       "name": "Qwen (Singapore)",
-      "action": "keep unchanged",
-      "source": "internal/ai/endpoints.go:36-85"
-    },
-    {
-      "array": "ai_endpoints",
-      "id": "qwen_cn",
-      "name": "Qwen (Beijing)",
       "action": "keep unchanged",
       "source": "internal/ai/endpoints.go:36-85"
     },
@@ -4218,14 +4126,10 @@
     "ZWE": "ZW"
   },
   "ai_vendors": {
-    "openai": "OpenAI",
-    "anthropic": "Anthropic",
-    "gemini": "Google",
     "deepseek": "DeepSeek",
     "qwen_intl": "Alibaba",
-    "qwen_cn": "Alibaba",
     "moonshot": "Moonshot",
     "zhipu": "Zhipu"
   },
-  "supported_contract": "v0.5.6 raw168/platform145"
+  "supported_contract": "v0.5.7 raw156/single-probe-regional"
 }

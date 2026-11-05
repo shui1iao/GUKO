@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.7.1] - 2026-11-05
+
+### 真正单主探针与区域媒体恢复
+- 同步CLI v0.5.7：真正删除12项重复测量，不是只隐藏或重排；原生22=access6/services12/ai4，extra134完整保留，完整raw156。破坏性删除services google/youtube/chatgpt/netflix/spotify/reddit/prime/tiktok与AI openai/anthropic/gemini/qwen_cn；保留raw字段/语义/顺序不造alias。
+- ChatGPT/Claude/Gemini仅现有Web客户端，Netflix仅片库、PrimeVideo仅访问；Qwen国际与DeepSeek/Kimi/GLM准确标(API)。每普通平台一个主状态，不再并列Web/API/Geo，Region只用该探针真实国码，没有就空。Google Search captcha原反转、Spotify Legacy signup endpoint严格Unknown/限定No不变。
+- 恢复Regional media — <地区英文名>；仍默认global＋实际出口对应一个地区，不是all-region。所选区域Video/Music样本按原名/Selected顺序独立显示，包括B-Global四样本及Sky/HuluJP/RakutenJP/Bilibili版权产品，不按品牌合并。非媒体地区项仍归用途，原六用途加有内容Regional最多七组；字体/三列/单框/颜色/宽度不升级。
+- 旧版并未物理删除134区域目录；本版恢复丢失栏目/原名并减少核心重复请求。global28/JP54/NA65/EU58/SEA39。
+
+### 严格契约与保留
+- 新任务明确支持CLI0.5.7 raw156/single-probe-regional，同次机器JSON+ANSI仅跑一次；严格raw/selection/原名/顺序/单状态/颜色/自然换行核对，不用bot重绘结果替代原terminal。未知未来版本/坏hash/缺source拒绝，逐任务查latest/同次冻结和ownedcleanup保。
+- 旧历史0.5.4/0.5.6原图/JSON/sourceoffer重发不重测、不改标签。0.7.0的Kat PF_KTHREAD/动作/hash修复、SS/AnyTLS确认安装、VLESS新入口删除、Snell原行为及TCP/NextTrace/IPQ/NQ/GB5等全部保留。
+- GB5官方无法确认latest5仍停止，不退5.5.1或6。Kat输出只是磁盘配置快照，非连通性/当前生效凭据保证。
+- 两仓准确源码与离线回归在公开前同步就绪；完整许可/对应源与双架构镜像发布。未做真实业务扫描/测速/安装/TG消息，arm64交编/QEMU构建不冒实机功能验收；验证详情见交付FINAL。
+- **公开发布不代表SG已更新或短链已切换**：本包只准备SG准确镜像/私有回滚材料，生产仍旧local，主控另确认用户当时空闲后单服务切换；CLI短链也归主控。
+
 ## [0.7.0] - 2026-11-05
 
 ### 累计功能

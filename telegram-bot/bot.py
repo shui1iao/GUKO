@@ -37,7 +37,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.0').strip() or '0.7.0'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.1').strip() or '0.7.1'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -731,7 +731,7 @@ def tool_source_html(item):
 
 
 def stream_source_offer(job):
-    return tool_source_html(job) + '\nGUKO对应源：https://github.com/shui1iao/GUKO/releases/download/v0.7.0/guko-v0.7.0-source.zip'
+    return tool_source_html(job) + '\nGUKO对应源：https://github.com/shui1iao/GUKO/releases/download/v0.7.1/guko-v0.7.1-source.zip'
 
 
 def source_repo(kind):

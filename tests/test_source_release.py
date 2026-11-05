@@ -28,7 +28,7 @@ class ExactSourceTest(unittest.TestCase):
             def build():
                 return subprocess.run([sys.executable,str(root/'scripts/build-source.py')],capture_output=True,text=True)
             a=build();self.assertEqual(a.returncode,0,a.stderr)
-            target=root/'dist/guko-v0.7.0-source.zip';first=target.read_bytes()
+            target=root/('dist/guko-v'+(root/'version.txt').read_text().strip()+'-source.zip');first=target.read_bytes()
             b=build();self.assertEqual(b.returncode,0,b.stderr);self.assertEqual(first,target.read_bytes())
             with zipfile.ZipFile(target) as z:
                 self.assertEqual({n.split('/',1)[1] for n in z.namelist()},set(required))

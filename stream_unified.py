@@ -114,7 +114,7 @@ def validate_output(raw, code, *, family='auto'):
     if source != {'repository': 'https://github.com/remnawave/geocheck', 'tag': 'v0.3.0', 'commit': SOURCE_COMMIT, 'port': 'Go v0.4.0 standalone three-group extraction with conservative error handling'}:
         raise ValueError('Unexpected historical native source (not the CLI release version)')
     if network != {'mode': 'direct', 'address_family': 'system-selected', 'timeout_seconds': 6, 'timeout_scope': 'request including redirects and body', 'workers': 4}:
-        raise ValueError('Unexpected native34 network/resources')
+        raise ValueError('Unexpected native22 network/resources')
     region, ids, actual_family = _selection(selection, family)
     timestamp = lambda value: isinstance(value, str) and bool(re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z', value))
     if not timestamp(report.get('generated_at')):

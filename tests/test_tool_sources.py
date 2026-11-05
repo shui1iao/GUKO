@@ -23,9 +23,9 @@ def source_zip():
 
 class OfficialHTTP:
     """Frozen official-shaped metadata and bytes, not evidence of a live version."""
-    def __init__(self,repo='shui1iao/service-unlock',tag='v0.5.6',payloads=None):
+    def __init__(self,repo='shui1iao/service-unlock',tag='v0.5.7',payloads=None):
         self.repo=repo;self.tag=tag;self.calls=[];self.fail_latest=False
-        self.payloads=payloads or {'service-unlock_linux_amd64':b'OFFLINE native', 'service-unlock-v0.5.6-source.zip':source_zip()}
+        self.payloads=payloads or {'service-unlock_linux_amd64':b'OFFLINE native', 'service-unlock-v0.5.7-source.zip':source_zip()}
         self.payloads['SHA256SUMS']=''.join(digest(b)+'  '+n+'\n' for n,b in self.payloads.items()).encode()
         self.release={'id':123,'tag_name':tag,'draft':False,'prerelease':False,'assets':[
             {'name':n,'size':len(b),'digest':'sha256:'+digest(b),'browser_download_url':self.url(n)} for n,b in self.payloads.items()]}
@@ -52,7 +52,7 @@ class FrozenSourceTest(unittest.TestCase):
             self.assertEqual(a,b);self.assertFalse(m['binary']['download_cache']);self.assertTrue(n['binary']['download_cache'])
             self.assertEqual(h.calls.count('https://api.github.com/repos/shui1iao/service-unlock/releases/latest'),2)
             self.assertEqual(sum(x==h.url('service-unlock_linux_amd64') for x in h.calls),1)
-            self.assertEqual(m['commit'],SHA);self.assertIn('/v0.5.6/',m['source_offer'])
+            self.assertEqual(m['commit'],SHA);self.assertIn('/v0.5.7/',m['source_offer'])
             h.fail_latest=True
             with self.assertRaises(t.SourceError):t.stream_source('amd64')
     def test_missing_source_wrong_asset_url_bad_digest_and_sums_fail_closed(self):
@@ -61,7 +61,7 @@ class FrozenSourceTest(unittest.TestCase):
             if mode=='missing':h.release['assets']=[a for a in h.release['assets'] if 'source.zip' not in a['name']]
             elif mode=='url':h.release['assets'][0]['browser_download_url']='https://evil.invalid/binary'
             elif mode=='digest':h.release['assets'][0]['digest']='sha256:'+'f'*64
-            elif mode=='future':h.release['tag_name']='v0.5.7'
+            elif mode=='future':h.release['tag_name']='v0.5.8'
             else:
                 h.payloads['SHA256SUMS']=b'0'*64+b'  service-unlock_linux_amd64\n'
                 a=next(a for a in h.release['assets'] if a['name']=='SHA256SUMS');a.update(size=len(h.payloads['SHA256SUMS']),digest='sha256:'+digest(h.payloads['SHA256SUMS']))

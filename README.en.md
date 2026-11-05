@@ -1,4 +1,11 @@
-> **v0.7.0:** task-scoped official latest tools and read-only Kat SS/AnyTLS, explicit confirmed new installs, VLESS history only, Snell unchanged. Publication never deploys to an operator instance.
+
+## v0.7.1 / CLI v0.5.7 — single primary probe + Regional media
+
+22 native checks (6 access / 12 services / 4 AI) + all134 extra IDs. Twelve duplicate raw IDs are truly removed; normal platforms have one primary state, not Web/API/Geo sub-states. ChatGPT/Claude/Gemini retain Web; Netflix catalogue, Prime access; DeepSeek/Qwen Intl/Kimi/GLM are explicitly API. Region only comes from that retained probe, otherwise empty. Spotify's conservative Legacy signup endpoint and Google captcha semantics remain.
+
+Restore `Regional media — <English region>` for selected regional Video/Music extras using original sample names/order. Global + one auto-exit region only; no all-region scan. B-Global/Sky/HuluJP/RakutenJP/Bilibili copyright samples remain independent, and non-media stay in their proper purpose. Same font, single rounded frame, three columns and styles. Raw deletion is a breaking catalogue change; no aliases or fabricated results. Old history is replayed unchanged. See CHANGELOG for exact removals/limits; official source offer is this version's complete release ZIP. Publishing alone does not switch SG production or the CLI short link.
+
+> **v0.7.1:** task-scoped official latest tools and read-only Kat SS/AnyTLS, explicit confirmed new installs, VLESS history only, Snell unchanged. Publication never deploys to an operator instance.
 
 # GUKO
 
@@ -441,7 +448,7 @@ Original portions: MIT. Unified integration modifications: AGPL-3.0-only; the co
 The public Dockerfile builds linux/amd64 and linux/arm64 independently of private
 local images. Every new task resolves official latest metadata and freezes its
 binary, hashes and complete source; failures never fall back to old cache.
-The explicit v0.5.6 raw168/platform145 contract is supported; unknown future
+The explicit v0.5.7 raw156/single-probe-regional contract is supported; unknown future
 contracts stop. Existing history is not rerun or relabelled.
 
 `python scripts/build-source.py` creates tracked exact GUKO Corresponding Source;
@@ -449,7 +456,7 @@ per-task CLI complete source is offered independently at its frozen release.
 No inventory, credentials, private fonts or recursive generated archives are
 included. MIT/AGPL obligations and third-party notices remain intact.
 
-## Kat proxy integration (v0.7.0)
+## Kat proxy integration (v0.7.1)
 
 SS and AnyTLS each have one entry reading all supported Kat instances through
 a bounded POSIX/systemd/proc snapshot, parsed inside GUKO. Existing nodes never
@@ -466,4 +473,4 @@ not connectivity or effective-credential verification. Unknown TLS export is mar
 unsupported, never silently insecure. Release verification uses offline regressions and isolated containers, not live
 measurements, installations or Telegram messages. Publishing does not deploy.
 
-Exact Corresponding Source: https://github.com/shui1iao/GUKO/releases/download/v0.7.0/guko-v0.7.0-source.zip ; verify SHA256SUMS in the same Release. OCI revision identifies the source commit. MIT/AGPL and third-party notices remain applicable.
+Exact Corresponding Source: https://github.com/shui1iao/GUKO/releases/download/v0.7.1/guko-v0.7.1-source.zip ; verify SHA256SUMS in the same Release. OCI revision identifies the source commit. MIT/AGPL and third-party notices remain applicable.
