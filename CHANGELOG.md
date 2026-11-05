@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.3] - 2026-11-05 — 全项目执行器解耦
+
+- 所有直接入口按上游执行器边界工作：每任务官方查新、冻结同次version/commit/hash/source，失败不退旧；普通release/检测项增删/地区字段/标题顺序布局/源码重构不再要求机器人静态适配。
+- Stream只校验既有guko-unified-v1 --machine完整信封、退出协议和UTF8/JSON/大小/终端控制安全，原terminal安全渲染、原JSON存档；不重算Unknown/国家/主结论，不复刻检测目录、列色和source祖先。额外业务字段/未来同协议发行原样保。
+- TCP/IPQ/NQ/Snell去源码token指纹；保TCP必要no-rootfs/CLI实际help、NQ自选项/IPv4IPv6和原报告、IPQ官方链接、NextTrace用户target/临时asset。可选图片/链接提取失配时保留完整原输出和历史，区分执行失败与展示失败。NQ不再sed改上游源码，当前分项可用本次stdout原报告切片；未知布局退原文而非猜测。
+- Kat SS/AnyTLS不按普通core版本或manager实现token放行；保配置shape/TLS/凭据/哈希、只读已有、不能升级共享核、缺前置不补、一次确认和多次竞态guard；执行前实际CLI --help解析所需参数，复用核显式指定原binary/hash。未知真实配置/操作协议仍停止。Snell原渠道可含beta，已有只读/缺才原安装保；VLESS不复活。
+- NextTrace/GB5/BGP/IPPure原已合理解耦的来源边界不乱改；GB5仍5系列，官方无法确认latest5即停止，不猜CDN/退5.5.1/迁6。NQ内部依赖和自有renderer/字体不热更新。
+- 完整对应源、许可、历史和取消timeout owned清理保。准确源独立构建/回归及匿名关键消费证据随交付；mock不是现场，arm64仅QEMU构建非实机。本次仅正式公开及SG pull/新回滚准备，不改生产compose/容器/CLI/短链，主控另取当时空闲确认后单服务更新。
+
 ## [0.7.2] - 2026-11-05 — 六主项目的辅助地区恢复
 
 - 对接CLI v0.5.8，ChatGPT/TikTok/YouTube/Spotify/Reddit/Google从官方同平台来源补辅助国家；仍每平台一项目一主结果，22+134/Regional原名及auto单地区不变。

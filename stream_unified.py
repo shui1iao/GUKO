@@ -1,196 +1,65 @@
-"""GUKO unified integration, AGPL-3.0-only; original MIT portions preserved. No imports perform network I/O.
+"""Official CLI execution/transport only, AGPL-3.0-only.
 
-Transport is injected from bot.py's existing SSH builder/auth environment.
-No new SSH policy, provider framework, or remote runtime.
+The CLI owns catalogue, verdicts, geography and presentation. GUKO only
+accepts a complete supported machine envelope and safely relays its original
+terminal/report. No imports perform network I/O. SSH policy remains in bot.py.
 """
 import asyncio
 import hashlib
 import json
-import math
 import os
-from pathlib import Path
 import re
 import shlex
 import signal
 import uuid
 import tool_sources
-from stream_terminal import validate_terminal
 
-CATALOGUE = json.loads((Path(__file__).resolve().parent / 'unified_catalogue.json').read_text())
-ACCESS = tuple((r['id'], r['name']) for r in CATALOGUE['native'] if r['array'] == 'results')
-SERVICES = tuple((r['id'], r['name'], r['kind']) for r in CATALOGUE['native'] if r['array'] == 'services')
-AI = tuple((r['id'], r['name']) for r in CATALOGUE['native'] if r['array'] == 'ai_endpoints')
-EXTRA = {r['function']: r for r in CATALOGUE['extra']}
-AUX_SERVICE_REGIONS = frozenset(('google_captcha', 'spotify_signup', 'reddit_guest'))
-AUX_ACCESS_REGIONS = frozenset(('chatgpt_web', 'youtube_premium_access', 'tiktok_access'))
 MAX_OUTPUT = 2 * 1024 * 1024
-SOURCE_COMMIT = '50e084bb3ed34b55fc6839fe0dc4bafd9fe275fc'
-EXTRA_COMMIT = 'b6d4a6f9a87fc6eae6d3e62d0092ececcec8e844'
+FORMAT = 'guko-unified-v1'
+SGR = re.compile(r'\x1b\[[0-9;:]{0,120}m')
 
 
 def normalize_terminal(text):
+    # Name retained for callers; intentionally no normalization/reconstruction.
     if not isinstance(text, str) or not text.strip() or len(text.encode('utf-8')) > MAX_OUTPUT:
-        raise ValueError('Unified ANSI report is empty or oversized')
-    return text.replace('\r\n', '\n').rstrip('\r\n') + '\n'
+        raise ValueError('CLI terminal is empty or oversized')
+    plain = SGR.sub('', text)
+    if any(ord(c) < 32 and c not in '\n\r\t' or 0x7f <= ord(c) <= 0x9f for c in plain):
+        raise ValueError('Unsafe terminal control; only SGR/text is supported')
+    return text
 
 
 def _unique_object(pairs):
-    out = {}
+    result = {}
     for key, value in pairs:
-        if key in out:
+        if key in result:
             raise ValueError('Duplicate JSON key')
-        out[key] = value
-    return out
-
-
-def selected_ids(region):
-    if region not in CATALOGUE['groups']:
-        raise ValueError('Unsupported inventory region')
-    return list(dict.fromkeys(CATALOGUE['groups']['global'] + ([] if region == 'global' else CATALOGUE['groups'][region])))
-
-
-def _country(value):
-    return CATALOGUE['region_codes'].get(value or '', '')
-
-
-def _selection(selection, family):
-    if not isinstance(selection, dict) or selection.get('requested_region') != 'auto':
-        raise ValueError('GUKO requires actual exit-country auto selection')
-    if set(selection) - {'region', 'requested_region', 'extra_family_requested', 'extra_family', 'extra_expected_ids', 'extra_source_commit', 'detected_country', 'detection_source', 'detection_error', 'resolution_reason'}:
-        raise ValueError('Unexpected selection/identity metadata')
-    country, source, error = (selection.get(k, '') for k in ('detected_country', 'detection_source', 'detection_error'))
-    reason, region = selection.get('resolution_reason'), selection.get('region')
-    if reason in ('country_mapped', 'unsupported_region_country'):
-        if not isinstance(country, str) or len(country) != 2 or _country(country) != country or country == 'UK' or error:
-            raise ValueError('Invalid detected country')
-        if source not in ('https://www.cloudflare.com/cdn-cgi/trace', 'https://api.ip.sb/geoip'):
-            raise ValueError('Invalid detection source')
-        mapped = CATALOGUE['country_groups'].get(country)
-        if reason == 'country_mapped' and (not mapped or region != mapped):
-            raise ValueError('Country/group mismatch')
-        if reason == 'unsupported_region_country' and (mapped or region != 'global'):
-            raise ValueError('Unexpected unsupported-country resolution')
-    elif reason == 'detection_failed':
-        if country or source or region != 'global' or not isinstance(error, str):
-            raise ValueError('Invalid detection failure')
-        codes = r'(request_failed|http_[0-9]{3}|unexpected_final_endpoint|challenge|response_too_large|invalid_country_response)'
-        if error not in ('no_extra_family_route', 'detection_budget_exhausted') and not re.fullmatch(r'cloudflare_trace:' + codes + r'; ip_sb_country:' + codes, error):
-            raise ValueError('Unrecognized/unsafe detection error')
-    else:
-        raise ValueError('Invalid auto resolution reason')
-    ids = selected_ids(region)
-    if selection.get('extra_source_commit') != EXTRA_COMMIT or selection.get('extra_expected_ids') != ids or selection.get('extra_family_requested') != family:
-        raise ValueError('Unexpected unified selection')
-    actual = selection.get('extra_family')
-    if type(actual) is not int or actual not in (0, 4, 6) or family in ('4', '6') and actual != int(family):
-        raise ValueError('Invalid extra family')
-    if actual == 0 and (reason != 'detection_failed' or error != 'no_extra_family_route'):
-        raise ValueError('No-route family must explain failed detection')
-    return region, ids, actual
-
-
-def selection_label(selection):
-    region = selection['region']
-    names = {'global': 'Global', 'tw': 'Taiwan', 'hk': 'Hong Kong', 'jp': 'Japan', 'na': 'North America', 'sa': 'South America', 'eu': 'Europe', 'oc': 'Oceania', 'kr': 'Korea', 'sea': 'Southeast Asia', 'af': 'Africa'}
-    reason = selection['resolution_reason']
-    if reason == 'country_mapped':
-        return 'Automatic region: %s -> %s (%s)' % (selection['detected_country'], names[region], region)
-    if reason == 'unsupported_region_country':
-        return 'Automatic region: %s -> Global (unsupported_region_country)' % selection['detected_country']
-    return 'Automatic region: unavailable -> Global (detection_failed)'
+        result[key] = value
+    return result
 
 
 def validate_output(raw, code, *, family='auto'):
-    if family not in ('auto', '4', '6') or type(code) is not int or code not in (0, 1) or not isinstance(raw, str) or len(raw.encode()) > MAX_OUTPUT:
-        raise ValueError('Unified execution/output failed')
-    doc = json.loads(raw, object_pairs_hook=_unique_object,
-                     parse_constant=lambda v: (_ for _ in ()).throw(ValueError('Nonfinite JSON')))
-    if not isinstance(doc, dict) or set(doc) != {'format', 'report', 'terminal'} or doc.get('format') != 'guko-unified-v1':
-        raise ValueError('Invalid unified envelope')
-    report = doc.get('report')
-    if not isinstance(report, dict) or type(report.get('schema_version')) is not int or report.get('schema_version') != 1:
-        raise ValueError('Invalid unified schema')
-    if set(report) != {'schema_version', 'source', 'generated_at', 'network', 'results', 'services', 'ai_endpoints', 'extra_checks', 'selection'}:
-        raise ValueError('Unexpected or missing report fields')
-    source, network, selection = report.get('source'), report.get('network'), report.get('selection')
-    if source != {'repository': 'https://github.com/remnawave/geocheck', 'tag': 'v0.3.0', 'commit': SOURCE_COMMIT, 'port': 'Go v0.4.0 standalone three-group extraction with conservative error handling'}:
-        raise ValueError('Unexpected historical native source (not the CLI release version)')
-    if network != {'mode': 'direct', 'address_family': 'system-selected', 'timeout_seconds': 6, 'timeout_scope': 'request including redirects and body', 'workers': 4}:
-        raise ValueError('Unexpected native22 network/resources')
-    region, ids, actual_family = _selection(selection, family)
-    timestamp = lambda value: isinstance(value, str) and bool(re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z', value))
-    if not timestamp(report.get('generated_at')):
-        raise ValueError('Invalid report timestamp')
-    identities = [('results', ACCESS), ('services', SERVICES), ('ai_endpoints', AI),
-                  ('extra_checks', tuple((i, 'Amazon Prime Video (access)' if i == 'MediaUnlockTest_PrimeVideo' else EXTRA[i]['display_name']) for i in ids))]
-    errors, displayed = 0, {}
-    for field, expected in identities:
-        rows = report.get(field)
-        if not isinstance(rows, list) or len(rows) != len(expected):
-            raise ValueError('Incomplete unified ' + field)
-        displayed[field] = []
-        for row, identity in zip(rows, expected):
-            if not isinstance(row, dict) or row.get('id') != identity[0] or row.get('name') != identity[1]:
-                raise ValueError('Wrong/duplicated/reordered unified ID or name')
-            common = {'id', 'name', 'status', 'detail', 'error', 'checked_at', 'elapsed_ms'}
-            fields = {'results': {'platform', 'region'}, 'services': {'type', 'value'}, 'ai_endpoints': {'vendor', 'http_status'}, 'extra_checks': {'source_function', 'source_line', 'scope', 'family', 'region'}}
-            expected_fields = common | fields[field]
-            if field == 'services' and identity[0] in AUX_SERVICE_REGIONS and 'region' in row:
-                expected_fields = expected_fields | {'region'}
-            if set(row) != expected_fields:
-                raise ValueError('Unexpected or missing row fields')
-            status = row.get('status')
-            allowed = {'available', 'restricted', 'blocked', 'error'} if field in ('results', 'extra_checks') else {'observed', 'error'} if field == 'services' else {'reachable', 'blocked', 'error'}
-            if status not in allowed or not isinstance(row.get('detail'), str) or len(row['detail']) > 8192:
-                raise ValueError('Invalid unified status/detail')
-            elapsed = row.get('elapsed_ms')
-            if type(elapsed) not in (int, float) or not math.isfinite(elapsed) or elapsed < 0 or not timestamp(row.get('checked_at')):
-                raise ValueError('Invalid unified timing')
-            if status == 'error':
-                errors += 1
-                if not isinstance(row.get('error'), str) or not row['error'] or len(row['error']) > 8192:
-                    raise ValueError('Unknown without evidence')
-            elif row.get('error') is not None:
-                raise ValueError('Contradictory error')
-            region_value = row.get('region')
-            if region_value is not None and (not isinstance(region_value, str) or not re.fullmatch('[A-Z]{2,3}', region_value) or not _country(region_value)):
-                raise ValueError('Invalid result region')
-            if (field == 'services' and 'region' in row or field == 'results' and identity[0] in AUX_ACCESS_REGIONS and region_value is not None):
-                if not isinstance(region_value, str) or len(region_value) != 2 or _country(region_value) != region_value or region_value in ('WW', 'EU', 'UK'):
-                    raise ValueError('Invalid auxiliary ISO2 region')
-            if field == 'services':
-                if row.get('type') != identity[2]:
-                    raise ValueError('Wrong native observation type')
-                value = row.get('value')
-                if status == 'error' and value is not None or status != 'error' and ((identity[2] == 'country' and (not isinstance(value, str) or len(value) != 2 or not _country(value))) or identity[2] != 'country' and value not in ('yes', 'no')):
-                    raise ValueError('Invalid service value')
-                if identity[0] == 'spotify_signup' and status != 'error' and (value != 'no' or row['detail'] != 'legacy anonymous signup endpoint explicitly rejected this request as a proxy (status320); actual registration/login not tested'):
-                    raise ValueError('Unsupported Spotify signup eligibility claim')
-                label = 'Unknown' if status == 'error' else ('Yes' if identity[2] == 'country' or (value == 'no' if identity[2] == 'blocked' else value == 'yes') else 'No')
-                display_region = _country(value) if identity[2] == 'country' else _country(region_value)
-            else:
-                label = {'available': 'Yes', 'reachable': 'Yes', 'blocked': 'No', 'restricted': 'Limited', 'error': 'Unknown'}[status]
-                display_region = '' if field == 'ai_endpoints' else _country(region_value)
-            if field == 'results' and row.get('platform') != ('ChatGPT' if identity[0] == 'chatgpt_web' else identity[1]):
-                raise ValueError('Invalid legacy platform')
-            if field == 'ai_endpoints' and row.get('vendor') != CATALOGUE['ai_vendors'][identity[0]]:
-                raise ValueError('Invalid AI vendor')
-            if field == 'ai_endpoints' and (type(row.get('http_status')) is not int or row['http_status'] not in range(600)):
-                raise ValueError('Invalid AI status')
-            if field == 'extra_checks':
-                c = EXTRA[identity[0]]
-                if row.get('source_function') != identity[0] or row.get('source_line') != c['source_line'] or type(row.get('family')) is not int or row.get('family') != actual_family or row.get('scope') != ('global' if 'global' in c['groups'] else region):
-                    raise ValueError('Extra source/family/scope mismatch')
-                if (c['safety_exception'] or c['ipv6_unsupported_guard'] and actual_family == 6 or actual_family == 0) and status != 'error':
-                    raise ValueError('Unsupported check claims a verdict')
-                if region_value is not None and len(region_value) != 2:
-                    raise ValueError('Extra region not ISO2')
-            displayed[field].append((identity[1], label, display_region))
-    if (errors > 0) != (code == 1):
-        raise ValueError('Exit code contradicts complete results')
-    terminal = normalize_terminal(doc.get('terminal'))
-    validate_terminal(terminal, report, selection_label(selection), _country)
-    return report, terminal, errors
+    """Minimal --machine execution contract, never business validation.
+
+    Exit 1 with a complete envelope is upstream's inconclusive report. We do
+    not count Unknowns or compare any verdict, ID, country, row or ANSI style.
+    Additional envelope/report fields are preserved, not an adapter upgrade.
+    """
+    if family not in ('auto', '4', '6') or type(code) is not int or code not in (0, 1):
+        raise ValueError('CLI execution failed; no previous version used')
+    if not isinstance(raw, str) or not raw.strip() or len(raw.encode('utf-8')) > MAX_OUTPUT:
+        raise ValueError('CLI machine output is empty or oversized')
+    try:
+        doc = json.loads(raw, object_pairs_hook=_unique_object,
+                         parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Nonfinite JSON')))
+        if not isinstance(doc, dict) or doc.get('format') != FORMAT or not isinstance(doc.get('report'), dict) or not doc['report']:
+            raise ValueError('Unsupported or incomplete CLI machine envelope')
+        # Reject invalid Unicode even inside untrusted raw report metadata.
+        json.dumps(doc, ensure_ascii=False).encode('utf-8', errors='strict')
+        terminal = normalize_terminal(doc.get('terminal'))
+    except (UnicodeError, RecursionError, json.JSONDecodeError):
+        raise ValueError('Invalid CLI JSON/UTF8 envelope') from None
+    return doc['report'], terminal, code == 1
 
 
 async def process(args, *, timeout, env=None, payload=None, max_output=MAX_OUTPUT):

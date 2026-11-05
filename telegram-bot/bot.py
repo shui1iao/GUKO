@@ -37,7 +37,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.2').strip() or '0.7.2'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.3').strip() or '0.7.3'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -67,9 +67,6 @@ SCRIPT_SOURCES = {
     'anytls': ('Kat-Manager', 'https://github.com/shui1iao/Kat-Manager'),
     'snell': ('Snell-Manager', 'https://github.com/shui1iao/Snell-Manager'),
 }
-REGIONRESTRICTION_URL = 'https://raw.githubusercontent.com/lmc999/RegionRestrictionCheck/main/check.sh'
-REGIONRESTRICTION_REGIONS = {'tw': 1, 'hk': 2, 'jp': 3, 'na': 4, 'sa': 5, 'eu': 6,
-                             'oc': 7, 'kr': 8, 'sea': 9, 'af': 11}
 PROXY_TOOLS = {
     'ss': {
         'name': 'Kat SS',
@@ -731,7 +728,7 @@ def tool_source_html(item):
 
 
 def stream_source_offer(job):
-    return tool_source_html(job) + '\nGUKO对应源：https://github.com/shui1iao/GUKO/releases/download/v0.7.2/guko-v0.7.2-source.zip'
+    return tool_source_html(job) + '\nGUKO对应源：https://github.com/shui1iao/GUKO/releases/download/v0.7.3/guko-v0.7.3-source.zip'
 
 
 def source_repo(kind):
@@ -1144,6 +1141,9 @@ def tcpquality_remote_command(mode, source):
         'cleanup() { rm -rf "$bundle"; }; '
         "trap cleanup EXIT; trap 'exit 130' HUP INT TERM; "
         + downloads + 'chmod 700 "$bundle/runTcpQuality.sh" "$bundle/runTcpQuality-core.sh"; '
+        + 'timeout 20 bash "$bundle/runTcpQuality.sh" --rootfs-help >"$bundle/help" 2>&1 || exit 65; '
+        + 'grep -Fq -- --no-rootfs "$bundle/help" || { echo "GUKO: TCP no-rootfs interface unavailable"; exit 65; }; '
+        + 'timeout 20 bash "$bundle/runTcpQuality-core.sh" '+args+' --help >"$bundle/help" 2>&1 || { echo "GUKO: TCP arguments unsupported"; exit 65; }; '
         + 'TCPQUALITY_RAW_BASE=' + shlex.quote(source['raw_base']) + ' '
         + 'bash "$bundle/runTcpQuality.sh" --no-rootfs ' + args
     )
@@ -1313,13 +1313,6 @@ def nq_remote_ipv_arg(s, ip_mode):
     return '' if ip_mode == '46' else '-4'
 
 
-def nodequality_patch_command():
-    return (
-        "sed -i 's#rm -rf \\\"${work_dir}\\\"/#: \\\"${work_dir}\\\"#' \"$script\"; "
-        "sed -i 's#response=$(\\$pingcom 2>\\&1)#response=$(timeout -s SIGKILL 15 $pingcom 2>\\&1)#' \"$script\"; "
-    )
-
-
 def validate_nodequality_work_dir(work_dir):
     if not isinstance(work_dir, str) or not re.fullmatch(r'/root/guko-nodequality-[0-9a-f]{32}', work_dir):
         raise ValueError('不合法的本次 NodeQuality 日志目录')
@@ -1335,14 +1328,6 @@ def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4', *, work_dir=Non
         validate_nodequality_work_dir(work_dir)
         quoted = shlex.quote(work_dir)
         log_setup = f'umask 077; mkdir -m 700 -- {quoted}; '
-        filenames = ' '.join(item[3] for item in NQ_ANSI_REPORTS)
-        preserve = (
-            f'for fn in {filenames}; do '
-            f'[ ! -f "$work_dir/BenchOs/result/$fn" ] || '
-            f'cp -- "$work_dir/BenchOs/result/$fn" {quoted}/; done; '
-            'rm -rf $work_dir/BenchOs'
-        )
-        log_patch = 'sed -i ' + shlex.quote('s#rm -rf $work_dir/BenchOs#' + preserve + '#') + ' "$script"; '
         dir_arg = ' -d ' + quoted
     answers = nq_answer_script(mask)
     ipv_arg = nq_remote_ipv_arg(s, ip_mode)
@@ -1363,31 +1348,12 @@ def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4', *, work_dir=Non
         + "script=$(mktemp /root/nodequality.XXXXXX.sh); "
         + "trap 'rm -f -- \"$script\"' EXIT; "
         + tool_sources.shell_download(source, '"$script"')
-        + nodequality_patch_command()
-        + log_patch
         + "printf %b " + shlex.quote(answers) + " | bash \"$script\" " + ipv_arg + dir_arg
     )
 
 
-STREAM_REGION_BY_COUNTRY = {
-    'tw': ('tw', '全球 + 台湾'),
-    'hk': ('hk', '全球 + 香港'),
-    'mo': ('hk', '全球 + 香港'),
-    'jp': ('jp', '全球 + 日本'),
-    'kr': ('kr', '全球 + 韩国'),
-    **{code: ('sea', '全球 + 东南亚') for code in ('sg', 'my', 'th', 'id', 'ph', 'vn', 'kh', 'la', 'mm', 'bn', 'tl')},
-    **{code: ('na', '全球 + 北美') for code in ('us', 'ca', 'mx', 'gl', 'bm')},
-    **{code: ('sa', '全球 + 南美') for code in ('br', 'ar', 'cl', 'co', 'pe', 've', 'uy', 'py', 'bo', 'ec', 'gy', 'sr')},
-    **{code: ('oc', '全球 + 大洋洲') for code in ('au', 'nz', 'fj', 'pg', 'ws', 'to', 'vu', 'nc', 'pf')},
-    **{code: ('af', '全球 + 非洲') for code in ('za', 'ng', 'ke', 'gh', 'eg', 'ma', 'dz', 'tn', 'et', 'tz', 'ug', 'sn', 'ci', 'ao', 'mz', 'bw', 'na', 'zw', 'zm')},
-    **{code: ('eu', '全球 + 欧洲') for code in ('gb', 'uk', 'ie', 'fr', 'de', 'nl', 'be', 'lu', 'es', 'pt', 'it', 'ch', 'at', 'pl', 'cz', 'sk', 'hu', 'ro', 'bg', 'gr', 'cy', 'mt', 'dk', 'se', 'no', 'fi', 'is', 'ee', 'lv', 'lt', 'si', 'hr', 'rs', 'ba', 'me', 'mk', 'al', 'md', 'ua')},
-}
 
 
-def stream_region_for_server(s):
-    # Legacy helper for historical RRC commands, NOT used by new stream tasks.
-    code = str(s.get('country') or '').strip().lower()
-    return STREAM_REGION_BY_COUNTRY.get(code, ('', '全球平台（自动识别）'))
 
 
 def stream_menu_text(s):
@@ -1876,6 +1842,9 @@ def history_append(jid, job):
         'media_paths': job.get('media_paths') or ([] if not job.get('media_path') else [job.get('media_path')]),
         'log_tail': trim_log(strip_ansi(job.get('log') or ''), 3500),
     }
+    for field in ('raw_path', 'artifact_error', 'render_error', 'extraction_error', 'exit_code'):
+        if field in job:
+            item[field] = job[field]
     if job.get('kind') == 'stream':
         item.update({key: job.get(key) for key in
                      ('exit_code', 'proto', 'render_error', 'artifact_error', 'raw_path', 'json_path', 'report_format', 'unknown_count', 'extra_family', 'selection', 'cleanup_error')})
@@ -2832,6 +2801,34 @@ async def read_nodequality_ansi_logs(s, work_dir, selected):
     return logs
 
 
+def nodequality_stdout_logs(output, selected):
+    """Best-effort original slices; titles/URLs are display aids, not gates.
+
+    Official NodeQuality tees each selected subreport to this invocation's
+    stdout. No sed of upstream code or watcher/cross-task log search required.
+    If the optional extraction fails, the complete original stdout is relayed.
+    """
+    logs = {}
+    for _label, kind, bit, _filename in NQ_ANSI_REPORTS:
+        if not selected & bit:
+            continue
+        urls = all_report_urls(output, kind)
+        if not urls:
+            continue
+        url = urls[-1]
+        end = output.rfind(url)
+        lines = output[:end].split('\n')
+        headers = [i for i, line in enumerate(lines) if re.search(r'体检报告|QUALITY CHECK REPORT', strip_ansi(line), re.I)]
+        if not headers:
+            continue
+        first = headers[-1]
+        if first and re.fullmatch(r'\s*#{20,}\s*', strip_ansi(lines[first-1])):
+            first -= 1
+        start = sum(len(line)+1 for line in lines[:first])
+        logs[kind] = output[start:end+len(url)]
+    return logs
+
+
 async def send_ansi_report_images(bot, chat_id, report_links, prefix, raw_logs):
     """New reports use ANSI only; legacy SVG helper/history stay compatible."""
     out_dir = Path('/tmp/guko-results')
@@ -3192,6 +3189,41 @@ async def run_proxy_tool_task(bot, chat_id, s, jid, kind, action, mode=None, req
         finish_job(jid, key)
 
 
+def preserve_tool_output(s, jid, kind, output):
+    job = JOBS[jid]
+    if not isinstance(output, str):
+        raise ValueError('Tool output is not UTF8 text')
+    body = output.encode('utf-8', errors='strict')
+    if len(body) > ANSI_MAX_BYTES:
+        raise ValueError('Tool output exceeds safety limit')
+    try:
+        root = kind_result_dir(s, kind) / hashlib.sha256(str(jid).encode()).hexdigest()[:24]
+        root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = root / 'original-output.txt'
+        with path.open('x', encoding='utf-8') as handle:
+            os.chmod(path, 0o600)
+            handle.write(output)
+        job['raw_path'] = str(path)
+    except Exception:
+        job['artifact_error'] = '原始输出存档失败；检测执行状态未被替换'
+
+
+async def send_original_output(bot, chat_id, output, *, job=None):
+    # Untrusted text is HTML escaped. No three-chunk truncation, no guessed
+    # business boundaries; used only when optional image/link extraction fails.
+    plain = strip_ansi(output)
+    for start in range(0, len(plain), 500):
+        try:
+            await bot.send_message(chat_id, '<pre>'+safe(plain[start:start+500])+'</pre>', parse_mode=ParseMode.HTML)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if job is not None:
+                job['delivery_error'] = '原始报告发送未完成；执行状态/存档保留'
+            return False
+    return True
+
+
 async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
     key = (server_id(s), 'tcpq')
 
@@ -3224,6 +3256,7 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
             timeout=timeout,
             env=ssh_env_for(s),
         )
+        preserve_tool_output(s, jid, 'tcpq', out)
         report = tcpquality_url(out)
         JOBS[jid].update({
             'log': out,
@@ -3249,16 +3282,14 @@ async def run_tcpquality_task(bot, chat_id, s, jid, mode='v4'):
                 f"{script_command_html('tcpq', mode=mode, source=JOBS[jid].get('tool_source'))}",
                 parse_mode=ParseMode.HTML,
             )
-            await deliver_long_plain(trim_log(clean_output, 11700) or '脚本执行成功，但没有文本输出。')
+            await send_original_output(bot, chat_id, clean_output or '脚本执行成功，但没有文本输出。', job=JOBS[jid])
             return
 
         if not report:
-            JOBS[jid]['status'] = 'failed'
-            await deliver_message(
-                f"❌ {safe(s.get('name'))} TCPQuality 没拿到报告链接。\n"
-                f"<pre>{safe(trim_log(out))}</pre>",
-                parse_mode=ParseMode.HTML,
-            )
+            JOBS[jid].update(status='done' if code == 0 and out.strip() else 'failed', exit_code=code,
+                              extraction_error='未提取到既有官方报告URL；保留上游原始输出')
+            await deliver_message(f"TCPQuality 退出码 {code}；未提取到报告链接，以下为原始输出（不代表提取成功）。")
+            await send_original_output(bot, chat_id, out, job=JOBS[jid])
             return
 
         clear_result_files(s, 'tcpq')
@@ -3321,6 +3352,7 @@ async def run_ip_quality_task(bot, chat_id, s, jid, ip_mode='4'):
             ssh_args(s, remote, tty=False), timeout=1800 if ip_mode == '46' else 900,
             env=ssh_env_for(s), wait_for_exit=ip_mode == '46',
         )
+        preserve_tool_output(s, jid, 'ipq', out)
         ipv6_status = update_ipv6_from_output(s, out, expected_endpoint=endpoint)
         reports = ipquality_ansi_reports(out)
         if ip_mode == '4':
@@ -3330,7 +3362,11 @@ async def run_ip_quality_task(bot, chat_id, s, jid, ip_mode='4'):
         JOBS[jid].update({'status': 'done' if completed else 'failed', 'log': out,
                           'ip_mode': nq_ip_mode_text(ip_mode), 'media_paths': []})
         if not reports:
-            message = f"❌ {safe(s.get('name'))} IP质量没拿到完整报告。\n<pre>{safe(trim_log(out))}</pre>"
+            JOBS[jid].update(status='done' if code == 0 and out.strip() else 'failed', exit_code=code,
+                              extraction_error='报告边界/图片提取未识别；保留原输出')
+            await send_original_output(bot, chat_id, out, job=JOBS[jid])
+            links = all_report_urls(out, 'ip')
+            message = f"IP质量脚本退出码 {code}；未识别既有展示边界，已转发原始输出（非检测结论重建）。\n" + '\n'.join(safe(u) for u in links)
         else:
             errors = []
             media_paths = JOBS[jid]['media_paths']
@@ -3360,7 +3396,8 @@ async def run_ip_quality_task(bot, chat_id, s, jid, ip_mode='4'):
             message += f"\n\n{script_command_html('ipq', ip_mode=ip_mode)}"
             if errors:
                 message += '\n\n' + safe(trim_log('；'.join(errors), 800))
-                JOBS[jid]['delivery_error'] = '；'.join(errors)
+                JOBS[jid]['render_error'] = '；'.join(errors)
+                await send_original_output(bot, chat_id, out, job=JOBS[jid])
         if ipv6_status is not None and not ipv6_status[0]:
             message += '\n\n⚠️ 没有可用 IPv6，已更新服务器 IP 状态；本次仅测试 IPv4。'
         try:
@@ -3368,7 +3405,11 @@ async def run_ip_quality_task(bot, chat_id, s, jid, ip_mode='4'):
         except Exception as e:
             JOBS[jid]['delivery_error'] = str(e)
     except Exception as e:
-        JOBS[jid].update({'status': 'failed', 'log': repr(e)})
+        if JOBS[jid].get('status') == 'done':
+            JOBS[jid]['delivery_error'] = repr(e)
+        else:
+            JOBS[jid].update(status='failed')
+            JOBS[jid].setdefault('log', repr(e))
         try:
             await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} IP质量任务失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
         except Exception as delivery_error:
@@ -3632,6 +3673,7 @@ async def run_gb5_task(bot, chat_id, s, jid):
         source = await resolve_tool(jid, tool_sources.gb5_source)
         remote = gb5_remote_command(source)
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=3600, env=ssh_env_for(s))
+        preserve_tool_output(s, jid, 'gb5', out)
         oom_killed = GB5_OOM_MARKER in out
         out = sanitize_geekbench5_output(
             out.replace(GB5_OOM_MARKER, 'GUKO：系统内存不足，Geekbench 被 OOM Killer 终止。')
@@ -3652,112 +3694,29 @@ async def run_gb5_task(bot, chat_id, s, jid):
             await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} GB5 {reason}\n<pre>{safe(trim_log(out))}</pre>", parse_mode=ParseMode.HTML)
             return
         if scores.get('single') and scores.get('multi'):
-            img = gb5_result_image(s, scores, RESULTS_DIR / str(server_id(s)) / 'gb5' / 'latest.jpg')
-            JOBS[jid].update({'media_path': str(img)})
-            with img.open('rb') as f:
-                await bot.send_photo(chat_id, photo=f)
+            try:
+                img = gb5_result_image(s, scores, RESULTS_DIR / str(server_id(s)) / 'gb5' / 'latest.jpg')
+                JOBS[jid].update({'media_path': str(img)})
+                with img.open('rb') as f:
+                    await bot.send_photo(chat_id, photo=f)
+            except Exception:
+                JOBS[jid]['render_error'] = '可选评分图未交付；原报告URL/输出保留'
+                await send_original_output(bot, chat_id, out, job=JOBS[jid])
         await bot.send_message(chat_id, f"✅ {safe(s.get('name'))} GB5 完成\n{safe(scores['url'])}", parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as e:
-        JOBS[jid].update({'status': 'failed', 'log': repr(e)})
+        if JOBS[jid].get('status') == 'done':
+            JOBS[jid]['delivery_error'] = repr(e)
+        else:
+            JOBS[jid].update(status='failed')
+            JOBS[jid].setdefault('log', repr(e))
         await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} GB5任务失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
     finally:
         finish_job(jid, key)
 
-def parse_stream_results(text):
-    """Read official English terminal sections; retain every service/detail row.
-
-    Section + network context and at least one actual verdict are required.
-    Region/CDN/currency observations are information, never unlock verdicts.
-    """
-    clean = strip_ansi(str(text or '')).replace('\r', '\n')
-    clean = re.split(r'^\s*Testing Done!', clean, maxsplit=1, flags=re.M)[0]
-    if re.search(r'<(?:!doctype\s+html|html|body)\b', clean, re.I):
-        return []
-    section = subsection = ''
-    network = False
-    rows = []
-    for raw in clean.splitlines():
-        line = raw.strip()
-        if line.startswith('Testing Done!'):
-            break  # Upstream advertisements are outside the report.
-        if re.fullmatch(r'\*\* Checking Results Under IPv[46]', line):
-            network = True
-            section = subsection = ''
-            continue
-        heading = re.fullmatch(r'=+\[\s*([^\]]+?)\s*\]=+', line)
-        if heading and network:
-            section, subsection = heading[1], ''
-            continue
-        if re.fullmatch(r'=+', line):
-            section = subsection = ''
-            continue
-        if not section:
-            continue
-        subheading = re.fullmatch(r'---(.+?)---', line)
-        if subheading:
-            subsection = subheading[1]
-            continue
-        # Upstream aligns with tabs. Split the delimiter, not colons in names
-        # such as J:com or Project Sekai: Colorful Stage.
-        row = re.fullmatch(r'(.+?):(?:\t+| {2,})(.+)', line)
-        if not row:
-            row = re.fullmatch(r'([^:]+):\s+(.+)', line)
-        if not row:
-            continue
-        service, detail = row[1].strip(), row[2].strip()
-        if service.lower() in {'error', 'curl', 'bash', 'version', 'warning'}:
-            continue
-        informational = bool(re.search(r'\b(?:Region|CDN|Currency)\b', service, re.I)) or service == 'Google Play Store'
-        state = 'unknown'
-        if informational:
-            state = 'info'
-        elif re.match(r'Yes\b', detail):
-            state = 'available'
-        elif re.match(r'No\b', detail):
-            state = 'unavailable'
-        elif re.match(r'Failed\b', detail):
-            state = 'failed'
-        elif detail.startswith('Originals Only'):
-            state = 'originals_only'
-        elif detail.startswith(('IPv6 Is Not Currently Supported', 'Unsupported IPv6')):
-            state = 'unsupported'
-        elif detail.startswith(('Oversea Only', 'Overseas Only')):
-            state = 'restricted'
-        region = re.search(r'\bRegion:\s*([^\)]+)', detail)
-        rows.append({'service': service, 'category': section + (' / ' + subsection if subsection else ''),
-                     'state': state, 'region': region[1].strip() if region else '', 'detail': detail})
-    return rows if any(r['state'] not in {'info', 'unknown'} for r in rows) else []
 
 
-def stream_terminal_report(raw):
-    """Slice upstream report boundaries; never rebuild ANSI, tabs or CR rows."""
-    start = None
-    for line in re.finditer(r'[^\n]*(?:\n|$)', raw):
-        plain = strip_ansi(line[0]).strip()
-        if start is None:
-            if re.fullmatch(r'\*\* Checking Results Under IPv[46]', plain):
-                start = line.start()
-            continue
-        if plain.startswith('Testing Done!'):
-            return raw[start:line.end()]
-        if plain.startswith(('Number of Script Runs', '【Advertisement】', '[Advertisement]',
-                             'Connection to ', 'Shared connection to ')):
-            return raw[start:line.start()]
-    if start is None:
-        raise ValueError('没有找到 RegionRestrictionCheck 报告头')
-    return raw[start:]
 
 
-def format_stream_summary(s, out, proto, region_label, region_id):
-    # Text-only delivery fallback, not a second interpretation of verdicts.
-    head = (f'🎬 <b>{safe(s.get("name"))} 流媒体检测结果</b>\n'
-            f'工具：<b>RegionRestrictionCheck</b> · 协议：<b>{safe(proto)}</b>\n'
-            f'检测范围：<b>{safe(region_label)}</b>')
-    try:
-        body = stream_terminal_report(out)
-    except ValueError:
-        body = out
-    return head + '\n<pre>' + safe(trim_log(strip_ansi(body), 2800)) + '</pre>'
 
 
 def load_font(candidates, size):
@@ -3769,41 +3728,8 @@ def load_font(candidates, size):
     return ImageFont.load_default()
 
 
-async def remote_has_ipv4(s):
-    remote = (
-        'command -v ip >/dev/null 2>&1 || { printf "GUKO: missing dependency ip\\n" >&2; exit 127; }; '
-        'if route=$(LC_ALL=C ip -4 route get 1.1.1.1 2>&1); then '
-        'printf "GUKO_IPV4=present\\n"; '
-        'else case "$route" in *"Network is unreachable"*) printf "GUKO_IPV4=absent\\n";; '
-        '*) printf "%s\\n" "$route" >&2; exit 1;; esac; fi'
-    )
-    code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=15, env=ssh_env_for(s))
-    markers = [line.strip() for line in out.splitlines() if line.strip().startswith('GUKO_IPV4=')]
-    marker = markers[0] if len(markers) == 1 else ''
-    if code != 0 or marker not in {'GUKO_IPV4=present', 'GUKO_IPV4=absent'}:
-        raise RuntimeError(f'IPv4 能力探测失败（退出码 {code}）：{trim_log(strip_ansi(out), 500)}')
-    return marker == 'GUKO_IPV4=present'
 
 
-def regionrestriction_remote_command(ip_mode='4', region_id=''):
-    """Execute the unmodified official script in a per-task temporary file."""
-    ip_mode = str(ip_mode)
-    if ip_mode not in {'4', '6'}:
-        raise ValueError(f'unsupported RegionRestrictionCheck IP mode: {ip_mode}')
-    region = REGIONRESTRICTION_REGIONS.get(region_id, 0)
-    return (
-        'set -eu; umask 077; export TERM=xterm-256color; '
-        'for cmd in bash curl mktemp rm wc; do '
-        'command -v "$cmd" >/dev/null 2>&1 || { printf "GUKO: missing dependency %s\\n" "$cmd" >&2; exit 127; }; done; '
-        'script="$(mktemp "${TMPDIR:-/tmp}/guko-rrc.XXXXXX")"; '
-        'trap \'rm -f -- "$script"\' 0; trap \'exit 130\' INT; trap \'exit 143\' TERM; '
-        f'curl -{ip_mode} -fLsS --proto =https --proto-redir =https '
-        '--connect-timeout 10 --max-time 60 --max-filesize 2097152 '
-        f'{shlex.quote(REGIONRESTRICTION_URL)} -o "$script"; '
-        'test -s "$script"; test "$(wc -c < "$script")" -le 2097152; '
-        'bash -n "$script"; '
-        f'bash "$script" -M {ip_mode} -R {region} -E en </dev/null'
-    )
 
 
 def ansi_to_spans(text):
@@ -4026,6 +3952,7 @@ async def run_nexttrace_task(bot, chat_id, s, jid, target='1.1.1.1'):
             + 'set +e; wait "$child"; rc=$?; child=; exit "$rc"'
         )
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=300, env=ssh_env_for(s))
+        preserve_tool_output(s, jid, 'nexttrace', out)
         JOBS[jid].update({'status': 'done' if code == 0 else 'failed', 'log': out, 'target': target})
         out_dir = Path('/tmp/guko-results')
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -4045,7 +3972,11 @@ async def run_nexttrace_task(bot, chat_id, s, jid, target='1.1.1.1'):
         else:
             await bot.send_message(chat_id, format_nexttrace_output(s, target, out, code), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as e:
-        JOBS[jid].update({'status': 'failed', 'log': repr(e), 'target': target})
+        if JOBS[jid].get('status') == 'done':
+            JOBS[jid]['delivery_error'] = repr(e)
+        else:
+            JOBS[jid].update(status='failed')
+            JOBS[jid].setdefault('log', repr(e))
         await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} NextTrace 失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
     finally:
         finish_job(jid, key)
@@ -4061,7 +3992,7 @@ async def run_stream_task(bot, chat_id, s, jid):
     token = hashlib.sha256(str(jid).encode()).hexdigest()[:24]
     root = kind_result_dir(s, 'stream-unified') / token
     job = JOBS[jid]
-    job.update(region=label, selected='native34 + global + automatic exit region', proto='native34: system-selected; extra: ' + mode,
+    job.update(region=label, selected='upstream original report', proto='CLI default core policy; extra-family requested: ' + mode,
                report_format='guko-unified-v1', json_path=None)
     terminal = None
     try:
@@ -4077,13 +4008,13 @@ async def run_stream_task(bot, chat_id, s, jid):
             (root / 'stderr.txt').write_text(stderr, encoding='utf-8')
         except Exception as exc:
             job['artifact_error'] = repr(exc)
-        report, terminal, unknowns = stream_unified.validate_output(raw, code, family=mode)
-        label = stream_unified.selection_label(report['selection'])
-        job['region'] = label
-        job['selection'] = report['selection']
-        job.update(status='inconclusive' if unknowns else 'done', unknown_count=unknowns,
-                   log=terminal, log_tail=trim_log(strip_ansi(terminal), 3500),
-                   extra_family=report['selection']['extra_family'])
+        report, terminal, inconclusive = stream_unified.validate_output(raw, code, family=mode)
+        # Selection is untrusted raw upstream metadata, never reconstructed or
+        # used as proof of counts, countries, verdicts or rendering semantics.
+        if 'selection' in report:
+            job['selection'] = report['selection']
+        job.update(status='inconclusive' if inconclusive else 'done',
+                   log=terminal, log_tail=trim_log(strip_ansi(terminal), 3500))
         try:
             root.mkdir(parents=True, exist_ok=True, mode=0o700)
             raw_path, json_path = root / 'report.txt', root / 'report.json'
@@ -4110,7 +4041,7 @@ async def run_stream_task(bot, chat_id, s, jid):
                     with image.open('rb') as photo:
                         await bot.send_photo(chat_id, photo=photo,
                             caption=f'🎬 <b>{safe(s.get("name"))} 流媒体完整报告</b>\n'
-                                    f'{safe(label)}\n原34项系统选族；新增项 IPv{report["selection"]["extra_family"] or "?"}；Unknown不等于服务拒绝。\n'
+                                    f'{safe(label)}；内容/布局/地区与结论均为本次CLI原报告。\n'
                                     + stream_source_offer(job),
                             parse_mode=ParseMode.HTML)
                     delivered = True
@@ -4162,6 +4093,7 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
         work_dir = '/root/guko-nodequality-' + os.urandom(16).hex()
         remote = '(' + IPV6_PROBE_COMMAND + '); ' + nodequality_remote_command(s, mask, ip_mode, work_dir=work_dir, source=source)
         code, out = await run_subprocess(ssh_args(s, remote, tty=False), timeout=7200, env=ssh_env_for(s))
+        preserve_tool_output(s, jid, 'nq', out)
         ipv6_status = update_ipv6_from_output(s, out, expected_endpoint=endpoint)
         JOBS[jid].update({'log': out, 'selected': selected_text, 'ip_mode': ip_text})
         nq = nodequality_url(out)
@@ -4182,7 +4114,10 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
         # use this invocation's official raw logs, never old directories or SVG.
         if mask != NQ_ALL_MASK:
             try:
-                raw_logs = await read_nodequality_ansi_logs(s, work_dir, mask)
+                try:
+                    raw_logs = await read_nodequality_ansi_logs(s, work_dir, mask)
+                except Exception:
+                    raw_logs = nodequality_stdout_logs(out, mask)
                 image_entries = []
                 for label, kind, bit, _filename in NQ_ANSI_REPORTS:
                     if not mask & bit:
@@ -4205,7 +4140,11 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
                 image_ok = True
             except Exception as e:
                 image_error = str(e) or type(e).__name__
-        final_ok = bool(nq or report_links or image_ok)
+        final_ok = code == 0 and bool(out.strip())
+        if not nq and not report_links or image_error:
+            JOBS[jid]['extraction_error'] = image_error or '未提取既有展示链接；原输出保留'
+            await send_original_output(bot, chat_id, out, job=JOBS[jid])
+        JOBS[jid]['exit_code'] = code
         JOBS[jid].update({'status': 'done' if final_ok else 'failed'})
         msg = f"✅ {safe(s.get('name'))} NodeQuality 完成：{safe(selected_text)}；{safe(ip_text)}" if final_ok else f"❌ {safe(s.get('name'))} NodeQuality 失败：{safe(selected_text)}；{safe(ip_text)}"
         if ipv6_status is not None and not ipv6_status[0]:
@@ -4220,11 +4159,15 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
             if image_error:
                 msg += f"\n\n转 PNG 失败：<code>{safe(image_error)}</code>"
         if not nq and not report_links:
-            msg += f"\n\n没解析到结果链接，末尾日志：\n<pre>{safe(trim_log(out))}</pre>"
+            msg += f"\n\n未解析到既有展示链接，完整原输出已转发；摘要：\n<pre>{safe(trim_log(out))}</pre>"
         msg += f"\n\n{script_command_html('nq', selected=selected_text, ip_mode=ip_text)}"
         await bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as e:
-        JOBS[jid].update({'status': 'failed', 'log': repr(e)})
+        if JOBS[jid].get('status') == 'done':
+            JOBS[jid]['delivery_error'] = repr(e)
+        else:
+            JOBS[jid].update(status='failed')
+            JOBS[jid].setdefault('log', repr(e))
         await bot.send_message(chat_id, f"❌ {safe(s.get('name'))} NQ任务失败：<code>{safe(e)}</code>", parse_mode=ParseMode.HTML)
     finally:
         try:
@@ -4250,6 +4193,13 @@ async def send_history_result(bot, chat_id, s, kind):
             return False
         await send_kat_output(bot, chat_id, path.read_text(encoding='utf-8'))
         return True
+    if item.get('raw_path') and (item.get('extraction_error') or not item.get('media_paths') and not item.get('urls')):
+        raw = Path(item['raw_path'])
+        root = kind_result_dir(s, 'stream-unified' if kind == 'stream' else kind)
+        if raw.is_symlink() or not raw.is_file() or not raw.resolve().is_relative_to(root.resolve()) or raw.stat().st_size > ANSI_MAX_BYTES:
+            await bot.send_message(chat_id, '原始历史输出不可安全读取；未重新执行或补造报告。')
+            return False
+        return await send_original_output(bot, chat_id, raw.read_text(encoding='utf-8', errors='strict'))
     media_paths = []
     for x in item.get('media_paths') or []:
         p = Path(x)

@@ -15,7 +15,7 @@ class ExactSourceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);(root/'scripts').mkdir()
             required=('version.txt','LICENSE','LICENSES/AGPL-3.0.txt','NOTICE-STREAM.md','kat_proxy.py',
-                      'tool_sources.py','stream_platforms.json','stream_terminal.py','telegram-bot/bot.py',
+                      'tool_sources.py','stream_unified.py','telegram-bot/bot.py',
                       'telegram-bot/Dockerfile','scripts/build-source.py')
             for name in required:
                 p=root/name;p.parent.mkdir(parents=True,exist_ok=True)

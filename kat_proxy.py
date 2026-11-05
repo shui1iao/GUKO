@@ -16,7 +16,7 @@ PROTOCOL = {'ss': 'shadowsocks', 'anytls': 'anytls'}
 METHODS = {'2022-blake3-aes-128-gcm': 16, '2022-blake3-aes-256-gcm': 32,
            '2022-blake3-chacha20-poly1305': 32, 'aes-128-gcm': 0,
            'aes-256-gcm': 0, 'chacha20-ietf-poly1305': 0}
-VERSIONS = ('0.7.1', '0.7.2')
+from tool_sources import valid_core_version
 MAX_FILE = 1 << 20
 MAX_TOTAL = 4 << 20
 MAX_WIRE = 18 << 20
@@ -303,8 +303,8 @@ def discovery(raw):
         if digest == 'absent':
             if core is not None:
                 reject()
-        elif not re.fullmatch(r'[0-9a-f]{64}', digest) or not isinstance(core, dict) or core.get('sha256') != digest or core.get('version') not in VERSIONS:
-            reject('Kat内核记录/内容不一致或版本契约未知，已停止；不接管或升级内核')
+        elif not re.fullmatch(r'[0-9a-f]{64}', digest) or not isinstance(core, dict) or core.get('sha256') != digest or not valid_core_version(core.get('version')):
+            reject('Kat内核记录/内容不一致或版本标识不合法，已停止；不接管或升级内核')
         instances, paths = [], set()
         for (typ, name), data in r.items():
             if typ == 'configpath':
@@ -418,7 +418,7 @@ def parse_nodes(kind, plan, raw):
         if not isinstance(data, dict) or not isinstance(data.get('inbounds'), list) or not 1 <= len(data['inbounds']) <= 64:
             reject()
         # We do not interpret or execute routing/provider/API blocks. The
-        # supported export contract is the explicit 0.7.1/0.7.2 inbound shape.
+        # supported export contract is the explicit validated inbound shape, not a version.
         known_root = {'inbounds','limits','dns','routing','udp_bind_ipv4','udp_bind_ipv6','providers','outbounds','groups','rule_sets','geoip','geosite','asn','log','stats','api','security','direct'}
         if data.keys() - known_root:
             reject()
@@ -609,11 +609,14 @@ def install_command(kind, host, default_port, plan, source):
         command += shell_download(core['binary'],'"$work/core"')+'\nchmod 700 "$work/core"\n'
         extra = ' --binary "$work/core" --sha256 '+shlex.quote(core['sha256'])+' --version '+shlex.quote(core['version'].lstrip('v'))
     elif core['mode'] == 'reuse':
-        extra = ' --version '+shlex.quote(core['version'])
+        # Explicit verified existing binary, never latest/automatic upgrade.
+        extra = ' --binary /usr/local/bin/kat --sha256 '+shlex.quote(core['sha256'])+' --version '+shlex.quote(core['version'])
     else:
         reject()
     # No credential-bearing installer output crosses SSH/history/error logs.
-    command += 'timeout 1500 bash "$work/kat.sh" '+shlex.join(args)+extra+' >"$work/install.log" 2>&1\nrc=$?\nprintf "GUKO_KAT_INSTALL_RC:%s\\n" "$rc"\nexit "$rc"\n'
+    invocation = 'python3 "$work/kat_manager.py" '+shlex.join(args)+extra
+    command += 'timeout 15 '+invocation+' --help >"$work/help.log" 2>&1 || { printf "GUKO_KAT_INSTALL_RC:65\\n"; exit 65; }\n'
+    command += 'timeout 1500 '+invocation+' >"$work/install.log" 2>&1\nrc=$?\nprintf "GUKO_KAT_INSTALL_RC:%s\\n" "$rc"\nexit "$rc"\n'
     return command
 
 

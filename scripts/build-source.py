@@ -29,7 +29,7 @@ def source_files():
             raise ValueError('Missing tracked source file')
         result.append(name)
     required = {'version.txt','LICENSE','LICENSES/AGPL-3.0.txt','NOTICE-STREAM.md',
-                'kat_proxy.py','tool_sources.py','stream_platforms.json','stream_terminal.py',
+                'kat_proxy.py','tool_sources.py','stream_unified.py',
                 'telegram-bot/bot.py','telegram-bot/Dockerfile','scripts/build-source.py'}
     if not required <= set(result):
         raise ValueError('Incomplete Corresponding Source')

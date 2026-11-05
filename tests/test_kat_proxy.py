@@ -152,7 +152,8 @@ class KatContractTests(unittest.TestCase):
                          for name in ('kat.sh','kat_manager.py','kat_config.py')},
                 'server':{'mode':'reuse','version':'0.7.1','sha256':'a'*64}}
         command=k.install_command('ss','example.invalid','12345',plan,source)
-        self.assertIn('install ss --host example.invalid --port 12345 --version 0.7.1',command)
+        self.assertIn('install ss --host example.invalid --port 12345 --binary /usr/local/bin/kat --sha256 '+('a'*64)+' --version 0.7.1',command)
+        self.assertIn('--help',command)
         self.assertIn(plan['digest'],command)
         self.assertIn('python3',k.preflight_command())
         for forbidden in ('apt-get','apk add',' update ', '/usr/local/bin/kat run'):

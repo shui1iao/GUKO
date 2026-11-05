@@ -189,7 +189,7 @@ class AnsiIntegrationTest(unittest.IsolatedAsyncioTestCase):
         run.assert_not_awaited()
 
 class NodeQualityShellTest(unittest.TestCase):
-    def test_official_cleanup_preserves_only_this_invocations_logs(self):
+    def test_official_script_unmodified_cleanup_and_exact_stdout_are_preserved(self):
         # Exercise the generated shell with a tiny upstream-shaped script. No
         # benchmark/network/SSH: fake curl serves this fixture from local disk.
         work_dir = '/root/guko-nodequality-' + os.urandom(16).hex()
@@ -203,7 +203,7 @@ function run_ip_quality(){
 while getopts '4d:' opt; do [ "$opt" != d ] || base=$OPTARG; done
 work_dir="$base/.nodequalityCURRENT"
 mkdir -p "$work_dir/BenchOs/result"
-printf '\\033[32mthis run\\033[0m\\n' > "$work_dir/BenchOs/result/ip_quality.log"
+printf '\\033[32mthis run\\033[0m\\n' | tee "$work_dir/BenchOs/result/ip_quality.log"
 rm -rf $work_dir/BenchOs
 rm -rf "${work_dir}"/
 ''')
@@ -218,11 +218,11 @@ rm -rf "${work_dir}"/
             try:
                 result = subprocess.run(['bash', '-c', cmd], env=env, capture_output=True, timeout=10)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                raw = Path(work_dir, 'ip_quality.log').read_bytes()
-                self.assertEqual(raw, b'\x1b[32mthis run\x1b[0m\n')
-                self.assertEqual(stat.S_IMODE(Path(work_dir).stat().st_mode), 0o700)
-                self.assertEqual(stat.S_IMODE(Path(work_dir, 'ip_quality.log').stat().st_mode), 0o600)
-                self.assertFalse(Path(work_dir, '.nodequalityCURRENT/BenchOs').exists())
+                self.assertEqual(result.stdout,b'\x1b[32mthis run\x1b[0m\n')
+                self.assertFalse(Path(work_dir,'ip_quality.log').exists())
+                self.assertEqual(stat.S_IMODE(Path(work_dir).stat().st_mode),0o700)
+                self.assertFalse(Path(work_dir,'.nodequalityCURRENT/BenchOs').exists())
+                self.assertNotIn('sed -i',cmd)
             finally:
                 __import__('shutil').rmtree(work_dir, ignore_errors=True)
 

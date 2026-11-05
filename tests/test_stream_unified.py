@@ -25,94 +25,42 @@ spec=importlib.util.spec_from_file_location('unified_bot_test',ROOT/'telegram-bo
 bot=importlib.util.module_from_spec(spec);spec.loader.exec_module(bot)
 def raw(name='jp'):return (ROOT/'tests/fixtures/unified'/(name+'.json')).read_text()
 class ValidatorTest(unittest.TestCase):
-    def test_actual_auto_scope_all_regions_and_failure(self):
-        counts={'jp':54,'na':65,'eu':58,'sea':39,'hk':36,'tw':39,'kr':36,'sa':31,'oc':47,'af':31,'global-failed':28,'global-unsupported':28,'jp-denied':54,'jp-unknown':54,'global-no-route':28,'jp-ipv6':54,'sea-fallback':39}
-        for name,count in counts.items():
-            with self.subTest(name=name):
-                report,terminal,unknown=u.validate_output(raw(name),1)
-                self.assertEqual(sum(len(report[k]) for k in ('results','services','ai_endpoints','extra_checks')),count)
-                self.assertEqual(report['selection']['requested_region'],'auto')
-                self.assertEqual(report['selection']['extra_family_requested'],'auto')
-                self.assertEqual(report['selection']['extra_expected_ids'],[r['id'] for r in report['extra_checks']])
-                self.assertEqual(terminal.count('╭'),1);self.assertEqual(terminal.count('╰'),1)
-                self.assertEqual(terminal.count('Automatic region:'),1)
-                spotify=next(r for r in report['services'] if r['id']=='spotify_signup')
-                self.assertEqual(spotify['value'],'no' if name=='jp-denied' else None)
-                if name=='jp-denied':self.assertIn('actual registration/login not tested',spotify['detail'])
-                else:self.assertEqual(spotify['status'],'error')
-                if name=='jp-ipv6':self.assertEqual(report['selection']['extra_family'],6)
-                if name=='global-no-route':self.assertEqual(report['selection']['extra_family'],0)
-                if name=='sea-fallback':self.assertEqual(report['selection']['detection_source'],'https://api.ip.sb/geoip')
-                self.assertGreater(unknown,0)
-                if name=='jp-unknown':self.assertEqual(unknown,54)
-    def test_rejects_malformed_reordered_fake_or_unsafe_output(self):
-        mutations=[
-            lambda d:d.update(format='guko-supplement-v1'),
-            lambda d:d['report'].update(schema_version=True),
-            lambda d:d['report'].update(unchecked_identity='not allowed'),
-            lambda d:d['report']['results'][0].pop('region'),
-            lambda d:d['report']['ai_endpoints'][0].update(vendor='wrong'),
-            lambda d:d['report']['results'].append(d['report']['results'][0]),
-            lambda d:d['report']['services'].reverse(),
-            lambda d:d['report']['extra_checks'].pop(),
-            lambda d:d['report']['extra_checks'].reverse(),
-            lambda d:d['report']['selection']['extra_expected_ids'].append('deleted'),
-            lambda d:d['report']['selection'].update(region='na'),
-            lambda d:d['report']['selection'].update(requested_region='jp'),
-            lambda d:d['report']['selection'].update(detected_country='XX'),
-            lambda d:d['report']['selection'].update(detection_source='https://attacker.invalid'),
-            lambda d:d['report']['selection'].update(ip='192.0.2.1'),
-            lambda d:d['report']['network'].update(address_family='IPv4'),
-            lambda d:d['report']['source'].update(port='v0.5.4'),
-            lambda d:d['report']['extra_checks'][0].update(family=6),
-            lambda d:d['report']['extra_checks'][0].update(status='yes'),
-            lambda d:d['report']['extra_checks'][0].update(source_line=0),
-            lambda d:d['report']['services'][0].update(elapsed_ms=float('nan')),
-            lambda d:d['report']['services'][0].update(elapsed_ms=True),
-            lambda d:d['report']['services'][0].update(value='XX'),
-            lambda d:d['report']['services'][0].update(error='contradiction'),
-            lambda d:d['report']['results'][0].update(id='chatgpt_app'),
-            lambda d:d['report']['results'][0].update(platform='wrong'),
-            lambda d:d['report']['ai_endpoints'][0].update(http_status=999),
-            lambda d:d['report']['extra_checks'][5].update(status='available',error=None),
-            lambda d:next(r for r in d['report']['services'] if r['id']=='spotify_signup').update(status='observed',value='yes',error=None),
-            lambda d:d.update(terminal=d['terminal'].replace('Automatic region: JP','Automatic region: US')),
-            lambda d:d.update(terminal=d['terminal'].replace('Video, live & sports','Wrong section')),
-            lambda d:d.update(terminal=d['terminal']+'Yes 5: available\n'),
-            lambda d:d.update(terminal=d['terminal'].replace('Google Search (captcha)', 'Tampered Search captcha')),
-            lambda d:d.update(terminal=d['terminal'].replace('\x1b[1;38;5;2m● Yes','\x1b[1;38;5;1m● Yes')),
-            lambda d:d.update(terminal=d['terminal']+'\x1b]0;evil\x07'),
-            lambda d:d.update(terminal=d['terminal'].replace('╭','╰')),
-            lambda d:d.update(terminal='<html>bad</html>'),
-        ]
-        for index,mutate in enumerate(mutations):
-            with self.subTest(mutation=index):
-                d=json.loads(raw());mutate(d)
-                with self.assertRaises((ValueError,IndexError)):u.validate_output(json.dumps(d),1)
-        for code in (0,2,124,130,255,True):
+    def test_actual_latest_cli_fixtures_are_relayed_exactly(self):
+        for path in (ROOT/'tests/fixtures/unified').glob('*.json'):
+            d=json.loads(path.read_text());report,terminal,inconclusive=u.validate_output(path.read_text(),1)
+            self.assertEqual(report,d['report']);self.assertEqual(terminal,d['terminal']);self.assertIs(inconclusive,True)
+    def test_same_envelope_future_business_changes_do_not_need_adapter(self):
+        d={'format':'guko-unified-v1','new_envelope_metadata':{'upstream':'v99.12.34'},
+           'report':{'schema_version':900,'future_projects':[{'id':'brand-new','region':'new-market','extra':{'any':'raw'}}]},
+           'terminal':'Future layout\nnew-country  brand-new\n\x1b[38;2;1;2;3mUnclassified result\x1b[0m'}
+        r,t,i=u.validate_output(json.dumps(d),0)
+        self.assertEqual(r,d['report']);self.assertEqual(t,d['terminal']);self.assertIs(i,False)
+        # Report fields are untrusted archived data, not GUKO-owned semantics.
+        d['report']={'removed_old_arrays':True};self.assertEqual(u.validate_output(json.dumps(d),1)[0],d['report'])
+    def test_only_execution_envelope_safety_is_rejected(self):
+        for change in ({'format':'future-v2'},{'report':{}},{'report':[]},{'terminal':''},{'terminal':None},
+                       {'terminal':'hello\x1b]52;c;secret\x07'},{'terminal':'a\x1b[2Jb'},{'terminal':'a\x08b'},
+                       {'terminal':'x'*(2<<20)}):
+            d=json.loads(raw());d.update(change)
+            with self.subTest(change=str(change)[:60]),self.assertRaises(ValueError):u.validate_output(json.dumps(d),1)
+        for value in ('{','[]','{"format":"guko-unified-v1","format":"guko-unified-v1"}',
+                      '{"format":"guko-unified-v1","report":{"x":NaN},"terminal":"x"}',
+                      '{"format":"guko-unified-v1","report":{"x":"\\ud800"},"terminal":"x"}'):
+            with self.assertRaises(ValueError):u.validate_output(value,1)
+        for code in (2,124,130,255,True):
             with self.assertRaises(ValueError):u.validate_output(raw(),code)
-        with self.assertRaises(ValueError):u.validate_output(raw().replace('"schema_version":1','"schema_version":1,"schema_version":1'),1)
+        # No count/status/colour/source ancestry comparison; upstream owns it.
+        d=json.loads(raw());d['report']['results']=[];d['terminal']='Reordered new table\n'
+        self.assertEqual(u.validate_output(json.dumps(d),0)[1],d['terminal'])
     def test_inventory_never_overrides_detector_or_calls_geoip(self):
         with patch.object(bot,'geolocate_host',side_effect=AssertionError('inventory lookup forbidden')):
-            menu=bot.stream_menu_text({'name':'fixture','country':'us','host':'fixture.invalid'})
-        self.assertIn('实际出口',menu);self.assertIn('一张图',menu)
-        self.assertNotIn('仅按服务器清单',menu)
+            self.assertIn('实际出口',bot.stream_menu_text({'name':'fixture','country':'us','host':'fixture.invalid'}))
         for family in ('auto','4','6'):
             cmd=u.execution_command('a'*32,'b'*64,family=family)
-            self.assertEqual(cmd.count('exec "$work/probe"'),1)
-            self.assertNotIn('--region',cmd);self.assertIn('--extra-family '+family,cmd)
-            for forbidden in ('curl ','RegionRestrictionCheck','apt ','pip ','pkill'):
-                self.assertNotIn(forbidden,cmd)
+            self.assertEqual(cmd.count('exec "$work/probe"'),1);self.assertIn('--extra-family '+family,cmd)
+            for forbidden in ('--region','curl ','apt ','pip ','pkill'):self.assertNotIn(forbidden,cmd)
         with self.assertRaises(ValueError):u.execution_command('a'*32,'b'*64,region='jp')
         with self.assertRaises(ValueError):u.execution_command('a'*32,'b'*64,family='4;bad')
-    def test_explicit_current_catalogue_and_platform_contract(self):
-        self.assertEqual(len(u.ACCESS)+len(u.SERVICES)+len(u.AI),22)
-        self.assertEqual(len(u.EXTRA),134)
-        self.assertEqual(sum(bool(c['safety_exception']) for c in u.EXTRA.values()),9)
-        self.assertEqual(u.CATALOGUE['supported_contract'],'v0.5.8 raw156/single-probe-regional-aux-country')
-        self.assertNotIn('binary_sha256',u.CATALOGUE)
-        # Runtime artifacts and complete source are now tested as a single
-        # official release asset set by test_tool_sources, never pinned old files.
 
 class TaskTest(unittest.IsolatedAsyncioTestCase):
     async def task(self,name='jp',render_error=False,send_error=False,artifact_error=False,storage_error=False):
@@ -126,7 +74,7 @@ class TaskTest(unittest.IsolatedAsyncioTestCase):
                 if render_error:raise RuntimeError('mock renderer')
                 Path(out).write_bytes(b'OFFLINE MOCK PNG')
             jobs={'fixturejob':{'kind':'stream','status':'running','server':'OFFLINE MOCK','server_id':'fixture','started_at':bot.iso_now()}}
-            with patch.dict(bot.JOBS,jobs,clear=True),patch.object(bot,'kind_result_dir',return_value=root),patch.object(bot,'HISTORY_JSON',root/'history.json'),patch.object(bot,'remote_has_ipv4',side_effect=AssertionError('old network probe forbidden')),patch.object(bot,'regionrestriction_remote_command',side_effect=AssertionError('old RRC forbidden')),patch.object(u,'remote_run',new=AsyncMock(return_value=(1,raw(name),'mock stderr',None))) as remote,patch.object(bot,'render_ansi_png',side_effect=render):
+            with patch.dict(bot.JOBS,jobs,clear=True),patch.object(bot,'kind_result_dir',return_value=root),patch.object(bot,'HISTORY_JSON',root/'history.json'),patch.object(bot,'remote_has_ipv4',side_effect=AssertionError('old network probe forbidden'),create=True),patch.object(bot,'regionrestriction_remote_command',side_effect=AssertionError('old RRC forbidden'),create=True),patch.object(u,'remote_run',new=AsyncMock(return_value=(1,raw(name),'mock stderr',None))) as remote,patch.object(bot,'render_ansi_png',side_effect=render):
                 if artifact_error:
                     with patch.object(bot.shutil,'copy2',side_effect=OSError('mock image storage')):await bot.run_stream_task(api,1,server,'fixturejob')
                 elif storage_error:
@@ -141,7 +89,7 @@ class TaskTest(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(bot.load_history()),1);self.assertIsNotNone(job.get('duration_sec'))
                 if not render_error:self.assertEqual(api.send_photo.await_count,1)
                 if not render_error and not send_error:
-                    caption=api.send_photo.call_args.kwargs['caption'];self.assertIn(u.selection_label(job['selection']),html.unescape(caption));self.assertNotIn('原37',caption)
+                    caption=api.send_photo.call_args.kwargs['caption'];self.assertIn('CLI原报告',html.unescape(caption));self.assertNotIn('原37',caption)
                 if render_error or send_error:
                     text=''.join(call.kwargs['text'] if 'text' in call.kwargs else call.args[1] for call in api.send_message.call_args_list)
                     recovered=''.join(html.unescape(re.search('<pre>(.*?)</pre>',call.args[1],re.S)[1]) for call in api.send_message.call_args_list)

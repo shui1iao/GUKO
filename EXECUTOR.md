@@ -1,0 +1,24 @@
+# GUKO v0.7.3 — 全入口执行器契约表
+
+每次新任务官方查新（metadata nonce/no-cache）、同次freeze版本/commit/asset/hash/source身份；缓存只省下载、不省查新，失败不偷偷退旧。没有任意未来协议猜测或provider框架。普通业务目录、地区字段、标题顺序/报告布局和源码重构不再需要静态放行；下表只有真正执行/传输/安全边界。HTTPS固定commit内容hash是内容身份，不冒独立签名。普通发布不等于SG部署。
+
+| 入口/实际run | 官方来源与冻结 | 旧耦合 → 本次改法 | 仅保必要接口/安全/报告 | 证据（离线） |
+|---|---|---|---|---|
+| Stream / run_stream_task | shui1iao/service-unlock正式latest；uname架构、同发行binary/SUMS/完整vendor许可source ZIP及asset SHA256 | 去精确0.5.8、原生/extra目录、country/分组、source祖先、字段/状态/Unknown/颜色/布局复刻；删除stream_terminal/stream_platforms/unified_catalogue与旧RRC死helper | `--machine --extra-family auto/4/6 --timeout 6 --workers 4`；guko-unified-v1最小完整envelope/report对象/原terminal；退出0/完整1；JSON重复/nonfinite/UTF8/大小/危险控制拒。原JSON+terminal/PNG，渲染失败同次原文，历史/sourceoffer保；仅owned PID/exe/目录清理 | test_stream_unified全部0.5.8真实CLI HTTPmock fixture、未来增删字段/国家/布局、历史双图与0.5.4/6/7；test_executor_decouple未来v99；test_unified_cleanup实际native子进程 |
+| TCP / run_tcpquality_task | ibsgss/TcpQuality正式latest→同commit runTcpQuality.sh/core.sh，各hash与RAW_BASE | 去源码TCPQUALITY/函数内容token指纹；保持实际no-rootfs能力检测，不猜普通revision | 官方wrapper `--rootfs-help`实际usage须支持--no-rootfs；core请求模式参数`--help`真实解析后才执行；原IPv4/6/intl/route/all选项保。官方tcpquality.ibsgss.uk URL/原PNG安全；布局提取失败保原输出/历史，不因无可选图片冒测失败 | test_tcpquality既有模式/PNG/失败/历史；test_executor_decouple本地generated-shell sentinel，普通源码重构通过、缺no-rootfs或参数拒时不运行 |
+| IPQ / run_ip_quality_task | https://IP.Check.Place → xykt/IPQuality/ip.sh当前入口，固定commit/hash并核入口同内容 | 去Report.Check.Place源码token门禁；旧标题/footer/边界只是可选图片提取 | 官方`-y [-4]`；原IPv4/双栈、Lite无URL与完整exit1处理保。官方Report.Check.Place链接路径/原ANSI保持；新标题/布局保完整原输出，提取/PNG/发送失败独立 | test_ipquality_upstream、test_ipq_protocol_selection、test_ansi_integration、test_executor_decouple新标题完整长输出 |
+| NQ / run_nq_task | https://run.NodeQuality.com → LloydAsp/NodeQuality/NodeQuality.sh当前入口同commit/hash | 去日志名/cleanup实现token门禁；不再sed改官方脚本；本次原stdout可选切片代替依赖cleanup源码拼写 | 保自选4分项、答题stdin、-4/双栈及官方-d任务目录；原nodequality.com/r与Check.Place/GB链接不重上传。当前分项原日志/tee stdout仍原ANSI PNG，未来布局不识别保完整原输出/历史；不改NQ内置依赖 | test_nq_protocol_selection、test_ansi_integration真实无网shell/分项PNG/cleanup；test_executor_decouple重排原stdout及未来原文/exit2失败 |
+| NextTrace / run_nexttrace_task | nxtrace/NTrace-core正式latest，对应arch Release asset/digest | 原已解耦，**无需改查新/版本规则**；仅新增原输出存档及完成后发送错误独立 | 用户target逐参数quote，任务临时binary/PTY与hash，不全局安装/不沿PATH旧版；原ANSI图片/部分失败提示及文本回退保 | test_tool_sources支持架构/hash、test_full_features/renderer及既有NextTrace任务套 |
+| GB5 / run_gb5_task | www.geekbench.com/download/legacy/明确列出的最新5系列Linux包→官方cdn.geekbench.com链接/hash | 原已按用户产品边界解耦，**不改5系查新规则**；原输出存档，可选分数图失败不覆盖已完成执行 | 仍5系/x86_64/--upload，官方无法确认latest5就停，不猜CDN、不退5.5.1/迁6。CSV/评分口径、OOM/自有临时swap与cleanup保；原官方结果URL/输出，图失败独立 | test_gb5、test_tool_sources官方失败/只列6不探包；test_executor_decouple及原评分/清理套 |
+| Kat SS / run_kat_task('ss') | 已有仅shell/systemd/proc只读，不查latest/运行core/Manager；确认新装才Kat-Manager官方main同commit完整3组件hash，无共享核才Kat-Server正式latest binary/checksum | 去core0.7.1/2白名单、manager函数/语句token及变量拼写pin门禁；同commit各hash＋真实CLI/受支持配置shape | 单协议一次用户/chat/服务器绑定确认；缺root/Linuxamd64/systemd/Python/下载前置停止不补；多次snapshot/config race guard。新装执行前实际manager install参数--help解析，已有核显式--binary旧核/--sha256/--version，不能升级；安装后真实只读shape/hash/version核对，不信installer文案 | test_kat_proxy、test_kat_task完整TLS/secret/确认/并发/只读/PF_KTHREAD负例；test_executor_decouple未来99.12.34同shape与无token源码、缺CLI先停sentinel |
+| Kat AnyTLS / run_kat_task('anytls') | 同上、保所选协议实例/多inbound独立 | 同上；不按普通version猜配置含义 | SS外同上且原TLS/SNI/证书权限/未知TLS unsupported、Surge/Mihomo/URI与精确凭据保；未知新shape不放行。不复活VLESS/旧后端，不改现有服务 | 同Kat SS及test_anytls_existing、test_proxy_client_formats、TLS/并发/凭据全套 |
+| Snell / run_proxy_tool_task('snell') | 已有shell只读snapshot＋受控snell-server -v；缺才https://snell.siaoz.si → shui1iao/Snell-Manager/snell.sh当前入口同commit/hash | 去install_snell/源码case token，版本/普通重构不阻断；其余**不换渠道/动作** | 已有不执行manager；重复缺失guard后原install动作/stdin交互；保现渠道可含beta，非擅换stable。未知config/参数/失败不造节点、不覆盖旧实例，原输出/历史保 | test_proxy_readonly/no_python/ssh_stderr/install_output/client_formats及test_tool_sources/executor_decouple同commit重构 |
+| BGP / run_bgp_task、直接IP入口 | 随GUKO自有telegram-bot/tools/bgp_fetch.py，当前bgp.tools原图/官方路径 | 原无上游release/源码指纹门禁，**无需改**；不去别仓热替换 | 目标/域名、原bgp.tools图与来源/占位提示、现relay和清理/历史；不是“下载任意最新插件” | test_bgp_fetch及原FullFeature/renderer套 |
+| IPPure / run_ippure_task、直接IP入口 | 随GUKO自有telegram-bot/tools/download_ippure.js，https://ippure.com/?ip=…官方图 | 原无普通release/token门禁，**无需改** | 原受控图片下载/浏览器资源规则与目标/历史/临时清理；renderer/字体/依赖仍随GUKO维护 | test_ippure_download及原FullFeature套 |
+
+## 边界/验证口径
+
+- 新信封format或必要命令、参数、文件路径/数据shape真的变化才需适配；不按业务字段/未知国家/普通release停，也不把可选提取失败说成检测失败。非0退出/参数拒绝明确失败或保已生成部分报告提示，不伪造成功。
+- Stream安全仅支持原terminal文本+SGR，不允许OSC/游标控制/隐藏活跃传输。未运行真实业务全平台/Spotify/登录/注册/跑分/安装/TG消息。未来v99等是明确测试fixture，不是上游已发布或现场结果。
+- 既有TLS、凭据、共享核、前置、用户确认、竞态、下载来源/hash、safe path、取消timeout owned cleanup与历史被动重发是安全契约，不是待删除的业务白名单。未知shape不能导出猜测节点。
+- MIT/AGPL与历史上游通知完整保，完整准确Corresponding Source见本版Release ZIP；每次外部工具的实际版本/source随该任务记录。SG仅准备本版，正式发行不自动部署。

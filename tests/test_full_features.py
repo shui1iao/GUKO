@@ -166,28 +166,12 @@ class FullFeatureSurfaceTest(unittest.TestCase):
         self.assertIn('-o "$script"', command)
         self.assertIn('bash "$script"', command)
 
-    def test_nodequality_patch_command_is_valid_and_keeps_recovery_files(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            script = Path(tmp) / "nodequality.sh"
-            script.write_text(
-                'rm -rf "${work_dir}"/\n'
-                'response=$($pingcom 2>&1)\n'
-            )
-            result = subprocess.run(
-                ["/bin/bash", "-c", bot.nodequality_patch_command()],
-                text=True,
-                capture_output=True,
-                check=False,
-                env={**os.environ, "script": str(script)},
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            patched = script.read_text()
-            self.assertIn(': "${work_dir}"', patched)
-            self.assertNotIn('rm -rf "${work_dir}"/', patched)
-            self.assertIn(
-                'response=$(timeout -s SIGKILL 15 $pingcom 2>&1)',
-                patched,
-            )
+    def test_nodequality_executes_exact_frozen_script_without_source_patching(self):
+        command=bot.nodequality_remote_command({'name':'Mock','host':'example.invalid'},2,'4')
+        self.assertNotIn('sed -i',command)
+        self.assertFalse(hasattr(bot,'nodequality_patch_command'))
+        self.assertIn('sha256sum -c -',command)
+        self.assertIn('bash "$script" -4',command)
 
     def test_all_tcpquality_modes_are_valid_shell_and_menu_paths(self):
         server = {"name": "Dual", "host": "192.0.2.10", "ipv6": "2001:db8::10"}
@@ -294,28 +278,12 @@ class FullFeatureSurfaceTest(unittest.TestCase):
 
         asyncio.run(exercise())
 
-    def test_stream_region_mapping_covers_configured_countries(self):
-        expected = {
-            "tw": "tw",
-            "hk": "hk",
-            "jp": "jp",
-            "us": "na",
-            "br": "sa",
-            "gb": "eu",
-            "au": "oc",
-            "kr": "kr",
-            "sg": "sea",
-            "in": "",
-            "za": "af",
-        }
-        for country, region in expected.items():
-            with self.subTest(country=country):
-                self.assertEqual(
-                    bot.stream_region_for_server(
-                        {"name": "Test", "host": "192.0.2.10", "country": country}
-                    )[0],
-                    region,
-                )
+    def test_stream_auto_is_owned_by_cli_not_inventory_country_map(self):
+        self.assertFalse(hasattr(bot,'STREAM_REGION_BY_COUNTRY'))
+        for country in ('sg','na','brand-new-country',''):
+            menu=bot.stream_menu_text({'name':'MOCK','host':'example.invalid','country':country})
+            self.assertIn('实际出口',menu)
+            self.assertNotIn('清单决定',menu)
 
     def test_ip_domain_and_host_port_validation(self):
         self.assertEqual(bot.extract_ipv4("target 1.1.1.1 now"), "1.1.1.1")

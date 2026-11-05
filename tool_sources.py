@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import shlex
 import tempfile
+import time
 from datetime import datetime, timezone
 import urllib.parse
 import urllib.request
@@ -75,7 +76,7 @@ def _unique(pairs):
 
 
 def api(path):
-    data, _ = fetch('https://api.github.com/repos/' + path)
+    data, _ = fetch('https://api.github.com/repos/' + path + ('&' if '?' in path else '?') + 'guko_readback=' + str(time.time_ns()))
     try:
         return json.loads(data, object_pairs_hook=_unique,
                           parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
@@ -165,8 +166,6 @@ def stream_source(arch):
     if arch not in ('amd64', 'arm64'):
         raise SourceError('Service Unlock不支持此架构，已停止。')
     r = latest_release('shui1iao/service-unlock')
-    if r['version'] != 'v0.5.8':
-        raise SourceError('Service Unlock发行标识不兼容，已停止。')
     binary_name = 'service-unlock_linux_' + arch
     source_name = 'service-unlock-' + r['version'] + '-source.zip'
     sums, sums_id = release_asset(r, 'SHA256SUMS', 16384)
@@ -192,8 +191,18 @@ def stream_source(arch):
         raise SourceError('CLI同发行SUMS/完整对应源码校验失败，已停止。') from None
     meta = identity(r)
     meta.update(arch=arch, binary=binary_id, sums=sums_id, source=source_id,
-                source_offer=source_id['url'], contract='v0.5.8 raw156/single-probe-regional-aux-country; schema1')
+                source_offer=source_id['url'], contract='guko-unified-v1 (--machine execution envelope)')
     return body, meta
+
+
+def script_content(data):
+    try:
+        text = data.decode('utf-8', errors='strict')
+    except UnicodeError:
+        raise SourceError('官方脚本编码不兼容，已停止。') from None
+    if not text.startswith('#!') or '\x00' in text:
+        raise SourceError('官方脚本不是受支持内容，已停止。')
+    return text
 
 
 def tcp_source():
@@ -202,9 +211,7 @@ def tcp_source():
     files = {}
     for name in ('runTcpQuality.sh', 'runTcpQuality-core.sh'):
         data, url = fetch(base + '/' + name)
-        required = (b'--no-rootfs', b'runTcpQuality-core.sh', b'TCPQUALITY_RAW_BASE') if name == 'runTcpQuality.sh' else (b'TCPQUALITY',)
-        if not data.startswith(b'#!') or any(token not in data for token in required):
-            raise SourceError('TCP脚本接口与现有no-rootfs适配不兼容，已停止。')
+        script_content(data)
         files[name] = {'url': url, 'sha256': hashlib.sha256(data).hexdigest(),
                        'download_cache': False, 'integrity': 'official HTTPS fixed commit; content identity, not signature'}
     meta = identity(r)
@@ -250,12 +257,6 @@ def script_source(kind):
         raise SourceError('官方脚本编码不兼容，已停止。') from None
     if not text.startswith('#!') or '\x00' in text:
         raise SourceError('官方脚本不是受支持内容，已停止。')
-    required = {'ipq': ('Report.Check.Place',),
-                'nq': ('hardware_quality.log', 'ip_quality.log', 'net_quality.log', 'backroute_trace.log',
-                       'rm -rf $work_dir/BenchOs'),
-                'snell': ('install)', 'install_snell',)}
-    if any(token not in text for token in required[kind]):
-        raise SourceError('官方脚本接口与现有适配不兼容，已停止。')
     match = re.search(r'(?m)^(?:SCRIPT_VERSION|script_version|VERSION|version)=["\x27]?([vV]?[0-9][A-Za-z0-9._-]*)', text)
     return {'repository': repo, 'version': match[1] if match else None, 'commit': commit,
             'entry_url': entry, 'entry_final_url': final, 'url': fixed,
@@ -300,6 +301,11 @@ def shell_download(meta, destination):
             + ' | sha256sum -c - >/dev/null || { echo "GUKO: frozen tool SHA256 mismatch"; exit 65; }; ')
 
 
+def valid_core_version(value):
+    # Syntax of --version / managed kernel record, NOT a release allowlist.
+    return isinstance(value, str) and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', value) is not None
+
+
 def kat_install_source(existing_core=None):
     """Called ONLY after a user-confirmed install and a clean Kat snapshot.
 
@@ -321,35 +327,26 @@ def kat_install_source(existing_core=None):
         bodies[name] = text
         files[name] = {'url': base + '/' + name, 'sha256': hashlib.sha256(body).hexdigest(),
                        'download_cache': False, 'integrity': 'official HTTPS fixed commit; content identity, not signature'}
-    wrapper = bodies['kat.sh']
-    for name, label in (('kat_manager.py','MANAGER'), ('kat_config.py','CONFIG')):
-        pins = re.findall(r'(?m)^KAT_HELPER_' + label + r'_SHA256="([0-9a-f]{64})"$', wrapper)
-        if pins != [files[name]['sha256']]:
-            raise SourceError('Kat脚本与同commit helper pins不一致，已停止。')
-    manager = bodies['kat_manager.py']
-    required = ('def do_install(self):', 'def acquire(self):', "'--credential-file'", "'--host'",
-                "'https://github.com/shui1iao/Kat-Server/releases/download'",
-                "'https://api.github.com/repos/shui1iao/Kat-Server/releases/latest'",
-                "'复用已安装的 Kat 内核 '")
-    if any(token not in manager for token in required) or 'exec python3 "$kat_dir/kat_manager.py" "$@"' not in wrapper:
-        raise SourceError('Kat安装接口/共享内核复用契约变化，已停止。')
-    version = re.findall(r"(?m)^VERSION = '([^']+)'$", manager)
-    if len(version) != 1:
-        raise SourceError('Kat-Manager版本身份不完整，已停止。')
-    meta = {'repository': repo, 'version': version[0], 'commit': commit, 'files': files,
+    # Files are frozen at ONE authoritative commit, each hash verified on the
+    # target. Implementation tokens/helper variable spelling are not an API.
+    # Required install flags are checked by the actual manager --help parser
+    # in the owned directory before the mutating invocation, never guessed.
+    match = re.search(r"(?m)^VERSION\s*=\s*['\"]([^'\"]+)['\"]", bodies['kat_manager.py'])
+    version = match[1] if match else None  # optional display metadata only
+    meta = {'repository': repo, 'version': version, 'commit': commit, 'files': files,
             'resolved_at': datetime.now(timezone.utc).isoformat(), 'download_cache': False,
             'source_offer': 'https://github.com/' + repo + '/tree/' + commit}
     if existing_core is not None:
-        if existing_core.get('version') not in ('0.7.1','0.7.2') or not re.fullmatch(HEX, str(existing_core.get('sha256'))):
+        if not valid_core_version(existing_core.get('version')) or not re.fullmatch(HEX, str(existing_core.get('sha256'))):
             raise SourceError('已有共享Kat内核身份不可靠，已停止；不接管或升级。')
         meta['server'] = {'mode':'reuse', 'version':existing_core['version'],
                           'sha256':existing_core['sha256'], 'version_evidence':'existing validated kernel record and binary hash',
                           'source_offer':'https://github.com/shui1iao/Kat-Server/tree/v'+existing_core['version']}
     else:
         release = latest_release('shui1iao/Kat-Server')
-        if release['version'] not in ('v0.7.1','v0.7.2'):
-            raise SourceError('Kat-Server最新配置契约未经支持，已停止；不回退旧版。')
-        asset = 'kat-' + release['version'][1:] + '-linux-amd64'
+        if not valid_core_version(release['version'].removeprefix('v')):
+            raise SourceError('Kat-Server版本标识无法安全传给现有CLI，已停止；不回退。')
+        asset = 'kat-' + release['version'].removeprefix('v') + '-linux-amd64'
         sums, sums_id = release_asset(release, asset + '.sha256', 4096)
         _, binary_id = release_asset(release, asset, 256 * 1024 * 1024)
         if sums.decode('ascii').strip() != binary_id['sha256'] + '  ' + asset:

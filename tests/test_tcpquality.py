@@ -457,7 +457,7 @@ class TcpQualityExecutionTest(unittest.TestCase):
                         await bot.run_tcpquality_task(fake_bot, 100, server, jid, "v4")
                     self.assertEqual(bot.JOBS[jid]["status"], "failed")
                     self.assertEqual(fake_bot.photos, [])
-                    self.assertTrue(any("没拿到报告链接" in text for _chat, text, _kwargs in fake_bot.messages))
+                    self.assertTrue(any("未提取到报告链接" in text for _chat, text, _kwargs in fake_bot.messages))
                 finally:
                     setattr(bot, "RESULTS_DIR", old_results)
                     setattr(bot, "HISTORY_JSON", old_history)

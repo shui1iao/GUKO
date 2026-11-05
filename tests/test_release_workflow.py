@@ -56,10 +56,10 @@ class ExactReleaseAssetsTest(unittest.TestCase):
         self.assertNotIn('FROM guko-local:',text)
         self.assertNotIn('COPY local-source.tar.gz',text)
         self.assertIn('guko-v${GUKO_VERSION}-source.zip',text)
-        for module in ('kat_proxy.py','tool_sources.py','stream_terminal.py','stream_platforms.json'):
+        for module in ('kat_proxy.py','tool_sources.py','stream_unified.py'):
             self.assertIn(module,text)
         compile_step=(ROOT/'.github/workflows/ci.yml').read_text()
-        for module in ('kat_proxy.py','tool_sources.py','stream_terminal.py','proxy_nodes.py'):self.assertIn(module,compile_step)
+        for module in ('kat_proxy.py','tool_sources.py','stream_unified.py','proxy_nodes.py'):self.assertIn(module,compile_step)
 
 class ActualCurrentReleaseNotesTest(unittest.TestCase):
     def test_existing_workflow_awk_extracts_this_exact_version_only(self):
@@ -68,7 +68,7 @@ class ActualCurrentReleaseNotesTest(unittest.TestCase):
         capture && index($0, "## [") == 1 { exit }
         capture { print }'''
         notes=subprocess.check_output(['awk','-v','version='+version,program,str(ROOT/'CHANGELOG.md')],text=True)
-        self.assertIn('CLI v0.5.8',notes)
-        self.assertIn('辅助',notes)
+        self.assertIn('执行器',notes)
+        self.assertIn('普通',notes)
         self.assertNotIn('## [0.7.1]',notes)
         self.assertNotIn('### 真正单主探针与区域媒体恢复',notes)

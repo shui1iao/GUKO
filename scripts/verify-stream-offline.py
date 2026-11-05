@@ -25,7 +25,7 @@ bot=importlib.util.module_from_spec(spec);spec.loader.exec_module(bot)
 
 async def main():
     metadata=[];original_render=bot.render_ansi_png;original_process=bot.run_ansi_subprocess
-    for name,total in [('jp',67),('global-failed',41),('sea',52),('eu',71),('na',78),('jp-denied',67)]:
+    for name,total in [('jp',54),('global-failed',28),('sea',39),('eu',58),('na',65),('jp-denied',54)]:
         raw=(ROOT/'tests/fixtures/unified'/(name+'.json')).read_text();report,terminal,unknown=u.validate_output(raw,1)
         assert sum(len(report[k]) for k in ('results','services','ai_endpoints','extra_checks'))==total
         folder=OUT/name;folder.mkdir(exist_ok=True)
@@ -43,7 +43,7 @@ async def main():
         job={'kind':'stream','status':'running','server':server['name'],'server_id':server['id'],'started_at':bot.iso_now()}
         with patch.dict(bot.JOBS,{'offline':job},clear=True),patch.object(bot,'kind_result_dir',return_value=folder),patch.object(bot,'HISTORY_JSON',folder/'history.json'),patch.object(u,'remote_run',new=AsyncMock(return_value=(1,raw,'OFFLINE MOCK stderr',None))) as remote,patch.object(bot,'render_ansi_png',side_effect=render),patch.object(bot,'run_ansi_subprocess',side_effect=capture_process):
             await bot.run_stream_task(api,1,server,'offline')
-            remote.assert_awaited_once();assert remote.call_args.kwargs=={'family':'auto'}
+            remote.assert_awaited_once();assert remote.call_args.kwargs=={'family':'auto','identity_out':{}}
             api.send_photo.assert_awaited_once();api.send_message.assert_not_awaited()
             result=bot.JOBS['offline'];assert result['status']=='inconclusive' and result['exit_code']==1
             assert len(result['media_paths'])==1 and 'supplement' not in result
@@ -53,7 +53,7 @@ async def main():
             image=Path(result['media_paths'][0]);assert image.is_file() and metrics
             m=metrics[0];assert m['width']+m['height']<=10000 and max(m['width']/m['height'],m['height']/m['width'])<=20 and m['bytes']<10000000
             assert hashlib.sha256(image.read_bytes()).hexdigest()==m['sha256']
-            entry={'fixture':name,'rows':total,'unknowns':unknown,'resolved_region':report['selection']['region'],'detected_country':report['selection'].get('detected_country'),'one_photo':True,'same_report_json_ansi':True,'history_single_path':True,'remote_mock_calls':1,'actual_ssh_or_tg_calls':0,'png':str(image.relative_to(OUT)),'metrics':m,'caption':api.send_photo.call_args.kwargs['caption']}
+            entry={'fixture':name,'rows':total,'upstream_exit_inconclusive':unknown,'resolved_region':report['selection']['region'],'detected_country':report['selection'].get('detected_country'),'one_photo':True,'same_report_json_ansi':True,'history_single_path':True,'remote_mock_calls':1,'actual_ssh_or_tg_calls':0,'png':str(image.relative_to(OUT)),'metrics':m,'caption':api.send_photo.call_args.kwargs['caption']}
             metadata.append(entry)
             (folder/'machine.json').write_text(raw)
             (folder/'preview.ansi.txt').write_text('OFFLINE MOCK - NOT REAL MEASUREMENT\n'+terminal)

@@ -31,6 +31,7 @@ class OfficialHTTP:
             {'name':n,'size':len(b),'digest':'sha256:'+digest(b),'browser_download_url':self.url(n)} for n,b in self.payloads.items()]}
     def url(self,name):return f'https://github.com/{self.repo}/releases/download/{self.tag}/{name}'
     def fetch(self,url,limit=4<<20,**kw):
+        url=url.split('?',1)[0]
         self.calls.append(url)
         prefix='https://api.github.com/repos/'+self.repo
         if url==prefix+'/releases/latest':
@@ -89,7 +90,7 @@ class FrozenSourceTest(unittest.TestCase):
         with patch.object(t,'latest_release',return_value=release),patch.object(t,'fetch',side_effect=fetch):m=t.tcp_source()
         self.assertEqual(len(calls),2);self.assertTrue(all('/'+SHA+'/' in u for u in calls))
         self.assertEqual(m['raw_base'],'https://raw.githubusercontent.com/ibsgss/TcpQuality/'+SHA)
-        with patch.object(t,'latest_release',return_value=release),patch.object(t,'fetch',return_value=(b'#!/bin/sh\nwrong','https://raw.githubusercontent.com')):
+        with patch.object(t,'latest_release',return_value=release),patch.object(t,'fetch',return_value=(b'not a shell script','https://raw.githubusercontent.com')):
             with self.assertRaises(t.SourceError):t.tcp_source()
     def test_script_current_entry_must_equal_same_commit_and_correct_repository(self):
         body=b'#!/bin/sh\nReport.Check.Place\n';entry,repo,file=t.ENTRIES['ipq'];fixed=f'https://raw.githubusercontent.com/{repo}/{SHA}/{file}'
@@ -120,23 +121,28 @@ class FrozenSourceTest(unittest.TestCase):
         config=b'# offline config helper\n'
         wrapper=('KAT_HELPER_MANAGER_SHA256="'+('f'*64 if broken else digest(manager))+'"\nKAT_HELPER_CONFIG_SHA256="'+digest(config)+'"\nexec python3 "$kat_dir/kat_manager.py" "$@"\n').encode()
         return {'kat.sh':wrapper,'kat_manager.py':manager,'kat_config.py':config}
-    def test_kat_same_commit_full_helpers_pins_and_reuse_never_queries_server_latest(self):
-        for broken in (False,True):
-            bodies=self.manager(broken);calls=[]
-            def fetch(url,*a,**kw):calls.append(url);return bodies[url.rsplit('/',1)[1]],url
-            with patch.object(t,'commit_for',return_value=SHA),patch.object(t,'fetch',side_effect=fetch),patch.object(t,'latest_release',side_effect=AssertionError('Existing core may not query/upgrade latest')):
-                if broken:
-                    with self.assertRaises(t.SourceError):t.kat_install_source({'version':'0.7.1','sha256':'a'*64})
-                else:
-                    m=t.kat_install_source({'version':'0.7.1','sha256':'a'*64});self.assertEqual(m['server']['mode'],'reuse');self.assertEqual(set(m['files']),set(bodies))
-            self.assertEqual(len(calls),3);self.assertTrue(all('/'+SHA+'/' in u for u in calls))
-    def test_kat_new_core_freezes_same_release_binary_checksum_and_rejects_unknown_version(self):
-        bodies=self.manager();binary=b'OFFLINE core';asset='kat-0.7.2-linux-amd64'
-        release={'version':'v0.7.2','commit':SHA,'repository':'shui1iao/Kat-Server','assets':[]}
+    def test_kat_same_commit_refactor_and_reuse_never_queries_server_latest(self):
+        bodies={'kat.sh':b'#!/bin/sh\n# new wrapper implementation',
+                'kat_manager.py':b'# refactored manager without old tokens or VERSION assignment',
+                'kat_config.py':b'# refactored config helper'}
+        calls=[]
+        def fetch(url,*a,**kw):calls.append(url);return bodies[url.rsplit('/',1)[1]],url
+        with patch.object(t,'commit_for',return_value=SHA),patch.object(t,'fetch',side_effect=fetch),patch.object(t,'latest_release',side_effect=AssertionError('Existing core may not query/upgrade latest')):
+            m=t.kat_install_source({'version':'99.12.34','sha256':'a'*64})
+            self.assertEqual(m['server']['mode'],'reuse');self.assertIsNone(m['version'])
+            self.assertEqual(set(m['files']),set(bodies))
+        self.assertEqual(len(calls),3);self.assertTrue(all('/'+SHA+'/' in u for u in calls))
+        bodies['kat_manager.py']=b'bad\x00content'
+        with patch.object(t,'commit_for',return_value=SHA),patch.object(t,'fetch',side_effect=fetch):
+            with self.assertRaises(t.SourceError):t.kat_install_source({'version':'99.12.34','sha256':'a'*64})
+
+    def test_kat_new_core_future_same_asset_protocol_freezes_binary_checksum(self):
+        bodies=self.manager();binary=b'OFFLINE core';asset='kat-99.12.34-linux-amd64'
+        release={'version':'v99.12.34','commit':SHA,'repository':'shui1iao/Kat-Server','assets':[]}
         def fetch(url,*a,**kw):return bodies[url.rsplit('/',1)[1]],url
-        def download(r,name,limit):return ((digest(binary)+'  '+asset).encode(),{'sha256':'b'*64}) if name.endswith('.sha256') else (binary,{'sha256':digest(binary),'url':'https://github.com/shui1iao/Kat-Server/releases/download/v0.7.2/'+asset})
+        def download(r,name,limit):return ((digest(binary)+'  '+asset).encode(),{'sha256':'b'*64}) if name.endswith('.sha256') else (binary,{'sha256':digest(binary),'url':'https://github.com/shui1iao/Kat-Server/releases/download/v99.12.34/'+asset})
         with patch.object(t,'commit_for',return_value=SHA),patch.object(t,'fetch',side_effect=fetch),patch.object(t,'latest_release',return_value=release),patch.object(t,'release_asset',side_effect=download):m=t.kat_install_source()
-        self.assertEqual(m['server']['sha256'],digest(binary));self.assertEqual(m['server']['version'],'v0.7.2')
-        release['version']='v0.7.3'
+        self.assertEqual(m['server']['sha256'],digest(binary));self.assertEqual(m['server']['version'],'v99.12.34')
+        release['version']='invalid-CLI-version'
         with patch.object(t,'commit_for',return_value=SHA),patch.object(t,'fetch',side_effect=fetch),patch.object(t,'latest_release',return_value=release):
             with self.assertRaises(t.SourceError):t.kat_install_source()
