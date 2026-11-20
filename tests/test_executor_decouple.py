@@ -103,6 +103,26 @@ class RawReportFallback(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as td,patch.dict(bot.JOBS,{'j':{'kind':'nq'}},clear=True),patch.object(bot,'kind_result_dir',return_value=Path(td)),patch.object(bot,'finish_job'),patch.object(bot,'resolve_tool',new=AsyncMock(return_value={})),patch.object(bot,'run_subprocess',new=AsyncMock(return_value=(2,'invalid option --needed-flag'))),patch.object(bot,'nodequality_remote_command',return_value='MOCK'):
             await bot.run_nq_task(api,1,{'id':'s','name':'MOCK','host':'example.invalid'},'j',15)
             self.assertEqual(bot.JOBS['j']['status'],'failed');self.assertEqual(Path(bot.JOBS['j']['raw_path']).read_text(),'invalid option --needed-flag')
+    async def test_nq_upstream_post_cleanup_exit_1_with_report_is_done(self):
+        nq_url='https://nodequality.com/r/4Q8xCLLaVXri6nih3kGHbgvYwH3R9Dgf'
+        cn_out=f'报告链接：https://Report.Check.Place/hardware/WN8JEZA2V.svg\n测试完成，点击查看你的结果链接： {nq_url}\n\n\x1b[1;32m安装后清理\x1b[0m\n\x1b[1;32m清理中，请稍后。\x1b[0m\n'
+        en_out=f'Report: {nq_url}\nClean Up after Installation\nCleaning, please wait a moment.\n'
+        for label,out in (('cn',cn_out),('en',en_out)):
+            api=SimpleNamespace(send_message=AsyncMock(),send_photo=AsyncMock())
+            with self.subTest(label=label),tempfile.TemporaryDirectory() as td,patch.dict(bot.JOBS,{'j':{'kind':'nq'}},clear=True),patch.object(bot,'kind_result_dir',return_value=Path(td)),patch.object(bot,'finish_job'),patch.object(bot,'resolve_tool',new=AsyncMock(return_value={})),patch.object(bot,'run_subprocess',new=AsyncMock(return_value=(1,out))),patch.object(bot,'nodequality_remote_command',return_value='MOCK'):
+                await bot.run_nq_task(api,1,{'id':'s','name':'MOCK','host':'example.invalid'},'j',15)
+                self.assertEqual(bot.JOBS['j']['status'],'done')
+                self.assertEqual(bot.JOBS['j']['exit_code'],1)
+                self.assertIn('✅',api.send_message.await_args_list[-1].args[1])
+        for label,code,out in (
+            ('mid_run_sig_cleanup',1,f'{nq_url}\n清理中，请稍后。\n'),
+            ('mount_cleanup_error',1,f'{nq_url}\n安装后清理\n出现了预料之外的情况，BenchOS目录的挂载未被清理干净\n'),
+            ('work_dir_error',1,f'{nq_url}\n安装后清理\n错误：work_dir不包含\'nodequality\'！\n'),
+            ('no_report_url',1,'安装后清理\n清理中，请稍后。\n'),
+            ('non_1_code',255,cn_out),
+        ):
+            with self.subTest(negative=label):
+                self.assertFalse(bot.nodequality_post_cleanup_exit_1(code,out,nq=bot.nodequality_url(out)))
     def test_current_nq_stdout_preserves_each_original_selected_report_without_patch(self):
         first='\r'+'#'*40+'\n\x1b[32mIP质量体检报告\x1b[0m\nnew region field\nhttps://Report.Check.Place/ip/AAA.svg'
         second='\r'+'#'*40+'\n\x1b[33m网络质量体检报告\x1b[0m\nnew rows\nhttps://Report.Check.Place/net/BBB.svg'

@@ -136,16 +136,23 @@ class TcpQualityHelpersTest(unittest.TestCase):
 
         menu = bot.tcpquality_markup(server)
         category_callbacks = [button.callback_data for row in menu.inline_keyboard for button in row]
-        self.assertIn("tqmode:test-node:full", category_callbacks)
-        self.assertIn("tqmode:test-node:route", category_callbacks)
+        self.assertIn("tqrun:test-node:v4", category_callbacks)
+        self.assertIn("tqrun:test-node:route-v4", category_callbacks)
         self.assertIn("tqrun:test-node:intl-v4", category_callbacks)
-        self.assertIn("tqmode:test-node:speedtest", category_callbacks)
-        self.assertIn("tqmode:test-node:complete", category_callbacks)
-        self.assertNotIn("tqrun:test-node:speedtest", category_callbacks)
-        self.assertNotIn("tqrun:test-node:all", category_callbacks)
+        self.assertIn("tqrun:test-node:speedtest", category_callbacks)
+        self.assertIn("tqrun:test-node:all", category_callbacks)
         self.assertFalse(any("cernet" in callback for callback in category_callbacks))
         self.assertNotIn("tqmode:test-node:intl", category_callbacks)
         self.assertNotIn("教育网", bot.tcpquality_menu_text(server))
+
+        ipv6_server = {**server, "ipv6": "2001:db8::10"}
+        ipv6_menu = bot.tcpquality_markup(ipv6_server)
+        ipv6_callbacks = [button.callback_data for row in ipv6_menu.inline_keyboard for button in row]
+        self.assertIn("tqmode:test-node:full", ipv6_callbacks)
+        self.assertIn("tqmode:test-node:route", ipv6_callbacks)
+        self.assertIn("tqrun:test-node:intl-v4", ipv6_callbacks)
+        self.assertIn("tqrun:test-node:speedtest", ipv6_callbacks)
+        self.assertIn("tqrun:test-node:all", ipv6_callbacks)
 
     def test_family_menu_hides_unavailable_ipv6_and_international_ipv6(self):
         server = {"id": "test-node", "name": "Test", "host": "192.0.2.10"}

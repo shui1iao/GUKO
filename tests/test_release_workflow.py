@@ -68,7 +68,7 @@ class ActualCurrentReleaseNotesTest(unittest.TestCase):
         capture && index($0, "## [") == 1 { exit }
         capture { print }'''
         notes=subprocess.check_output(['awk','-v','version='+version,program,str(ROOT/'CHANGELOG.md')],text=True)
-        self.assertIn('执行器',notes)
-        self.assertIn('普通',notes)
+        self.assertIn('NodeQuality',notes)
+        self.assertIn('直接运行',notes)
+        self.assertNotIn('## [0.7.3]',notes)
         self.assertNotIn('## [0.7.1]',notes)
-        self.assertNotIn('### 真正单主探针与区域媒体恢复',notes)

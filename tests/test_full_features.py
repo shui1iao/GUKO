@@ -245,12 +245,44 @@ class FullFeatureSurfaceTest(unittest.TestCase):
                 with self.subTest(kind=kind, action=action):
                     asyncio.run(exercise(kind, action))
 
-    def test_stream_button_requires_confirmation_before_launch(self):
+    def test_stream_and_kat_proxy_buttons_launch_directly(self):
         async def exercise():
             server = {"name": "JP", "host": "192.0.2.10", "country": "jp"}
             sid = bot.server_id(server)
+            for data, expected_kind in (
+                (f"stream:{sid}", "stream"),
+                (f"streamrun:{sid}", "stream"),
+                (f"proxy:ss:{sid}", "ss"),
+                (f"proxy:anytls:{sid}", "anytls"),
+            ):
+                query = SimpleNamespace(
+                    data=data,
+                    message=SimpleNamespace(chat_id=123),
+                    answer=AsyncMock(),
+                    edit_message_text=AsyncMock(),
+                )
+                update = SimpleNamespace(
+                    effective_user=SimpleNamespace(id=1),
+                    effective_chat=SimpleNamespace(id=123),
+                    effective_message=query.message,
+                    callback_query=query,
+                )
+                context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock()))
+                launch = MagicMock(return_value="job")
+                with patch.object(bot, "find_server_by_id", return_value=server), patch.object(
+                    bot, "launch_job", launch
+                ):
+                    await bot.on_button(update, context)
+                    launch.assert_called_once()
+                    self.assertEqual(launch.call_args.args[1], expected_kind)
+                    if expected_kind in ("ss", "anytls"):
+                        self.assertEqual(launch.call_args.kwargs.get("target"), "view")
+                    query.edit_message_text.assert_not_awaited()
+                    context.bot.send_message.assert_awaited()
+
+            # Snell still has 2 options (ensure + view), so it opens its menu.
             query = SimpleNamespace(
-                data=f"stream:{sid}",
+                data=f"proxy:snell:{sid}",
                 message=SimpleNamespace(chat_id=123),
                 answer=AsyncMock(),
                 edit_message_text=AsyncMock(),
@@ -269,12 +301,8 @@ class FullFeatureSurfaceTest(unittest.TestCase):
                 await bot.on_button(update, context)
                 launch.assert_not_called()
                 markup = query.edit_message_text.await_args.kwargs["reply_markup"]
-                self.assertIn(f"streamrun:{sid}", callbacks(markup))
-
-                query.data = f"streamrun:{sid}"
-                await bot.on_button(update, context)
-                launch.assert_called_once()
-                context.bot.send_message.assert_awaited()
+                self.assertIn(f"proxyrun:snell:ensure:{sid}", callbacks(markup))
+                self.assertIn(f"proxyrun:snell:view:{sid}", callbacks(markup))
 
         asyncio.run(exercise())
 

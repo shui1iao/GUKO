@@ -37,7 +37,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.3').strip() or '0.7.3'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.4').strip() or '0.7.4'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -1073,18 +1073,33 @@ def tcpquality_category(category):
     return TCPQUALITY_CATEGORIES[key]
 
 
+def tcpquality_available_modes(s, category):
+    config = tcpquality_category(category)
+    return [
+        mode for mode in config['modes']
+        if not (tcpquality_mode(mode)['family'] == 'v6' and not server_has_ipv6(s))
+    ]
+
+
 def tcpquality_markup(s):
     sid = server_id(s)
+
+    def cat_callback(category):
+        modes = tcpquality_available_modes(s, category)
+        if len(modes) == 1:
+            return f'tqrun:{sid}:{modes[0]}'
+        return f'tqmode:{sid}:{category}'
+
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton('📡 三网质量', callback_data=f'tqmode:{sid}:full'),
-            InlineKeyboardButton('🧭 回程线路', callback_data=f'tqmode:{sid}:route'),
+            InlineKeyboardButton('📡 三网质量', callback_data=cat_callback('full')),
+            InlineKeyboardButton('🧭 回程线路', callback_data=cat_callback('route')),
         ],
         [
-            InlineKeyboardButton('🌍 国际互联', callback_data=f'tqrun:{sid}:intl-v4'),
-            InlineKeyboardButton('🚀 三网测速', callback_data=f'tqmode:{sid}:speedtest'),
+            InlineKeyboardButton('🌍 国际互联', callback_data=cat_callback('intl')),
+            InlineKeyboardButton('🚀 三网测速', callback_data=cat_callback('speedtest')),
         ],
-        [InlineKeyboardButton('🧪 完整检测', callback_data=f'tqmode:{sid}:complete')],
+        [InlineKeyboardButton('🧪 完整检测', callback_data=cat_callback('complete'))],
         [InlineKeyboardButton('↩️ 返回操作面板', callback_data=f'srv:{sid}')],
     ])
 
@@ -1106,7 +1121,7 @@ def tcpquality_family_markup(s, category):
 
 
 def tcpquality_menu_text(s):
-    ipv6_note = '三网质量和回程线路可选 IPv4 / IPv6。' if server_has_ipv6(s) else '当前未配置 IPv6，协议族选项只显示 IPv4。'
+    ipv6_note = '三网质量和回程线路可选 IPv4 / IPv6。' if server_has_ipv6(s) else '当前未配置 IPv6，点击项目将直接按 IPv4 运行。'
     return (
         f'📡 <b>{safe(s.get("name"))} · TCPQuality</b>\n\n'
         '选择检测项目。完整检测包含三网 IPv4 / IPv6、国际互联和三网测速。\n\n'
@@ -4082,6 +4097,29 @@ async def run_stream_task(bot, chat_id, s, jid):
             RUNNING.discard(key)
 
 
+def nodequality_post_cleanup_exit_1(code, out, *, nq=None, report_links=()):
+    """Upstream LloydAsp/NodeQuality post_cleanup() ends with hardcoded `exit 1`
+    even after all selected tests and upload_result() succeed. Accept exit code 1
+    only when output proves normal post-run cleanup was reached with actual report
+    output and without cleanup failure markers.
+    """
+    if code != 1 or not (nq or report_links):
+        return False
+    clean = strip_ansi(out or '')
+    markers = ('安装后清理', 'Clean Up after Installation')
+    pos = max((clean.rfind(marker) for marker in markers), default=-1)
+    if pos < 0:
+        return False
+    tail = clean[pos:]
+    error_markers = (
+        '挂载未被清理干净',
+        'mount was not cleaned up',
+        'work_dir不包含',
+        'work_dir does not contain',
+    )
+    return not any(err in tail for err in error_markers)
+
+
 async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
     key = (server_id(s), 'nq')
     work_dir = None
@@ -4140,7 +4178,9 @@ async def run_nq_task(bot, chat_id, s, jid, mask=NQ_ALL_MASK, ip_mode='4'):
                 image_ok = True
             except Exception as e:
                 image_error = str(e) or type(e).__name__
-        final_ok = code == 0 and bool(out.strip())
+        final_ok = bool(out.strip()) and (
+            code == 0 or nodequality_post_cleanup_exit_1(code, out, nq=nq, report_links=report_links)
+        )
         if not nq and not report_links or image_error:
             JOBS[jid]['extraction_error'] = image_error or '未提取既有展示链接；原输出保留'
             await send_original_output(bot, chat_id, out, job=JOBS[jid])
@@ -4891,6 +4931,11 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if kind not in PROXY_TOOLS or not s:
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
+        if kind in kat_proxy.KINDS:
+            tool = proxy_tool_config(kind)
+            jid = launch_job(s, kind, run_proxy_tool_task, context.bot, q.message.chat_id, s, kind, 'view', None, update.effective_user.id, target='view')
+            await bot_task_started_notice(context.bot, q.message.chat_id, s, f"{safe(tool['name'])} 查看配置", jid is not None)
+            return
         await q.edit_message_text(proxy_menu_text(s, kind), parse_mode=ParseMode.HTML, reply_markup=proxy_markup(s, kind))
     elif data.startswith('proxyrun:'):
         parts = data.split(':', 3)
@@ -4929,11 +4974,34 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
             return
         try:
-            markup = tcpquality_family_markup(s, category)
-            text = tcpquality_family_menu_text(s, category)
+            modes = tcpquality_available_modes(s, category)
         except ValueError:
             await q.answer('未知 TCPQuality 检测项目', show_alert=True)
             return
+        if len(modes) == 1:
+            mode = modes[0]
+            config = tcpquality_mode(mode)
+            jid = launch_job(
+                s,
+                'tcpq',
+                run_tcpquality_task,
+                context.bot,
+                q.message.chat_id,
+                s,
+                mode,
+                selected=config['label'],
+                target=mode,
+            )
+            await bot_task_started_notice(
+                context.bot,
+                q.message.chat_id,
+                s,
+                f"TCPQuality（{safe(config['label'])}）",
+                jid is not None,
+            )
+            return
+        markup = tcpquality_family_markup(s, category)
+        text = tcpquality_family_menu_text(s, category)
         await q.edit_message_text(
             text,
             parse_mode=ParseMode.HTML,
@@ -4986,6 +5054,12 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         ipv6_status = stored_ipv6_status(s)
         blocked = ip_mode == '46' and not ipv6_status[0]
+        if action == 'ipq' and not ipv6_status[0]:
+            ip_mode = '4'
+            ip_text = nq_ip_mode_text(ip_mode)
+            jid = launch_job(s, 'ipq', run_ip_quality_task, context.bot, q.message.chat_id, s, ip_mode, ip_mode=ip_text)
+            await bot_task_started_notice(context.bot, q.message.chat_id, s, f'IP质量任务（{safe(ip_text)}）', jid is not None)
+            return
         if action != 'ipqrun' or blocked:
             await q.edit_message_text(ipquality_menu_text(s, ip_mode, ipv6_status), parse_mode=ParseMode.HTML,
                                       reply_markup=ipquality_markup(s, ip_mode, ipv6_status))
@@ -5001,18 +5075,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         jid = launch_job(s, 'gb5', run_gb5_task, context.bot, q.message.chat_id, s)
         await bot_task_started_notice(context.bot, q.message.chat_id, s, 'GB5', jid is not None)
-    elif data.startswith('stream:'):
-        sid = data.split(':', 1)[1]
-        s = find_server_by_id(sid)
-        if not s:
-            await q.edit_message_text('这台服务器不在当前清单里。', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ 返回列表', callback_data='act:list')]]))
-            return
-        await q.edit_message_text(
-            stream_menu_text(s),
-            parse_mode=ParseMode.HTML,
-            reply_markup=stream_markup(s),
-        )
-    elif data.startswith('streamrun:'):
+    elif data.startswith(('stream:', 'streamrun:')):
         sid = data.split(':', 1)[1]
         s = find_server_by_id(sid)
         if not s:

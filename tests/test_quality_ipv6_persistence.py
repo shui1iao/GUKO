@@ -26,6 +26,10 @@ class PersistedMenuTest(unittest.IsolatedAsyncioTestCase):
                     if 'run:' in data and available:
                         launch.assert_called_once()
                         self.assertEqual(launch.call_args.args[-1],'46')
+                    elif data=='ipq:test-node' and not available:
+                        launch.assert_called_once()
+                        self.assertEqual(launch.call_args.args[-1],'4')
+                        q.edit_message_text.assert_not_awaited()
                     else:
                         launch.assert_not_called()
                         found=callbacks(q.edit_message_text.call_args.kwargs['reply_markup'])
