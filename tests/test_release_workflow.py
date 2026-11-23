@@ -69,6 +69,6 @@ class ActualCurrentReleaseNotesTest(unittest.TestCase):
         capture { print }'''
         notes=subprocess.check_output(['awk','-v','version='+version,program,str(ROOT/'CHANGELOG.md')],text=True)
         self.assertIn('NodeQuality',notes)
-        self.assertIn('直接运行',notes)
+        self.assertIn('原子替换',notes)
         self.assertNotIn('## [0.7.3]',notes)
         self.assertNotIn('## [0.7.1]',notes)
