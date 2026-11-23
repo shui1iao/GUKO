@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.5] - 2026-11-23 — 原子写并发锁、SSH 防注入、NodeQuality 清理与隐私脱敏
+
+- **数据持久化安全加固**：`servers.json` 与 `history.json` 读写增加进程内并发锁及同目录原子替换写（`fsync` + `os.replace`，权限 `0600`），防止并发异步任务覆盖或写出半截 JSON。
+- **SSH/SCP 参数与临时脚本清理加固**：`auth.py` 在 SSH/SCP 目标参数前补齐 `--` 分隔符并校验非法前缀防选项注入；NodeQuality 远端临时脚本 `trap` 扩展覆盖 `EXIT HUP INT TERM` 减少断连残留。
+- **内置组件与隐私清理**：同步内置 `service-unlock` 至 `v0.5.11`，脱敏 `tests/test_bgp_fetch.py` 中的历史测试 IP，并新增可选环境变量 `GUKO_COMPACT_PHOTO_ONLY` 支持精简纯图推送。
+
 ## [0.7.4] - 2026-11-20 — NodeQuality 误判修复与单选项入口直跑
 
 - 修复 NodeQuality 有完整报告却误报失败的问题：上游 `LloydAsp/NodeQuality` 在正常收尾的 `post_cleanup()` 末尾固定 `exit 1`。现仅当退出码为 `1`、已产出有效报告链接、输出已进入正常的「安装后清理 / Clean Up after Installation」阶段且无挂载/目录清理报错时判为成功，同时如实保留原始 `exit_code`；真实失败与中途中断仍保持失败。

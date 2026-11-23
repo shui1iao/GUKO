@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
-ARG GUKO_VERSION=0.7.4
+ARG GUKO_VERSION=0.7.5
 ARG GUKO_REVISION=unknown
 ENV GUKO_VERSION=${GUKO_VERSION} GUKO_SOURCE_URL=https://github.com/shui1iao/GUKO/releases/download/v${GUKO_VERSION}/guko-v${GUKO_VERSION}-source.zip
 LABEL org.opencontainers.image.version=${GUKO_VERSION} \

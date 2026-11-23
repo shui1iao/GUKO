@@ -73,7 +73,9 @@ def ssh_args(server: dict, remote: str, *, tty=False, inv: dict | None = None) -
         raise ValueError('missing ssh host')
     batch = not (cfg.get('auth') == 'password' and cfg.get('password'))
     args = ['ssh'] + _base_ssh_options(cfg, tty=tty, batch=batch)
-    args += [f"{cfg['user']}@{cfg['host']}", remote]
+    if str(cfg['user']).startswith('-') or str(cfg['host']).startswith('-'):
+        raise ValueError('invalid ssh target')
+    args += ['--', f"{cfg['user']}@{cfg['host']}", remote]
     if cfg.get('auth') == 'password' and cfg.get('password'):
         return ['sshpass', '-e'] + args
     return args
@@ -93,7 +95,9 @@ def scp_from_args(server: dict, remote_path: str, local_path: str, *, inv: dict 
     ]
     if cfg.get('key'):
         args += ['-i', str(cfg['key'])]
-    args += [f"{cfg['user']}@{cfg['host']}:{remote_path}", local_path]
+    if str(cfg['user']).startswith('-') or str(cfg['host']).startswith('-'):
+        raise ValueError('invalid scp target')
+    args += ['--', f"{cfg['user']}@{cfg['host']}:{remote_path}", local_path]
     if cfg.get('auth') == 'password' and cfg.get('password'):
         return ['sshpass', '-e'] + args
     return args

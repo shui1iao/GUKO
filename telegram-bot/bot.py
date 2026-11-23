@@ -13,6 +13,7 @@ import signal
 import re
 import subprocess
 import tempfile
+import threading
 import time
 from datetime import datetime
 import urllib.request
@@ -37,7 +38,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.4').strip() or '0.7.4'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.5').strip() or '0.7.4'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -178,6 +179,30 @@ async def admin_guard(update: Update) -> bool:
     return False
 
 
+_INVENTORY_LOCK = threading.RLock()
+_HISTORY_LOCK = threading.RLock()
+COMPACT_PHOTO_ONLY = os.environ.get('GUKO_COMPACT_PHOTO_ONLY', '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def _atomic_write_json(path: Path, payload, mode: int = 0o600):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(payload, ensure_ascii=False, indent=2) + '\n'
+    fd, tmp_name = tempfile.mkstemp(prefix=f'.{path.name}.', suffix='.tmp', dir=str(path.parent))
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp_name, mode)
+        os.replace(tmp_name, path)
+    except Exception:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
+
+
 def load_inventory() -> dict:
     if not SERVERS_JSON.exists():
         inv = {
@@ -199,11 +224,16 @@ def load_inventory() -> dict:
 
 
 def save_inventory(inv: dict):
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    if SERVERS_JSON.exists():
-        backup = SERVERS_JSON.with_name(f'{SERVERS_JSON.name}.bak-{datetime.now().strftime("%Y%m%d-%H%M%S")}')
-        shutil.copy2(SERVERS_JSON, backup)
-    SERVERS_JSON.write_text(json.dumps(inv, ensure_ascii=False, indent=2) + '\n')
+    with _INVENTORY_LOCK:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        if SERVERS_JSON.exists():
+            backup = SERVERS_JSON.with_name(f'{SERVERS_JSON.name}.bak-{datetime.now().strftime("%Y%m%d-%H%M%S")}')
+            shutil.copy2(SERVERS_JSON, backup)
+            try:
+                os.chmod(backup, 0o600)
+            except OSError:
+                pass
+        _atomic_write_json(SERVERS_JSON, inv, 0o600)
 
 
 def next_manual_id(servers):
@@ -1361,7 +1391,7 @@ def nodequality_remote_command(s, mask=NQ_ALL_MASK, ip_mode='4', *, work_dir=Non
         + ensure_curl
         + log_setup
         + "script=$(mktemp /root/nodequality.XXXXXX.sh); "
-        + "trap 'rm -f -- \"$script\"' EXIT; "
+        + "trap 'rm -f -- \"$script\"' EXIT HUP INT TERM; "
         + tool_sources.shell_download(source, '"$script"')
         + "printf %b " + shlex.quote(answers) + " | bash \"$script\" " + ipv_arg + dir_arg
     )
@@ -1802,8 +1832,8 @@ def load_history():
 
 
 def save_history(items):
-    HISTORY_JSON.parent.mkdir(parents=True, exist_ok=True)
-    HISTORY_JSON.write_text(json.dumps(items[-HISTORY_LIMIT:], ensure_ascii=False, indent=2) + '\n')
+    with _HISTORY_LOCK:
+        _atomic_write_json(HISTORY_JSON, items[-HISTORY_LIMIT:], 0o600)
 
 
 def reconcile_interrupted_history():
@@ -4054,11 +4084,14 @@ async def run_stream_task(bot, chat_id, s, jid):
                     job['artifact_error'] = repr(exc)
                 try:
                     with image.open('rb') as photo:
-                        await bot.send_photo(chat_id, photo=photo,
-                            caption=f'🎬 <b>{safe(s.get("name"))} 流媒体完整报告</b>\n'
-                                    f'{safe(label)}；内容/布局/地区与结论均为本次CLI原报告。\n'
-                                    + stream_source_offer(job),
-                            parse_mode=ParseMode.HTML)
+                        if COMPACT_PHOTO_ONLY:
+                            await bot.send_photo(chat_id, photo=photo)
+                        else:
+                            await bot.send_photo(chat_id, photo=photo,
+                                caption=f'🎬 <b>{safe(s.get("name"))} 流媒体完整报告</b>\n'
+                                        f'{safe(label)}；内容/布局/地区与结论均为本次CLI原报告。\n'
+                                        + stream_source_offer(job),
+                                parse_mode=ParseMode.HTML)
                     delivered = True
                 except Exception as exc:
                     job['delivery_error'] = repr(exc)

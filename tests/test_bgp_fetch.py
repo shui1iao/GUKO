@@ -45,8 +45,8 @@ VALID_SVG = (
 
 class BGPFetchTest(unittest.TestCase):
     def render_with(self, direct_effect, tmp: str):
-        ip = ipaddress.IPv4Address("51.241.130.238")
-        prefix = ipaddress.IPv4Network("51.241.130.0/24")
+        ip = ipaddress.IPv4Address("198.51.100.238")
+        prefix = ipaddress.IPv4Network("198.51.100.0/24")
         relay_config = Path(tmp) / "relay.json"
         relay_config.write_text("{}")
 
@@ -62,7 +62,7 @@ class BGPFetchTest(unittest.TestCase):
             bgp, "svg_to_png", side_effect=convert
         ):
             rc = bgp.fetch_bgp(ip, outdir=Path(tmp), relay_config=relay_config)
-            latest = Path(tmp) / "latest-51.241.130.238.png"
+            latest = Path(tmp) / "latest-198.51.100.238.png"
             self.assertEqual(rc, 0)
             relayed.assert_called_once()
             self.assertTrue(latest.exists())
@@ -76,7 +76,7 @@ class BGPFetchTest(unittest.TestCase):
 
     def test_http_403_is_retried_through_the_selected_managed_target(self):
         error = urllib.error.HTTPError(
-            "https://bgp.tools/pathimg/rt-51.241.130.0_24",
+            "https://bgp.tools/pathimg/rt-198.51.100.0_24",
             403,
             "Forbidden",
             Message(),
@@ -93,8 +93,8 @@ class BGPFetchTest(unittest.TestCase):
             )
 
     def test_direct_standard_svg_bypasses_relay_and_404_does_not_relay(self):
-        ip = ipaddress.IPv4Address("51.241.130.238")
-        prefix = ipaddress.IPv4Network("51.241.130.0/24")
+        ip = ipaddress.IPv4Address("198.51.100.238")
+        prefix = ipaddress.IPv4Network("198.51.100.0/24")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
 
@@ -117,8 +117,8 @@ class BGPFetchTest(unittest.TestCase):
                 relayed.assert_not_called()
 
     def test_direct_request_uses_current_ip_bot_path_without_legacy_query(self):
-        ip = ipaddress.IPv4Address("51.241.130.238")
-        prefix = ipaddress.IPv4Network("51.241.130.0/24")
+        ip = ipaddress.IPv4Address("198.51.100.238")
+        prefix = ipaddress.IPv4Network("198.51.100.0/24")
         seen = []
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -135,7 +135,7 @@ class BGPFetchTest(unittest.TestCase):
             ), patch.object(bgp, "svg_to_png", side_effect=convert):
                 self.assertEqual(bgp.fetch_bgp(ip, outdir=root), 0)
 
-        self.assertEqual(seen, ["https://bgp.tools/pathimg/rt-51.241.130.0_24"])
+        self.assertEqual(seen, ["https://bgp.tools/pathimg/rt-198.51.100.0_24"])
 
     def test_compressed_response_is_decompressed_with_a_hard_output_bound(self):
         compressed = gzip.compress(b"x" * (bgp.MAX_SVG_BYTES + 1), compresslevel=9)
@@ -216,8 +216,8 @@ class BGPFetchTest(unittest.TestCase):
             key = root / "default_key"
             key.write_text("test-key")
             selected = {
-                "name": "BAGE",
-                "host": "51.241.130.238",
+                "name": "TEST-NODE",
+                "host": "198.51.100.238",
                 "ssh": {"host": "relay.example"},
             }
             inventory = {
@@ -240,7 +240,7 @@ class BGPFetchTest(unittest.TestCase):
             self.assertEqual(config["key"], str(key))
             self.assertEqual(Path(config["known_hosts"]).stat().st_mode & 0o777, 0o600)
 
-            stale = dict(selected, host="51.241.130.239")
+            stale = dict(selected, host="198.51.100.239")
             with patch.object(bot, "load_inventory", return_value=inventory), patch.object(
                 bot, "TMP_DIR", root
             ):
@@ -254,14 +254,14 @@ class BGPFetchTest(unittest.TestCase):
                 argv = list(args[0])
                 outdir = Path(argv[argv.index("--outdir") + 1])
                 await asyncio.sleep(0.01)
-                png = outdir / "latest-51.241.130.238.png"
+                png = outdir / "latest-198.51.100.238.png"
                 png.write_bytes(b"\x89PNG\r\n\x1a\nconcurrent")
                 return 0, f"PNG={png}\n"
 
             async def generate_pair():
                 return await asyncio.gather(
-                    bot.generate_bgp_png("51.241.130.238"),
-                    bot.generate_bgp_png("51.241.130.238"),
+                    bot.generate_bgp_png("198.51.100.238"),
+                    bot.generate_bgp_png("198.51.100.238"),
                 )
 
             with patch.object(bot, "BGP_OUT_ROOT", root), patch.object(
@@ -279,7 +279,7 @@ class BGPFetchTest(unittest.TestCase):
                 bot, "run_subprocess", new=AsyncMock(side_effect=asyncio.CancelledError())
             ):
                 with self.assertRaises(asyncio.CancelledError):
-                    asyncio.run(bot.generate_bgp_png("51.241.130.238"))
+                    asyncio.run(bot.generate_bgp_png("198.51.100.238"))
             self.assertEqual(list(root.iterdir()), [])
 
     def test_persistence_failure_cleans_relay_directory(self):
@@ -299,7 +299,7 @@ class BGPFetchTest(unittest.TestCase):
                     bot.run_bgp_task(
                         client,
                         1,
-                        {"name": "BAGE", "host": "51.241.130.238"},
+                        {"name": "TEST-NODE", "host": "198.51.100.238"},
                         "cleanup-test",
                     )
                 )
