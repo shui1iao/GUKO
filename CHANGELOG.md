@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.6] - 2026-11-24 — 修复 Docker 单文件挂载写入 EBUSY 与补齐读写锁
+
+- **修复 Docker 单文件挂载原子写入报错**：`_atomic_write_json()` 优先保持同目录临时文件 `fsync` + `os.replace`；遇到单文件 bind mount（如 `./servers.json:/data/servers.json`、`./history.json:/data/history.json`）触发的 `EBUSY` / `EXDEV` 时，自动在进程内锁保护下回退为原地覆写、`truncate` 与 `fsync`，并始终清理临时文件，消除 `[Errno 16] Device or resource busy` 失败。
+- **补齐读写互斥与读-改-写锁覆盖**：为 `load_inventory()`、`load_history()` 以及服务器清单/历史记录的读-改-写操作统一加锁，防止单文件挂载原地覆写期间并发读到半截 JSON 或并发任务相互覆盖。
+
 ## [0.7.5] - 2026-11-23 — 原子写并发锁、SSH 防注入、NodeQuality 清理与隐私脱敏
 
 - **数据持久化安全加固**：`servers.json` 与 `history.json` 读写增加进程内并发锁及同目录原子替换写（`fsync` + `os.replace`，权限 `0600`），防止并发异步任务覆盖或写出半截 JSON。

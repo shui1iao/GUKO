@@ -68,7 +68,7 @@ class ActualCurrentReleaseNotesTest(unittest.TestCase):
         capture && index($0, "## [") == 1 { exit }
         capture { print }'''
         notes=subprocess.check_output(['awk','-v','version='+version,program,str(ROOT/'CHANGELOG.md')],text=True)
-        self.assertIn('NodeQuality',notes)
-        self.assertIn('原子替换',notes)
+        self.assertIn('EBUSY',notes)
+        self.assertIn('原地覆写',notes)
+        self.assertNotIn('## [0.7.5]',notes)
         self.assertNotIn('## [0.7.3]',notes)
-        self.assertNotIn('## [0.7.1]',notes)

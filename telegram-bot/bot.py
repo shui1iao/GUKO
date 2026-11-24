@@ -3,6 +3,7 @@ import asyncio
 import stream_unified
 import tool_sources
 import csv
+import errno
 import hashlib
 import html
 import ipaddress
@@ -38,7 +39,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.5').strip() or '0.7.4'
+GUKO_VERSION = os.environ.get('GUKO_VERSION', '0.7.6').strip() or '0.7.6'
 DATA_DIR = Path(os.environ.get('DATA_DIR', '/data'))
 SERVERS_JSON = Path(os.environ.get('GUKO_INV') or os.environ.get('VPSPILOT_INV') or DATA_DIR / 'servers.json')
 KULIN_BASE_URL = os.environ.get('KULIN_BASE_URL') or os.environ.get('KOMARI_BASE_URL') or ''
@@ -194,33 +195,55 @@ def _atomic_write_json(path: Path, payload, mode: int = 0o600):
             f.flush()
             os.fsync(f.fileno())
         os.chmod(tmp_name, mode)
-        os.replace(tmp_name, path)
-    except Exception:
         try:
-            os.unlink(tmp_name)
+            os.replace(tmp_name, path)
+            return
+        except OSError as exc:
+            if exc.errno not in (errno.EBUSY, errno.EXDEV):
+                raise
+        wfd = os.open(str(path), os.O_RDWR | os.O_CREAT, mode)
+        try:
+            f = os.fdopen(wfd, 'r+', encoding='utf-8')
+        except Exception:
+            os.close(wfd)
+            raise
+        with f:
+            f.seek(0)
+            f.write(text)
+            f.truncate()
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            os.chmod(path, mode)
         except OSError:
             pass
-        raise
+    finally:
+        try:
+            if os.path.exists(tmp_name):
+                os.unlink(tmp_name)
+        except OSError:
+            pass
 
 
 def load_inventory() -> dict:
-    if not SERVERS_JSON.exists():
-        inv = {
-            'updated_at': datetime.now().astimezone().isoformat(timespec='seconds'),
-            'source': 'local',
-            'defaults': {
-                'ssh': {
-                    'user': os.environ.get('GUKO_DEFAULT_USER') or os.environ.get('VPSPILOT_DEFAULT_USER') or os.environ.get('JIAOOPS_DEFAULT_USER', 'root'),
-                    'port': int(os.environ.get('GUKO_DEFAULT_PORT') or os.environ.get('VPSPILOT_DEFAULT_PORT') or os.environ.get('JIAOOPS_DEFAULT_PORT', '22')),
-                    'key': os.environ.get('GUKO_DEFAULT_KEY') or os.environ.get('VPSPILOT_DEFAULT_KEY') or os.environ.get('JIAOOPS_DEFAULT_KEY', '/data/keys/id_ed25519'),
-                }
-            },
-            'servers': [],
-        }
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        SERVERS_JSON.write_text(json.dumps(inv, ensure_ascii=False, indent=2) + '\n')
-        return inv
-    return json.loads(SERVERS_JSON.read_text())
+    with _INVENTORY_LOCK:
+        if not SERVERS_JSON.exists():
+            inv = {
+                'updated_at': datetime.now().astimezone().isoformat(timespec='seconds'),
+                'source': 'local',
+                'defaults': {
+                    'ssh': {
+                        'user': os.environ.get('GUKO_DEFAULT_USER') or os.environ.get('VPSPILOT_DEFAULT_USER') or os.environ.get('JIAOOPS_DEFAULT_USER', 'root'),
+                        'port': int(os.environ.get('GUKO_DEFAULT_PORT') or os.environ.get('VPSPILOT_DEFAULT_PORT') or os.environ.get('JIAOOPS_DEFAULT_PORT', '22')),
+                        'key': os.environ.get('GUKO_DEFAULT_KEY') or os.environ.get('VPSPILOT_DEFAULT_KEY') or os.environ.get('JIAOOPS_DEFAULT_KEY', '/data/keys/id_ed25519'),
+                    }
+                },
+                'servers': [],
+            }
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            _atomic_write_json(SERVERS_JSON, inv, 0o600)
+            return inv
+        return json.loads(SERVERS_JSON.read_text())
 
 
 def save_inventory(inv: dict):
@@ -321,85 +344,89 @@ def reorder_servers(servers, sid: str, direction: str):
 
 
 def move_server_by_id(sid: str, direction: str):
-    inv = load_inventory()
-    reordered = reorder_servers(inv.get('servers') or [], sid, direction)
-    if reordered is None:
-        return False
-    inv['servers'] = reordered
-    inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
-    save_inventory(inv)
-    return True
+    with _INVENTORY_LOCK:
+        inv = load_inventory()
+        reordered = reorder_servers(inv.get('servers') or [], sid, direction)
+        if reordered is None:
+            return False
+        inv['servers'] = reordered
+        inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
+        save_inventory(inv)
+        return True
 
 
 def update_server_by_id(sid: str, patch: dict):
-    inv = load_inventory()
-    servers = inv.get('servers') or []
-    for i, s in enumerate(servers):
-        if str(server_id(s)) == str(sid):
-            merged = dict(s)
-            ssh = dict(merged.get('ssh') or {})
-            for k in ('name', 'host', 'aliases', 'role', 'specs', 'ipv6', 'ipv6_status'):
-                if k in patch:
-                    merged[k] = patch[k]
-            if 'ssh' in patch:
-                ssh.update(patch['ssh'])
-                merged['ssh'] = ssh
-            servers[i] = merged
-            inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
-            save_inventory(inv)
-            return merged
-    return None
+    with _INVENTORY_LOCK:
+        inv = load_inventory()
+        servers = inv.get('servers') or []
+        for i, s in enumerate(servers):
+            if str(server_id(s)) == str(sid):
+                merged = dict(s)
+                ssh = dict(merged.get('ssh') or {})
+                for k in ('name', 'host', 'aliases', 'role', 'specs', 'ipv6', 'ipv6_status'):
+                    if k in patch:
+                        merged[k] = patch[k]
+                if 'ssh' in patch:
+                    ssh.update(patch['ssh'])
+                    merged['ssh'] = ssh
+                servers[i] = merged
+                inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
+                save_inventory(inv)
+                return merged
+        return None
 
 
 def delete_server_by_id(sid: str):
-    inv = load_inventory()
-    servers = inv.get('servers') or []
-    kept = []
-    removed = None
-    for s in servers:
-        if str(server_id(s)) == str(sid):
-            removed = s
-        else:
-            kept.append(s)
-    if removed is None:
-        return None
-    inv['servers'] = kept
-    inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
-    save_inventory(inv)
-    return removed
+    with _INVENTORY_LOCK:
+        inv = load_inventory()
+        servers = inv.get('servers') or []
+        kept = []
+        removed = None
+        for s in servers:
+            if str(server_id(s)) == str(sid):
+                removed = s
+            else:
+                kept.append(s)
+        if removed is None:
+            return None
+        inv['servers'] = kept
+        inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
+        save_inventory(inv)
+        return removed
 
 
 def upsert_server(item: dict):
-    inv = load_inventory()
-    servers = inv.setdefault('servers', [])
-    q = {str(x).lower() for x in [item.get('name'), str(item.get('id') or item.get('legacy_id') or '')] if x}
-    q.update(str(x).lower() for x in (item.get('aliases') or []))
-    item_host = str(item.get('host') or '').lower()
-    item_port = (item.get('ssh') or {}).get('port') or item.get('port')
-    replaced = False
-    for i, old in enumerate(servers):
-        fields = {str(x).lower() for x in [old.get('name'), str(old.get('id') or old.get('legacy_id') or '')] if x}
-        fields.update(str(x).lower() for x in (old.get('aliases') or []))
-        old_host = str(old.get('host') or '').lower()
-        old_port = (old.get('ssh') or {}).get('port') or old.get('port')
-        same_endpoint = item_host and old_host == item_host and (not item_port or not old_port or str(item_port) == str(old_port))
-        if (q & fields) or same_endpoint:
-            item.setdefault('id', old.get('id') or old.get('legacy_id') or next_manual_id(servers))
-            item.setdefault('state', old.get('state') or {})
-            merged = dict(old)
-            merged.update(enrich_server_geo(item))
-            servers[i] = merged
-            replaced = True
-            break
-    if not replaced:
-        item.setdefault('id', next_manual_id(servers))
-        item.setdefault('role', 'manual')
-        item.setdefault('source', 'local-manual')
-        item.setdefault('state', {})
-        servers.append(enrich_server_geo(item))
-    inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
-    save_inventory(inv)
-    return item, 'updated' if replaced else 'added'
+    with _INVENTORY_LOCK:
+        inv = load_inventory()
+        servers = inv.setdefault('servers', [])
+        q = {str(x).lower() for x in [item.get('name'), str(item.get('id') or item.get('legacy_id') or '')] if x}
+        q.update(str(x).lower() for x in (item.get('aliases') or []))
+        item_host = str(item.get('host') or '').lower()
+        item_port = (item.get('ssh') or {}).get('port') or item.get('port')
+        replaced = False
+        for i, old in enumerate(servers):
+            fields = {str(x).lower() for x in [old.get('name'), str(old.get('id') or old.get('legacy_id') or '')] if x}
+            fields.update(str(x).lower() for x in (old.get('aliases') or []))
+            old_host = str(old.get('host') or '').lower()
+            old_port = (old.get('ssh') or {}).get('port') or old.get('port')
+            same_endpoint = item_host and old_host == item_host and (not item_port or not old_port or str(item_port) == str(old_port))
+            if (q & fields) or same_endpoint:
+                item.setdefault('id', old.get('id') or old.get('legacy_id') or next_manual_id(servers))
+                item.setdefault('state', old.get('state') or {})
+                merged = dict(old)
+                merged.update(enrich_server_geo(item))
+                servers[i] = merged
+                replaced = True
+                break
+        if not replaced:
+            item.setdefault('id', next_manual_id(servers))
+            item.setdefault('role', 'manual')
+            item.setdefault('source', 'local-manual')
+            item.setdefault('state', {})
+            servers.append(enrich_server_geo(item))
+        inv['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
+        save_inventory(inv)
+        return item, 'updated' if replaced else 'added'
 
 
 def ssh_config(s):
@@ -1822,13 +1849,14 @@ def latest_media_path(item):
 
 
 def load_history():
-    if not HISTORY_JSON.exists():
-        return []
-    try:
-        data = json.loads(HISTORY_JSON.read_text() or '[]')
-        return data if isinstance(data, list) else []
-    except Exception:
-        return []
+    with _HISTORY_LOCK:
+        if not HISTORY_JSON.exists():
+            return []
+        try:
+            data = json.loads(HISTORY_JSON.read_text() or '[]')
+            return data if isinstance(data, list) else []
+        except Exception:
+            return []
 
 
 def save_history(items):
@@ -1838,28 +1866,29 @@ def save_history(items):
 
 def reconcile_interrupted_history():
     """Turn persisted running records into explicit failures after a restart."""
-    items = load_history()
-    changed = 0
-    now = iso_now()
-    for item in items:
-        if item.get('status') != 'running':
-            continue
-        item['status'] = 'failed'
-        item.setdefault('completed_at', now)
-        item.setdefault('delivery_error', INTERRUPTED_MESSAGE)
-        if not (item.get('log_tail') or '').strip():
-            item['log_tail'] = INTERRUPTED_MESSAGE
-        if item.get('duration_sec') is None:
-            try:
-                st = datetime.fromisoformat(str(item.get('started_at')))
-                en = datetime.fromisoformat(str(item.get('completed_at')))
-                item['duration_sec'] = max(0, int((en - st).total_seconds()))
-            except Exception:
-                pass
-        changed += 1
-    if changed:
-        save_history(items)
-    return changed
+    with _HISTORY_LOCK:
+        items = load_history()
+        changed = 0
+        now = iso_now()
+        for item in items:
+            if item.get('status') != 'running':
+                continue
+            item['status'] = 'failed'
+            item.setdefault('completed_at', now)
+            item.setdefault('delivery_error', INTERRUPTED_MESSAGE)
+            if not (item.get('log_tail') or '').strip():
+                item['log_tail'] = INTERRUPTED_MESSAGE
+            if item.get('duration_sec') is None:
+                try:
+                    st = datetime.fromisoformat(str(item.get('started_at')))
+                    en = datetime.fromisoformat(str(item.get('completed_at')))
+                    item['duration_sec'] = max(0, int((en - st).total_seconds()))
+                except Exception:
+                    pass
+            changed += 1
+        if changed:
+            save_history(items)
+        return changed
 
 
 def history_append(jid, job):
@@ -1899,15 +1928,16 @@ def history_append(jid, job):
     if job.get('kind') in kat_proxy.KINDS:
         item['proxy_report_path'] = job.get('proxy_report_path')
         item['proxy_snapshot'] = job.get('proxy_snapshot')
-    hist = [
-        x for x in load_history()
-        if not (
-            x.get('job_id') == jid
-            or (item.get('kind') != 'stream' and str(x.get('server_id') or '') == str(item.get('server_id') or '') and x.get('kind') == item.get('kind'))
-        )
-    ]
-    hist.append(item)
-    save_history(hist)
+    with _HISTORY_LOCK:
+        hist = [
+            x for x in load_history()
+            if not (
+                x.get('job_id') == jid
+                or (item.get('kind') != 'stream' and str(x.get('server_id') or '') == str(item.get('server_id') or '') and x.get('kind') == item.get('kind'))
+            )
+        ]
+        hist.append(item)
+        save_history(hist)
 
 
 def create_job(s, kind, status='running', **extra):
