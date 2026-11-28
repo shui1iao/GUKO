@@ -1,20 +1,16 @@
-## v0.7.3 — upstream report executor / 全项目执行器解耦
-
-每次新任务仍查官方最新、冻结同次资产与源码/hash；普通版本/检测项/地区字段/标题与布局变化不再依赖GUKO白名单或业务复刻。Stream接受稳定`guko-unified-v1` machine信封，安全渲染原terminal并保存原JSON，不重算结论/Unknown/国家。其它工具保必要CLI/报告安全，提取失败完整原文兜底；Kat按受支持配置shape和真实CLI而非普通版本门禁，所有TLS/确认/竞态/不能升级已有核边界保。GB5仍5系，无法确认官方latest5则停。详细逐入口表见[EXECUTOR.md](EXECUTOR.md)。
-
-Ordinary upstream versions/catalogues/layouts no longer need a bot adapter. Actual execution/transport protocol or safety failures still stop, never reuse an older release. Original reports/history/source offers are retained. Publishing is **not** deployment: SG requires a separate fresh idle confirmation and one-service switch. No CLI/short-link change in this release.
-
 # GUKO
 
-[![Docker Image](https://img.shields.io/badge/ghcr.io-guko-blue?logo=docker)](https://github.com/shui1iao/GUKO/pkgs/container/guko)
-[![License: MIT + AGPL](https://img.shields.io/badge/License-MIT%20%2B%20AGPL-blue.svg)](NOTICE-STREAM.md)
+[![Release](https://img.shields.io/github/v/release/shui1iao/GUKO?style=flat-square&color=2563eb)](https://github.com/shui1iao/GUKO/releases/latest)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-guko-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/shui1iao/GUKO/pkgs/container/guko)
+[![License: MIT + AGPL](https://img.shields.io/badge/License-MIT%20%2B%20AGPL-64748b?style=flat-square)](NOTICE-STREAM.md)
 
 **中文** | [English](README.en.md)
 
-**轻量 VPS / 服务器管理 Telegram Bot：服务器状态面板、SSH 登录管理、常用测试脚本入口**
+**轻量级 VPS / 服务器管理 Telegram Bot**——集服务器状态面板、SSH 运维管理、一键质量与解锁测速、代理协议部署入口于一体。
 
-> 私聊打开 Bot 就能查看服务器列表、状态详情、流量与资源占用；支持在 Telegram 内添加服务器、测试 SSH、运行 IP 质量 / NodeQuality / TCPQuality / 流媒体 / NextTrace / GB5 等常用检测。
-> 默认白名单模式，适合自托管。
+> 私聊打开 Bot 即可查看服务器列表、实时负载与流量，在 Telegram 内完成服务器增删改、SSH 连通性测试，并一键调度 IP 质量 / NodeQuality / TCPQuality / 流媒体解锁 / NextTrace / GB5 / Kat / Snell 等任务。默认严格白名单模式，适合个人自托管。
+>
+> 上游任务执行器解耦架构与协议安全边界详见 [EXECUTOR.md](EXECUTOR.md)。
 
 ---
 
